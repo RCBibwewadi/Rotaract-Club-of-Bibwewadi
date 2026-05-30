@@ -53,6 +53,7 @@ export interface Profession {
   employer?: string;
   is_primary: boolean;
   is_visible: boolean;
+  portfolio_url?: string;
 }
 
 // ── MEMBER_VISIBILITY ────────────────────────────────────────
