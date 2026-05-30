@@ -1,0 +1,26 @@
+{
+  "name": "rcb-2.0",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Offical Rotarct Club of Bibwewadi Website",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint"
+  },
+  "author": "Pritesh Gadiya",
+  "license": "ISC",
+  "keywords": [
+    "RCB",
+    "rotarct",
+    "club",
+    "of",
+    "Bibwewadi",
+    "Bibwewadi"
+  ],
+  "devDependencies": {
+    "turbo": "^2.9.16",
+    "typescript": "^5.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@rcb-2.0/shared",
+  "version": "0.0.2",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
