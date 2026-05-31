@@ -5,7 +5,7 @@
 
 // ── Enums / Literals ─────────────────────────────────────────
 
-export type MemberType = 'business_only' | 'profession_only' | 'both';
+export type MemberType = 'business_only' | 'profession_only' | 'both' | 'student';
 
 // ── MEMBERS ──────────────────────────────────────────────────
 
@@ -26,6 +26,10 @@ export interface Member {
   is_active: boolean;
   member_type: MemberType;
   previous_bod_posts?: Record<string, unknown>; // json
+  password_hash: string;             // stored in DB but never sent to client
+  role: 'member' | 'admin';         // for auth
+  is_approved: boolean;             // for admin approval workflow
+  plain_password?: string;          // only used temporarily during signup/login
 }
 
 // ── BUSINESSES ───────────────────────────────────────────────
