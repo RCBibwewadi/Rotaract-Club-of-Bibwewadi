@@ -6,9 +6,11 @@ import { validate } from "../middleware/validate";
 import {
   errorResponse,
   LoginSchema,
+  RegisterSchema,
   SignupInput,
   SignupSchema,
   successResponse,
+  type RegisterInput,
 } from "@rcb-2.0/shared";
 
 // Auth handles Login and SignUp for members
@@ -60,6 +62,85 @@ authRoutes.post("/signup", validate(SignupSchema), async (req, res) => {
         member_type: data.member_type as MemberType,
       },
       "Signup successful, pending admin approval"
+    )
+  );
+});
+
+// ── POST /auth/register ──────────────────────────────────────
+// Full registration: creates member + optional business + optional profession
+authRoutes.post("/register", validate(RegisterSchema), async (req, res) => {
+  const body = req.body as RegisterInput;
+
+  const password_hash = await hashPassword(body.password);
+
+  // 1. Create member
+  const { data: member, error: memberError } = await supabase
+    .from("members")
+    .insert({
+      full_name: body.full_name,
+      email: body.email,
+      username: body.username,
+      password_hash,
+      member_type: body.member_type,
+      phone: body.phone || null,
+      dob: body.dob || null,
+      interests: body.interests || null,
+      role: "member",
+      is_approved: false,
+      is_active: true,
+    })
+    .select("member_id, username, email, member_type")
+    .single();
+
+  if (memberError) {
+    if (memberError.code === "23505") {
+      return res
+        .status(409)
+        .json(
+          errorResponse("DUPLICATE_ENTRY", "Email or username already taken")
+        );
+    }
+    return res
+      .status(500)
+      .json(errorResponse("INTERNAL_SERVER_ERROR", memberError.message));
+  }
+
+  // 2. Create business if provided
+  if (body.business && (body.member_type === "business_only" || body.member_type === "both")) {
+    await supabase.from("businesses").insert({
+      member_id: member.member_id,
+      business_name: body.business.business_name,
+      industry: body.business.industry || null,
+      designation: body.business.designation || null,
+      description: body.business.description || null,
+      website_url: body.business.website_url || null,
+      business_city: body.business.business_city || null,
+      is_visible: true,
+    });
+  }
+
+  // 3. Create profession if provided
+  if (body.profession && (body.member_type === "profession_only" || body.member_type === "both")) {
+    await supabase.from("professions").insert({
+      member_id: member.member_id,
+      profession_type: body.profession.profession_type,
+      specialisation: body.profession.specialisation || null,
+      years_experience: body.profession.years_experience || null,
+      employer: body.profession.employer || null,
+      is_primary: true,
+      is_visible: true,
+    });
+  }
+
+  res.status(201).json(
+    successResponse(
+      {
+        member_id: member.member_id,
+        username: member.username,
+        email: member.email,
+        member_type: member.member_type as MemberType,
+      },
+      "Registration successful! Your account is pending admin approval."
     )
   );
 });

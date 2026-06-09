@@ -1,19 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Lock, LogOut, Save, Plus, Trash2, Edit3, Eye, Settings, Users, FolderOpen, CalendarDays, FileText, Sliders, X } from 'lucide-react';
-import { useStore, type BoardMember, type Project, type EventItem } from '@/lib/store';
+import {
+  LogOut, Save, Plus, Trash2, Edit3, Eye, Settings, Users, FolderOpen,
+  CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
+  Clock, UserCheck, UserX, AlertCircle, Search, Shield,
+} from 'lucide-react';
+import { useStore } from '@/lib/store';
 
-function LoginForm() {
-  const { loginAdmin } = useStore();
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+// ── Admin Auth State (password-based, persisted in sessionStorage) ──
+const ADMIN_AUTH_KEY = 'rcb-admin-auth';
+const ADMIN_PASSWORD = 'rotaract@2025';
+
+function isAdminAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(ADMIN_AUTH_KEY) === 'true';
+}
+
+function setAdminAuthenticated() {
+  sessionStorage.setItem(ADMIN_AUTH_KEY, 'true');
+}
+
+function clearAdminAuth() {
+  sessionStorage.removeItem(ADMIN_AUTH_KEY);
+}
+
+// ── Types ────────────────────────────────────────────────────
+interface AdminMember {
+  member_id: string;
+  full_name: string;
+  email: string;
+  username: string;
+  role: string;
+  is_approved: boolean;
+  is_active: boolean;
+  member_type: string;
+  created_at: string;
+}
+
+// ── Login Form ───────────────────────────────────────────────
+function LoginForm({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = () => {
-    if (!loginAdmin(password)) {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
+    if (!password) { setError('Enter the admin password'); return; }
+    if (password === ADMIN_PASSWORD) {
+      setAdminAuthenticated();
+      onLogin();
+    } else {
+      setError('Incorrect password');
     }
   };
 
@@ -22,22 +61,26 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center mx-auto mb-4">
-            <Lock size={28} className="text-white" />
+            <Shield size={28} className="text-white" />
           </div>
           <h1 className="font-display text-3xl text-white">Admin Panel</h1>
-          <p className="text-white/50 text-sm mt-2">Enter password to access the dashboard</p>
+          <p className="text-white/50 text-sm mt-2">Enter admin password to continue</p>
         </div>
 
         <div className="space-y-4">
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
           <input
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            placeholder="Password"
+            placeholder="Admin password"
             className="w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors"
           />
-          {error && <p className="text-red-400 text-sm">Incorrect password. Try: rotaract2025</p>}
           <button
             onClick={handleLogin}
             className="w-full py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold transition-colors"
@@ -50,11 +93,269 @@ function LoginForm() {
   );
 }
 
-type Tab = 'content' | 'board' | 'projects' | 'events' | 'settings';
+// ── Members Management Tab ───────────────────────────────────
+function MembersTab() {
+  const [view, setView] = useState<'pending' | 'all'>('pending');
+  const [members, setMembers] = useState<AdminMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-function AdminDashboard() {
+  const headers = { 'Content-Type': 'application/json' };
+
+  const fetchMembers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
+      const res = await fetch(`${API_URL}${endpoint}`, { headers });
+      const data = await res.json();
+      setMembers(data.data || []);
+    } catch {
+      setMessage({ text: 'Failed to fetch members', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, [view]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
+        const res = await fetch(`${API_URL}${endpoint}`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (!cancelled) setMembers(data.data || []);
+      } catch {
+        if (!cancelled) setMessage({ text: 'Failed to fetch members', type: 'error' });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [view]);
+
+  const showMessage = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const doAction = async (memberId: string, action: string, label: string) => {
+    setActionLoading(memberId);
+    try {
+      const res = await fetch(`${API_URL}/admin/members/${memberId}/${action}`, {
+        method: 'PATCH',
+        headers,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMessage(data.message || `${label} successful`, 'success');
+        fetchMembers();
+      } else {
+        showMessage(data.message || `${label} failed`, 'error');
+      }
+    } catch {
+      showMessage('Network error', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const filtered = members.filter(m =>
+    m.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    m.email.toLowerCase().includes(search.toLowerCase()) ||
+    m.username.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const getStatusBadge = (m: AdminMember) => {
+    if (!m.is_active) return <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-500/10 text-red-400 font-medium">Blocked</span>;
+    if (!m.is_approved) return <span className="px-2 py-0.5 text-[10px] rounded-full bg-yellow-500/10 text-yellow-400 font-medium">Pending</span>;
+    return <span className="px-2 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-400 font-medium">Active</span>;
+  };
+
+  const getRoleBadge = (m: AdminMember) => {
+    if (m.role === 'admin') return <span className="px-2 py-0.5 text-[10px] rounded-full bg-accent/10 text-accent font-medium">Admin</span>;
+    return null;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* View toggle + search */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex gap-1 p-1 rounded-xl bg-dark-surface border border-white/5">
+          <button onClick={() => setView('pending')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              view === 'pending' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
+            }`}>
+            <Clock size={14} /> Pending
+          </button>
+          <button onClick={() => setView('all')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              view === 'all' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
+            }`}>
+            <Users size={14} /> All Members
+          </button>
+        </div>
+
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, email, username..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
+          />
+        </div>
+
+        <button onClick={fetchMembers}
+          className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${
+          message.type === 'success'
+            ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+        }`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+          {message.text}
+        </div>
+      )}
+
+      {/* Stats bar */}
+      {view === 'all' && !loading && (
+        <div className="flex gap-3 text-xs">
+          <span className="px-3 py-1.5 rounded-lg bg-dark-surface text-white/50">
+            Total: <span className="text-white font-medium">{members.length}</span>
+          </span>
+          <span className="px-3 py-1.5 rounded-lg bg-green-500/5 text-green-400/70">
+            Active: <span className="text-green-400 font-medium">{members.filter(m => m.is_active && m.is_approved).length}</span>
+          </span>
+          <span className="px-3 py-1.5 rounded-lg bg-yellow-500/5 text-yellow-400/70">
+            Pending: <span className="text-yellow-400 font-medium">{members.filter(m => m.is_active && !m.is_approved).length}</span>
+          </span>
+          <span className="px-3 py-1.5 rounded-lg bg-red-500/5 text-red-400/70">
+            Blocked: <span className="text-red-400 font-medium">{members.filter(m => !m.is_active).length}</span>
+          </span>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Empty */}
+      {!loading && filtered.length === 0 && (
+        <div className="text-center py-12">
+          <Users size={32} className="text-white/10 mx-auto mb-3" />
+          <p className="text-white/30 text-sm">
+            {view === 'pending' ? 'No pending members' : 'No members found'}
+          </p>
+        </div>
+      )}
+
+      {/* Member list */}
+      {!loading && filtered.length > 0 && (
+        <div className="space-y-2">
+          {filtered.map(m => {
+            const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            const isProcessing = actionLoading === m.member_id;
+            const joinDate = new Date(m.created_at).toLocaleDateString('en-IN', {
+              day: 'numeric', month: 'short', year: 'numeric',
+            });
+
+            return (
+              <div key={m.member_id}
+                className="bg-dark-card rounded-xl border border-white/5 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                {/* Info */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/80 to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-white font-medium text-sm truncate">{m.full_name}</h4>
+                      {getStatusBadge(m)}
+                      {getRoleBadge(m)}
+                    </div>
+                    <p className="text-white/30 text-xs truncate">
+                      @{m.username} &middot; {m.email}
+                    </p>
+                    <p className="text-white/20 text-[10px]">
+                      {m.member_type.replace('_', ' ')} &middot; Joined {joinDate}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {isProcessing ? (
+                    <div className="h-5 w-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {/* Approve — show if pending (active but not approved) */}
+                      {m.is_active && !m.is_approved && m.role !== 'admin' && (
+                        <button onClick={() => doAction(m.member_id, 'approve', 'Approve')}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors text-xs font-medium"
+                          title="Approve">
+                          <UserCheck size={13} /> Approve
+                        </button>
+                      )}
+
+                      {/* Reject — show if pending */}
+                      {m.is_active && !m.is_approved && m.role !== 'admin' && (
+                        <button onClick={() => doAction(m.member_id, 'reject', 'Reject')}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
+                          title="Reject">
+                          <UserX size={13} /> Reject
+                        </button>
+                      )}
+
+                      {/* Block — show if active & approved */}
+                      {m.is_active && m.is_approved && m.role !== 'admin' && (
+                        <button onClick={() => doAction(m.member_id, 'deactivate', 'Block')}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
+                          title="Block member">
+                          <Ban size={13} /> Block
+                        </button>
+                      )}
+
+                      {/* Unblock — show if inactive */}
+                      {!m.is_active && m.role !== 'admin' && (
+                        <button onClick={() => doAction(m.member_id, 'reactivate', 'Unblock')}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors text-xs font-medium"
+                          title="Unblock member">
+                          <RefreshCw size={13} /> Unblock
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Admin Dashboard ─────────────────────────────────────
+type Tab = 'members' | 'content' | 'board' | 'projects' | 'events' | 'settings';
+
+function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const store = useStore();
-  const [tab, setTab] = useState<Tab>('content');
+  const [tab, setTab] = useState<Tab>('members');
   const [editingBoard, setEditingBoard] = useState<string | null>(null);
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<string | null>(null);
@@ -66,6 +367,7 @@ function AdminDashboard() {
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'members', label: 'Members', icon: <Users size={16} /> },
     { id: 'content', label: 'Content', icon: <FileText size={16} /> },
     { id: 'board', label: 'Board', icon: <Users size={16} /> },
     { id: 'projects', label: 'Projects', icon: <FolderOpen size={16} /> },
@@ -96,7 +398,7 @@ function AdminDashboard() {
             <Link href="/" target="_blank" className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <Eye size={18} />
             </Link>
-            <button onClick={store.logoutAdmin} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5 transition-colors">
+            <button onClick={onLogout} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5 transition-colors">
               <LogOut size={18} />
             </button>
           </div>
@@ -124,6 +426,9 @@ function AdminDashboard() {
 
           {/* Main content */}
           <div className="flex-1 min-w-0">
+            {/* === MEMBERS TAB === */}
+            {tab === 'members' && <MembersTab />}
+
             {/* === CONTENT TAB === */}
             {tab === 'content' && (
               <div className="space-y-6">
@@ -558,9 +863,21 @@ function AdminDashboard() {
   );
 }
 
+// ── Main Page ────────────────────────────────────────────────
 export default function AdminPage() {
-  const { isAdminLoggedIn } = useStore();
+  const [authenticated, setAuthenticated] = useState(() => isAdminAuthenticated());
+  const [ready] = useState(() => typeof window !== 'undefined');
 
-  if (!isAdminLoggedIn) return <LoginForm />;
-  return <AdminDashboard />;
+  const handleLogout = () => {
+    clearAdminAuth();
+    setAuthenticated(false);
+  };
+
+  if (!ready) return null;
+
+  if (!authenticated) {
+    return <LoginForm onLogin={() => setAuthenticated(true)} />;
+  }
+
+  return <AdminDashboard onLogout={handleLogout} />;
 }

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 const supabaseURI=process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL;
 const supabaseServiceKey=process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY;
@@ -11,5 +12,9 @@ export const supabase = createClient(supabaseURI,supabaseServiceKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false,
-    }
+    },
+    realtime: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        transport: ws as any,
+    },
 });

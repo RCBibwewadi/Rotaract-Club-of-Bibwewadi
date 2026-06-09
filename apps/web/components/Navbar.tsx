@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sun, Moon, Shield } from 'lucide-react';
+import { Sun, Moon, Shield, User, LogOut } from 'lucide-react';
 import { useStore } from '@/lib/store';
+import { useAuthStore } from '@/lib/auth-store';
 
-const navLinks = [
+const baseNavLinks = [
   { label: 'Home', path: '/', num: '01' },
   { label: 'About', path: '/about', num: '02' },
   { label: 'Projects', path: '/projects', num: '03' },
@@ -16,6 +17,8 @@ const navLinks = [
   { label: 'Contact', path: '/contact', num: '07' },
 ];
 
+const directoryLink = { label: 'Directory', path: '/directory', num: '08' };
+
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -24,6 +27,25 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isDark, toggleDark } = useStore();
+  const { token, member, logout } = useAuthStore();
+  const isLoggedIn = token !== null;
+
+  const navLinks = isLoggedIn
+    ? [...baseNavLinks.slice(0, 5), directoryLink, ...baseNavLinks.slice(5)]
+    : baseNavLinks;
+
+  const memberInitials = member?.full_name
+    ?.split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || '';
+
+  const handleLogout = () => {
+    logout();
+    setMenuOpen(false);
+    router.push('/');
+  };
 
   // Scroll tracking
   useEffect(() => {
@@ -126,6 +148,30 @@ export default function Navbar() {
               >
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </button>
+
+              {isLoggedIn ? (
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-1.5 relative z-[110]"
+                  aria-label="Profile"
+                >
+                  {member?.avatar_url ? (
+                    <img src={member.avatar_url} alt="" className="w-8 h-8 rounded-lg object-cover border border-accent/30" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-xs font-bold">
+                      {memberInitials}
+                    </div>
+                  )}
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className={`p-2 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-accent' : isDark ? 'text-white/70 hover:text-accent hover:bg-white/10' : 'text-dark/70 hover:text-accent hover:bg-dark/10'}`}
+                  aria-label="Login"
+                >
+                  <User size={18} />
+                </Link>
+              )}
 
               <Link
                 href="/admin"
@@ -233,6 +279,32 @@ export default function Navbar() {
                     );
                   })}
                 </ul>
+
+                {/* Logged-in user section in overlay */}
+                {isLoggedIn && (
+                  <div
+                    className={`mt-6 pt-4 border-t border-white/10 flex items-center gap-4 transition-all duration-700 ${
+                      menuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
+                    }`}
+                    style={{ transitionDelay: menuOpen ? `${150 + navLinks.length * 60}ms` : '0ms' }}
+                  >
+                    <Link href="/profile" onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 text-white/60 hover:text-white transition-colors">
+                      {member?.avatar_url ? (
+                        <img src={member.avatar_url} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-sm font-bold">
+                          {memberInitials}
+                        </div>
+                      )}
+                      <span className="text-sm">{member?.full_name || 'Profile'}</span>
+                    </Link>
+                    <button onClick={handleLogout}
+                      className="ml-auto flex items-center gap-2 text-white/30 hover:text-red-400 transition-colors text-sm">
+                      <LogOut size={16} /> Logout
+                    </button>
+                  </div>
+                )}
               </nav>
 
               {/* Side info */}

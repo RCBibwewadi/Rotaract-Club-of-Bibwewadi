@@ -1,9 +1,7 @@
+import './env';
 import express   from 'express';
 import cors      from 'cors';
-import dotenv    from 'dotenv';
 import { Request, Response, NextFunction } from 'express';
-
-dotenv.config({ path: '../../.env' });
 
 import { authRoutes }      from './routes/auth';
 import { memberRoutes }    from './routes/members';

@@ -18,6 +18,42 @@ export const LoginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+// ── Registration (signup + business + profession in one step) ─
+export const RegisterSchema = z.object({
+  // Account
+  full_name:   z.string().min(2, 'Name must be at least 2 characters'),
+  email:       z.string().email('Invalid email'),
+  username:    z.string()
+                 .min(3, 'Username must be at least 3 characters')
+                 .max(30)
+                 .regex(/^[a-z0-9_]+$/, 'Only lowercase, numbers and underscores'),
+  password:    z.string().min(8, 'Password must be at least 8 characters'),
+  member_type: z.enum(['business_only', 'profession_only', 'both']),
+  phone:       z.string().optional(),
+  dob:         z.string().optional(),
+  interests:   z.string().optional(),
+
+  // Business (optional, required if member_type is business_only or both)
+  business: z.object({
+    business_name: z.string().min(1, 'Business name is required'),
+    industry:      z.string().optional(),
+    designation:   z.string().optional(),
+    description:   z.string().optional(),
+    website_url:   z.string().url('Invalid URL').optional().or(z.literal('')),
+    business_city: z.string().optional(),
+  }).optional(),
+
+  // Profession (optional, required if member_type is profession_only or both)
+  profession: z.object({
+    profession_type:  z.string().min(1, 'Profession type is required'),
+    specialisation:   z.string().optional(),
+    years_experience: z.string().optional(),
+    employer:         z.string().optional(),
+  }).optional(),
+});
+
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+
 // ── Members ───────────────────────────────────────────────────
 
 export const UpdateMemberSchema = z.object({
