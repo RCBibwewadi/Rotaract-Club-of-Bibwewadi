@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { supabase } from "../lib/supabase";
-import { authenticate, requireAdmin } from "../middleware/authenticate";
+import { requireAdminPassword } from "../middleware/authenticate";
 import { validate } from "../middleware/validate";
 import {
   CreateBodSchema,
@@ -11,34 +11,27 @@ import {
   type UpdateBodInput,
 } from "@rcb-2.0/shared";
 
-// BOD handles adding , editing , deleting an BOD member.
+const BOD_SELECT = `
+  bod_id,
+  full_name,
+  designation,
+  linkedin_url,
+  instagram_url,
+  gmail,
+  avatar_url,
+  description,
+  riy_year,
+  is_current
+`;
 
 export const bodRoutes: Router = Router();
 
 // ── GET /api/bod ──────────────────────────────────────────────
-// public — no auth needed, shown on public website
+// public — all BOD entries grouped by year
 bodRoutes.get("/", async (_req, res) => {
   const { data, error } = await supabase
     .from("bod")
-    .select(
-      `
-      bod_id,
-      designation,
-      linkedin_url,
-      instagram_url,
-      twitter_url,
-      gmail,
-      avatar_url,
-      description,
-      riy_year,
-      is_current,
-      members (
-        member_id,
-        full_name,
-        avatar_url
-      )
-    `
-    )
+    .select(BOD_SELECT)
     .order("riy_year", { ascending: false })
     .order("designation");
 
@@ -50,28 +43,10 @@ bodRoutes.get("/", async (_req, res) => {
 });
 
 // ── GET /api/bod/current ──────────────────────────────────────
-// returns only the active BOD — for homepage / about page
 bodRoutes.get("/current", async (_req, res) => {
   const { data, error } = await supabase
     .from("bod")
-    .select(
-      `
-      bod_id,
-      designation,
-      linkedin_url,
-      instagram_url,
-      twitter_url,
-      gmail,
-      avatar_url,
-      description,
-      riy_year,
-      members (
-        member_id,
-        full_name,
-        avatar_url
-      )
-    `
-    )
+    .select(BOD_SELECT)
     .eq("is_current", true)
     .order("designation");
 
@@ -83,28 +58,10 @@ bodRoutes.get("/current", async (_req, res) => {
 });
 
 // ── GET /api/bod/year/:riy_year ───────────────────────────────
-// returns BOD for a specific Rotary year e.g. /year/2024-25
 bodRoutes.get("/year/:riy_year", async (req, res) => {
   const { data, error } = await supabase
     .from("bod")
-    .select(
-      `
-      bod_id,
-      designation,
-      linkedin_url,
-      instagram_url,
-      twitter_url,
-      gmail,
-      avatar_url,
-      description,
-      riy_year,
-      members (
-        member_id,
-        full_name,
-        avatar_url
-      )
-    `
-    )
+    .select(BOD_SELECT)
     .eq("riy_year", req.params.riy_year)
     .order("designation");
 
@@ -119,17 +76,7 @@ bodRoutes.get("/year/:riy_year", async (req, res) => {
 bodRoutes.get("/:id", async (req, res) => {
   const { data, error } = await supabase
     .from("bod")
-    .select(
-      `
-      *,
-      members (
-        member_id,
-        full_name,
-        avatar_url,
-        interests
-      )
-    `
-    )
+    .select("*")
     .eq("bod_id", req.params.id)
     .single();
 
@@ -143,16 +90,13 @@ bodRoutes.get("/:id", async (req, res) => {
 });
 
 // ── POST /api/bod ─────────────────────────────────────────────
-// admin only — only admin can add BOD members
 bodRoutes.post(
   "/",
-  authenticate,
-  requireAdmin,
+  requireAdminPassword,
   validate(CreateBodSchema),
   async (req, res) => {
     const body = req.body as CreateBodInput;
 
-    // if this entry is marked current, unset all others for same riy_year
     if (body.is_current) {
       await supabase
         .from("bod")
@@ -189,13 +133,11 @@ bodRoutes.post(
 // ── PATCH /api/bod/:id ────────────────────────────────────────
 bodRoutes.patch(
   "/:id",
-  authenticate,
-  requireAdmin,
+  requireAdminPassword,
   validate(UpdateBodSchema),
   async (req, res) => {
     const body = req.body as UpdateBodInput;
 
-    // if marking as current, fetch the riy_year first to unset others
     if (body.is_current) {
       const { data: existing } = await supabase
         .from("bod")
@@ -227,7 +169,7 @@ bodRoutes.patch(
 );
 
 // ── DELETE /api/bod/:id ───────────────────────────────────────
-bodRoutes.delete("/:id", authenticate, requireAdmin, async (req, res) => {
+bodRoutes.delete("/:id", requireAdminPassword, async (req, res) => {
   const { error } = await supabase
     .from("bod")
     .delete()

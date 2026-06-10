@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../lib/supabase';
-import { authenticate, requireApproved, requireAdmin } from '../middleware/authenticate';
+import { requireAdminPassword } from '../middleware/authenticate';
 import { validate } from '../middleware/validate';
 import {
   CreateEventSchema,
@@ -157,7 +157,7 @@ eventRoutes.get('/:id', async (req, res) => {
 
 // ── POST /api/events ──────────────────────────────────────────
 // admin only — only admin creates events
-eventRoutes.post('/', authenticate, requireAdmin, validate(CreateEventSchema), async (req, res) => {
+eventRoutes.post('/', requireAdminPassword,validate(CreateEventSchema), async (req, res) => {
   const body = req.body as CreateEventInput;
 
   const { data, error } = await supabase
@@ -178,7 +178,7 @@ eventRoutes.post('/', authenticate, requireAdmin, validate(CreateEventSchema), a
 });
 
 // ── PATCH /api/events/:id ─────────────────────────────────────
-eventRoutes.patch('/:id', authenticate, requireAdmin, validate(UpdateEventSchema), async (req, res) => {
+eventRoutes.patch('/:id', requireAdminPassword,validate(UpdateEventSchema), async (req, res) => {
   const body = req.body as UpdateEventInput;
 
   const { data, error } = await supabase
@@ -199,7 +199,7 @@ eventRoutes.patch('/:id', authenticate, requireAdmin, validate(UpdateEventSchema
 
 // ── PATCH /api/events/:id/best-member ────────────────────────
 // award best member after event concludes
-eventRoutes.patch('/:id/best-member', authenticate, requireAdmin, async (req, res) => {
+eventRoutes.patch('/:id/best-member', requireAdminPassword,async (req, res) => {
   const { member_id } = req.body;
 
   if (!member_id) {
@@ -233,7 +233,7 @@ eventRoutes.patch('/:id/best-member', authenticate, requireAdmin, async (req, re
 });
 
 // ── DELETE /api/events/:id ────────────────────────────────────
-eventRoutes.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+eventRoutes.delete('/:id', requireAdminPassword,async (req, res) => {
   const { error } = await supabase
     .from('events')
     .delete()

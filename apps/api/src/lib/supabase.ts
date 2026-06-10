@@ -18,3 +18,12 @@ export const supabase = createClient(supabaseURI,supabaseServiceKey, {
         transport: ws as any,
     },
 });
+
+// Service role client — bypasses RLS, used for storage uploads
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const supabaseAdmin = serviceRoleKey
+  ? createClient(supabaseURI, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      realtime: { transport: ws as any },
+    })
+  : supabase;

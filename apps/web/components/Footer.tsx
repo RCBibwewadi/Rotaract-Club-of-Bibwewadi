@@ -75,14 +75,23 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 pt-8 border-t border-black/10 dark:border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-dark/40 dark:text-white/40 text-sm">
-            &copy; {new Date().getFullYear()} Rotaract Club of Bibwewadi. All rights reserved.
-          </p>
-          <p className="text-dark/30 dark:text-white/30 text-xs">
-            District 3131 | Rotary International
-          </p>
-        </div>
+        <div className="mt-16 pt-8 border-t border-black/10 dark:border-white/10 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
+  <p className="font-semibold text-accent">
+    &copy; {new Date().getFullYear()} Rotaract Club of Bibwewadi. All rights reserved.
+  </p>
+
+  <span className="hidden md:block text-dark/20 dark:text-white/20">|</span>
+
+  <p className="font-semibold text-accent">
+    Made by USP FACE
+  </p>
+
+  <span className="hidden md:block text-dark/20 dark:text-white/20">|</span>
+
+  <p className="font-semibold text-accent">
+    District 3131 | Rotary International
+  </p>
+</div>
       </div>
     </footer>
   );

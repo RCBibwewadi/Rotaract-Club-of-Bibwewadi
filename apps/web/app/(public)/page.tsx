@@ -39,9 +39,11 @@ function FloatingNote({ delay, x, y }: { delay: number; x: number; y: number }) 
 }
 
 export default function HomePage() {
-  const { isDark, content, parallaxIntensity } = useStore();
+  const { isDark, content, parallaxIntensity, fetchContent } = useStore();
   const scrollY = useScrollY();
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => { fetchContent(); }, [fetchContent]);
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 100);
@@ -112,7 +114,7 @@ export default function HomePage() {
             </div>
           </AnimatedSection>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {content.pillars.map((pillar, i) => (
+            {(content.pillars || []).map((pillar, i) => (
               <AnimatedSection key={i} delay={i * 150} from={i % 2 === 0 ? 'left' : 'right'}>
                 <div className={`group relative p-8 md:p-10 rounded-2xl border transition-all duration-500 hover:scale-[1.02] ${isDark ? 'bg-dark-surface border-white/5 hover:border-accent/30' : 'bg-light-card border-black/5 hover:border-accent/30'} hover:shadow-xl hover:shadow-accent/5`}>
                   <div className="flex items-start gap-5">
@@ -156,7 +158,7 @@ export default function HomePage() {
           </AnimatedSection>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { title: 'Our Projects', desc: 'See how we make a difference', href: '/projects', gradient: 'from-orange-500 to-red-500' },
+              { title: 'FOMO', desc: 'Don\'t miss our best moments', href: '/projects', gradient: 'from-orange-500 to-red-500' },
               { title: 'Upcoming Events', desc: 'Join us at our next gathering', href: '/events', gradient: 'from-blue-500 to-purple-500' },
               { title: 'Meet the Board', desc: 'The leaders driving our mission', href: '/board', gradient: 'from-green-500 to-teal-500' },
             ].map((item, i) => (

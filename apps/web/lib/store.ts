@@ -32,8 +32,10 @@ export interface SiteContent {
   heroSubtitle: string;
   heroTagline: string;
   aboutText: string;
+  aboutImage: string;
   visionText: string;
   pillars: { icon: string; title: string; description: string }[];
+  stats: { value: string; label: string }[];
   boardMembers: BoardMember[];
   projects: Project[];
   events: EventItem[];
@@ -54,6 +56,8 @@ interface AppState {
   loginAdmin: (password: string) => boolean;
   logoutAdmin: () => void;
   updateContent: (content: Partial<SiteContent>) => void;
+  fetchContent: () => Promise<void>;
+  _contentFetched: boolean;
   addBoardMember: (member: BoardMember) => void;
   removeBoardMember: (id: string) => void;
   updateBoardMember: (id: string, member: Partial<BoardMember>) => void;
@@ -72,7 +76,14 @@ const defaultContent: SiteContent = {
   heroSubtitle: 'Pune',
   heroTagline: 'Make it Matter',
   aboutText: 'The Rotaract Club of Bibwewadi Pune is a vibrant social organization driven by young leaders who believe in creating impact through service, fellowship, and professional growth. Rooted in the values and global spirit of Rotary International, we work at the grassroots level to uplift communities while building lifelong networks and leadership skills among our members.',
+  aboutImage: '',
   visionText: 'To be a dynamic force for positive change in society while nurturing responsible leaders of tomorrow — individuals who serve with empathy, act with integrity, and inspire others to do the same.',
+  stats: [
+    { value: '200+', label: 'Active Members' },
+    { value: '50+', label: 'Projects Completed' },
+    { value: '100+', label: 'Events Organized' },
+    { value: '15+', label: 'Community Partners' },
+  ],
   pillars: [
     { icon: '🌱', title: 'Social Service', description: 'Designing and executing initiatives that address real community needs, from education and health to environment and civic awareness.' },
     { icon: '🤝', title: 'Network Building', description: 'Creating a strong, supportive circle of like-minded individuals, mentors, and partners who grow together personally and professionally.' },
@@ -123,6 +134,8 @@ function saveToStorage(state: Partial<AppState>) {
   } catch {}
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 export const useStore = create<AppState>((set, get) => ({
   isDark: false,
   parallaxIntensity: 0.5,
@@ -130,6 +143,7 @@ export const useStore = create<AppState>((set, get) => ({
   adminPassword: 'rotaract2025',
   content: defaultContent,
   _hydrated: false,
+  _contentFetched: false,
   hydrateFromStorage: () => {
     if (get()._hydrated) return;
     try {
@@ -165,6 +179,37 @@ export const useStore = create<AppState>((set, get) => ({
     return false;
   },
   logoutAdmin: () => set({ isAdminLoggedIn: false }),
+  fetchContent: async () => {
+    if (get()._contentFetched) return;
+    try {
+      const res = await fetch(`${API_URL}/api/content`);
+      if (res.ok) {
+        const json = await res.json();
+        const d = json.data;
+        if (d) {
+          set(s => ({
+            _contentFetched: true,
+            content: {
+              ...s.content,
+              heroTitle: d.hero_title ?? s.content.heroTitle,
+              heroSubtitle: d.hero_subtitle ?? s.content.heroSubtitle,
+              heroTagline: d.hero_tagline ?? s.content.heroTagline,
+              aboutText: d.about_text ?? s.content.aboutText,
+              aboutImage: d.about_image ?? s.content.aboutImage,
+              visionText: d.vision_text ?? s.content.visionText,
+              pillars: d.pillars ?? s.content.pillars,
+              stats: d.stats ?? s.content.stats,
+              contactEmail: d.contact_email ?? s.content.contactEmail,
+              contactPhone: d.contact_phone ?? s.content.contactPhone,
+              contactAddress: d.contact_address ?? s.content.contactAddress,
+              socialLinks: d.social_links ?? s.content.socialLinks,
+            },
+          }));
+          setTimeout(() => saveToStorage(get()), 0);
+        }
+      }
+    } catch { /* fallback to defaults */ }
+  },
   updateContent: (partial) => {
     set(s => ({ content: { ...s.content, ...partial } }));
     setTimeout(() => saveToStorage(get()), 0);

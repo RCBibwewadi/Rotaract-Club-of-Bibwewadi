@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import {
   LogOut, Save, Plus, Trash2, Edit3, Eye, Settings, Users, FolderOpen,
   CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
-  Clock, UserCheck, UserX, AlertCircle, Search, Shield,
+  Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History,
+  Mail, ExternalLink, Upload,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
@@ -13,19 +14,104 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // ── Admin Auth State (password-based, persisted in sessionStorage) ──
 const ADMIN_AUTH_KEY = 'rcb-admin-auth';
+const ADMIN_AUTH_PW_KEY = 'rcb-admin-pw';
 const ADMIN_PASSWORD = 'rotaract@2025';
 
-function isAdminAuthenticated(): boolean {
-  if (typeof window === 'undefined') return false;
-  return sessionStorage.getItem(ADMIN_AUTH_KEY) === 'true';
+function setAdminAuthenticated(password: string) {
+  sessionStorage.setItem(ADMIN_AUTH_KEY, 'true');
+  sessionStorage.setItem(ADMIN_AUTH_PW_KEY, password);
+  adminAuthListeners.forEach(fn => fn());
 }
 
-function setAdminAuthenticated() {
-  sessionStorage.setItem(ADMIN_AUTH_KEY, 'true');
+function getAdminPassword(): string {
+  return sessionStorage.getItem(ADMIN_AUTH_PW_KEY) || '';
 }
 
 function clearAdminAuth() {
   sessionStorage.removeItem(ADMIN_AUTH_KEY);
+  sessionStorage.removeItem(ADMIN_AUTH_PW_KEY);
+  adminAuthListeners.forEach(fn => fn());
+}
+
+// ── Subscribe to admin auth changes for useSyncExternalStore ──
+const adminAuthListeners = new Set<() => void>();
+
+function subscribeAdminAuth(callback: () => void) {
+  adminAuthListeners.add(callback);
+  return () => { adminAuthListeners.delete(callback); };
+}
+
+function getAdminAuthSnapshot(): boolean {
+  return sessionStorage.getItem(ADMIN_AUTH_KEY) === 'true';
+}
+
+function getAdminAuthServerSnapshot(): boolean {
+  return false;
+}
+
+function adminHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'x-admin-password': getAdminPassword(),
+  };
+}
+
+// ── File Upload Helper ───────────────────────────────────────
+function FileUploadField({ label, value, folder, onUploaded }: {
+  label: string;
+  value?: string;
+  folder: 'avatars' | 'videos';
+  onUploaded: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const pw = getAdminPassword();
+      const res = await fetch(`${API_URL}/api/upload?folder=${folder}`, {
+        method: 'POST',
+        headers: { 'x-admin-password': pw },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.data?.url) {
+        onUploaded(data.data.url);
+      } else {
+        setError(data.error || data.message || 'Upload failed');
+      }
+    } catch { setError('Network error'); }
+    finally { setUploading(false); }
+  };
+
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      {value && (
+        <div className="mb-2">
+          {folder === 'avatars' ? (
+            <img src={value} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-white/10" />
+          ) : (
+            <a href={value} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">Current file</a>
+          )}
+        </div>
+      )}
+      <label className={`${inputClass} cursor-pointer flex items-center gap-2 ${uploading ? 'opacity-50' : ''}`}>
+        <Upload size={14} className="text-white/40" />
+        <span className="text-white/40 text-sm">{uploading ? 'Uploading...' : 'Choose file'}</span>
+        <input type="file" className="hidden" accept={folder === 'avatars' ? 'image/*' : 'video/*,image/*'} onChange={handleUpload} disabled={uploading} />
+      </label>
+      {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+    </div>
+  );
 }
 
 // ── Types ────────────────────────────────────────────────────
@@ -49,7 +135,7 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
   const handleLogin = () => {
     if (!password) { setError('Enter the admin password'); return; }
     if (password === ADMIN_PASSWORD) {
-      setAdminAuthenticated();
+      setAdminAuthenticated(password);
       onLogin();
     } else {
       setError('Incorrect password');
@@ -102,13 +188,11 @@ function MembersTab() {
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const headers = { 'Content-Type': 'application/json' };
-
   const fetchMembers = useCallback(async () => {
     setLoading(true);
     try {
       const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
-      const res = await fetch(`${API_URL}${endpoint}`, { headers });
+      const res = await fetch(`${API_URL}${endpoint}`, { headers: adminHeaders() });
       const data = await res.json();
       setMembers(data.data || []);
     } catch {
@@ -124,9 +208,7 @@ function MembersTab() {
       setLoading(true);
       try {
         const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
-        const res = await fetch(`${API_URL}${endpoint}`, {
-          headers: { 'Content-Type': 'application/json' },
-        });
+        const res = await fetch(`${API_URL}${endpoint}`, { headers: adminHeaders() });
         const data = await res.json();
         if (!cancelled) setMembers(data.data || []);
       } catch {
@@ -148,7 +230,7 @@ function MembersTab() {
     try {
       const res = await fetch(`${API_URL}/admin/members/${memberId}/${action}`, {
         method: 'PATCH',
-        headers,
+        headers: adminHeaders(),
       });
       const data = await res.json();
       if (res.ok) {
@@ -350,15 +432,1039 @@ function MembersTab() {
   );
 }
 
+// ── Content Management Tab ───────────────────────────────────
+interface SiteContentData {
+  hero_title: string; hero_subtitle: string; hero_tagline: string;
+  about_text: string; about_image: string; vision_text: string;
+  pillars: { icon: string; title: string; description: string }[];
+  stats: { value: string; label: string }[];
+  contact_email: string; contact_phone: string; contact_address: string;
+  social_links: { platform: string; url: string }[];
+}
+
+function ContentTab() {
+  const [data, setData] = useState<SiteContentData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/content`, { headers: adminHeaders() });
+        const json = await res.json();
+        if (!cancelled && json.data) setData(json.data);
+      } catch { if (!cancelled) showMsg('Failed to load content', 'error'); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const update = (partial: Partial<SiteContentData>) => {
+    setData(d => d ? { ...d, ...partial } : d);
+  };
+
+  const handleSave = async () => {
+    if (!data) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/api/content`, {
+        method: 'PATCH', headers: adminHeaders(),
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (res.ok) showMsg(json.message || 'Saved', 'success');
+      else showMsg(json.message || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>;
+  if (!data) return <p className="text-white/30 text-sm text-center py-12">Content not found. Create the site_content table first.</p>;
+
+  return (
+    <div className="space-y-6">
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />} {message.text}
+        </div>
+      )}
+
+      {/* Hero */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">Hero Section</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label className={labelClass}>Title</label><input value={data.hero_title} onChange={e => update({ hero_title: e.target.value })} className={inputClass} /></div>
+          <div><label className={labelClass}>Subtitle</label><input value={data.hero_subtitle} onChange={e => update({ hero_subtitle: e.target.value })} className={inputClass} /></div>
+        </div>
+        <div className="mt-4"><label className={labelClass}>Tagline</label><input value={data.hero_tagline} onChange={e => update({ hero_tagline: e.target.value })} className={inputClass} /></div>
+      </div>
+
+      {/* About */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">About Section</h3>
+        <textarea value={data.about_text} onChange={e => update({ about_text: e.target.value })} rows={5} className={`${inputClass} resize-none mb-4`} />
+        <FileUploadField label="About Image" value={data.about_image} folder="avatars" onUploaded={url => update({ about_image: url })} />
+      </div>
+
+      {/* Vision */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">Vision</h3>
+        <textarea value={data.vision_text} onChange={e => update({ vision_text: e.target.value })} rows={4} className={`${inputClass} resize-none`} />
+      </div>
+
+      {/* Stats */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">Stats</h3>
+        <div className="space-y-3">
+          {data.stats.map((stat, i) => (
+            <div key={i} className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-dark-surface">
+              <div><label className={labelClass}>Value</label><input value={stat.value} onChange={e => { const s = [...data.stats]; s[i] = { ...s[i], value: e.target.value }; update({ stats: s }); }} className={inputClass} /></div>
+              <div><label className={labelClass}>Label</label><input value={stat.label} onChange={e => { const s = [...data.stats]; s[i] = { ...s[i], label: e.target.value }; update({ stats: s }); }} className={inputClass} /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Contact */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div><label className={labelClass}>Email</label><input value={data.contact_email} onChange={e => update({ contact_email: e.target.value })} className={inputClass} /></div>
+          <div><label className={labelClass}>Phone</label><input value={data.contact_phone} onChange={e => update({ contact_phone: e.target.value })} className={inputClass} /></div>
+          <div><label className={labelClass}>Address</label><input value={data.contact_address} onChange={e => update({ contact_address: e.target.value })} className={inputClass} /></div>
+        </div>
+      </div>
+
+      {/* Pillars */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">Pillars</h3>
+        <div className="space-y-4">
+          {data.pillars.map((pillar, i) => (
+            <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-xl bg-dark-surface">
+              <div><label className={labelClass}>Icon (component name)</label><input value={pillar.icon} onChange={e => { const p = [...data.pillars]; p[i] = { ...p[i], icon: e.target.value }; update({ pillars: p }); }} className={inputClass} placeholder="Sprout, Handshake, Rocket, Heart" /></div>
+              <div><label className={labelClass}>Title</label><input value={pillar.title} onChange={e => { const p = [...data.pillars]; p[i] = { ...p[i], title: e.target.value }; update({ pillars: p }); }} className={inputClass} /></div>
+              <div><label className={labelClass}>Description</label><input value={pillar.description} onChange={e => { const p = [...data.pillars]; p[i] = { ...p[i], description: e.target.value }; update({ pillars: p }); }} className={inputClass} /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Social Links */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">Social Links</h3>
+        <div className="space-y-3">
+          {data.social_links.map((link, i) => (
+            <div key={i} className="grid grid-cols-3 gap-3">
+              <input value={link.platform} onChange={e => { const l = [...data.social_links]; l[i] = { ...l[i], platform: e.target.value }; update({ social_links: l }); }} className={inputClass} placeholder="Platform" />
+              <div className="col-span-2"><input value={link.url} onChange={e => { const l = [...data.social_links]; l[i] = { ...l[i], url: e.target.value }; update({ social_links: l }); }} className={inputClass} placeholder="URL" /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={handleSave} disabled={saving} className="px-6 py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold text-sm transition-all flex items-center gap-2 disabled:opacity-50">
+        <Save size={14} /> {saving ? 'Saving...' : 'Save All Changes'}
+      </button>
+    </div>
+  );
+}
+
+// ── Board Management Tab ────────────────────────────────────
+interface BodMember {
+  bod_id: string;
+  full_name: string;
+  designation: string;
+  linkedin_url?: string;
+  instagram_url?: string;
+  gmail?: string;
+  avatar_url?: string;
+  description?: string;
+  riy_year: string;
+  is_current: boolean;
+}
+
+const EMPTY_BOD: Omit<BodMember, 'bod_id'> = {
+  full_name: '', designation: '', linkedin_url: '', instagram_url: '',
+  gmail: '', avatar_url: '', description: '', riy_year: new Date().getFullYear() + '-' + String(new Date().getFullYear() + 1).slice(2),
+  is_current: true,
+};
+
+function BoardTab() {
+  const [members, setMembers] = useState<BodMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<BodMember>>({});
+  const [adding, setAdding] = useState(false);
+  const [newForm, setNewForm] = useState(EMPTY_BOD);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const fetchMembers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/bod`, { headers: adminHeaders() });
+      const data = await res.json();
+      setMembers(data.data || []);
+    } catch { showMsg('Failed to fetch BOD', 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/bod`, { headers: adminHeaders() });
+        const data = await res.json();
+        if (!cancelled) setMembers(data.data || []);
+      } catch { if (!cancelled) showMsg('Failed to fetch BOD', 'error'); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/bod`, {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify(newForm),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Created', 'success'); setAdding(false); setNewForm(EMPTY_BOD); fetchMembers(); }
+      else showMsg(data.error || data.message || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleUpdate = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/bod/${id}`, {
+        method: 'PATCH', headers: adminHeaders(),
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Updated', 'success'); setEditing(null); fetchMembers(); }
+      else showMsg(data.error || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/bod/${id}`, {
+        method: 'DELETE', headers: adminHeaders(),
+      });
+      if (res.ok) { showMsg('Deleted', 'success'); fetchMembers(); }
+      else showMsg('Delete failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const startEdit = (m: BodMember) => {
+    setEditing(m.bod_id);
+    setForm({ full_name: m.full_name, designation: m.designation, linkedin_url: m.linkedin_url, instagram_url: m.instagram_url, gmail: m.gmail, avatar_url: m.avatar_url, description: m.description, riy_year: m.riy_year, is_current: m.is_current });
+  };
+
+  const renderForm = (
+    values: Record<string, unknown>,
+    onChange: (key: string, val: unknown) => void,
+    onSave: () => void,
+    onCancel: () => void,
+  ) => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div><label className={labelClass}>Full Name *</label><input value={String(values.full_name || '')} onChange={e => onChange('full_name', e.target.value)} className={inputClass} /></div>
+        <div><label className={labelClass}>Designation *</label><input value={String(values.designation || '')} onChange={e => onChange('designation', e.target.value)} className={inputClass} placeholder="e.g. President, Secretary" /></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div><label className={labelClass}>Instagram URL</label><input value={String(values.instagram_url || '')} onChange={e => onChange('instagram_url', e.target.value)} className={inputClass} placeholder="https://instagram.com/..." /></div>
+        <div><label className={labelClass}>LinkedIn URL</label><input value={String(values.linkedin_url || '')} onChange={e => onChange('linkedin_url', e.target.value)} className={inputClass} placeholder="https://linkedin.com/in/..." /></div>
+        <div><label className={labelClass}>Gmail</label><input value={String(values.gmail || '')} onChange={e => onChange('gmail', e.target.value)} className={inputClass} placeholder="name@gmail.com" /></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <FileUploadField label="Avatar" value={String(values.avatar_url || '')} folder="avatars" onUploaded={url => onChange('avatar_url', url)} />
+        <div><label className={labelClass}>RIY Year *</label><input value={String(values.riy_year || '')} onChange={e => onChange('riy_year', e.target.value)} className={inputClass} placeholder="2025-26" /></div>
+      </div>
+      <div><label className={labelClass}>Description</label><textarea value={String(values.description || '')} onChange={e => onChange('description', e.target.value)} className={`${inputClass} resize-none`} rows={2} /></div>
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+          <input type="checkbox" checked={Boolean(values.is_current)} onChange={e => onChange('is_current', e.target.checked)} className="accent-accent" /> Current BOD
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onSave} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium">Save</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Board of Directors ({members.length})</h3>
+        <div className="flex gap-2">
+          <button onClick={fetchMembers} className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={() => { setAdding(true); setNewForm(EMPTY_BOD); }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-medium transition-colors">
+            <Plus size={14} /> Add BOD Member
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />} {message.text}
+        </div>
+      )}
+
+      {adding && (
+        <div className="bg-dark-card rounded-2xl border border-accent/20 p-5">
+          <h4 className="text-sm font-semibold text-accent mb-3">New BOD Member</h4>
+          {renderForm(
+            newForm as unknown as Record<string, unknown>,
+            (k, v) => setNewForm(prev => ({ ...prev, [k]: v })),
+            handleCreate,
+            () => setAdding(false),
+          )}
+        </div>
+      )}
+
+      {loading && <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>}
+
+      {!loading && members.length === 0 && !adding && (
+        <div className="text-center py-12"><Users size={32} className="text-white/10 mx-auto mb-3" /><p className="text-white/30 text-sm">No BOD members yet</p></div>
+      )}
+
+      {!loading && members.map(m => (
+        <div key={m.bod_id} className="bg-dark-card rounded-2xl border border-white/5 p-5">
+          {editing === m.bod_id ? (
+            renderForm(
+              form as unknown as Record<string, unknown>,
+              (k, v) => setForm(prev => ({ ...prev, [k]: v })),
+              () => handleUpdate(m.bod_id),
+              () => setEditing(null),
+            )
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent/80 to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                  {m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-white">{m.full_name}</h4>
+                    {m.is_current && <span className="px-2 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-400 font-medium">Current</span>}
+                  </div>
+                  <p className="text-sm text-white/50">{m.designation} &middot; {m.riy_year}</p>
+                  <div className="flex gap-2 mt-1">
+                    {m.instagram_url && <a href={m.instagram_url} target="_blank" rel="noreferrer" className="text-white/30 hover:text-accent"><ExternalLink size={12} /></a>}
+                    {m.linkedin_url && <a href={m.linkedin_url} target="_blank" rel="noreferrer" className="text-white/30 hover:text-accent"><ExternalLink size={12} /></a>}
+                    {m.gmail && <a href={`mailto:${m.gmail}`} className="text-white/30 hover:text-accent"><Mail size={12} /></a>}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => startEdit(m)} className="p-2 rounded-lg text-white/50 hover:text-accent hover:bg-white/5"><Edit3 size={14} /></button>
+                <button onClick={() => handleDelete(m.bod_id)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Legacy Management Tab ───────────────────────────────────
+interface LegacyYear {
+  legacy_id: string;
+  riy_year: string;
+  year_video_url?: string;
+  bod_members?: BodMember[];
+}
+
+function LegacyTab() {
+  const [years, setYears] = useState<LegacyYear[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState({ riy_year: '', year_video_url: '' });
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const fetchYears = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/legacy`, { headers: adminHeaders() });
+      const data = await res.json();
+      setYears(data.data || []);
+    } catch { showMsg('Failed to fetch legacy data', 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/legacy`, { headers: adminHeaders() });
+        const data = await res.json();
+        if (!cancelled) setYears(data.data || []);
+      } catch { if (!cancelled) showMsg('Failed to fetch legacy data', 'error'); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/legacy`, {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Created', 'success'); setAdding(false); setForm({ riy_year: '', year_video_url: '' }); fetchYears(); }
+      else showMsg(data.error || data.message || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleUpdate = async (riyYear: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/legacy/${riyYear}`, {
+        method: 'PATCH', headers: adminHeaders(),
+        body: JSON.stringify({ year_video_url: form.year_video_url }),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Updated', 'success'); setEditing(null); fetchYears(); }
+      else showMsg(data.error || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleDelete = async (riyYear: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/legacy/${riyYear}`, {
+        method: 'DELETE', headers: adminHeaders(),
+      });
+      if (res.ok) { showMsg('Deleted', 'success'); fetchYears(); }
+      else showMsg('Delete failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Legacy Years ({years.length})</h3>
+        <div className="flex gap-2">
+          <button onClick={fetchYears} className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={() => { setAdding(true); setForm({ riy_year: '', year_video_url: '' }); }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-medium transition-colors">
+            <Plus size={14} /> Add Legacy Year
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />} {message.text}
+        </div>
+      )}
+
+      <p className="text-xs text-white/30">Legacy years link to BOD members via RIY year. Add BOD members in the Board tab with matching year.</p>
+
+      {adding && (
+        <div className="bg-dark-card rounded-2xl border border-accent/20 p-5 space-y-3">
+          <h4 className="text-sm font-semibold text-accent">New Legacy Year</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label className={labelClass}>RIY Year *</label><input value={form.riy_year} onChange={e => setForm(f => ({ ...f, riy_year: e.target.value }))} className={inputClass} placeholder="2024-25" /></div>
+            <FileUploadField label="Year Video" value={form.year_video_url} folder="videos" onUploaded={url => setForm(f => ({ ...f, year_video_url: url }))} />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleCreate} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium">Create</button>
+            <button onClick={() => setAdding(false)} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {loading && <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>}
+
+      {!loading && years.length === 0 && !adding && (
+        <div className="text-center py-12"><History size={32} className="text-white/10 mx-auto mb-3" /><p className="text-white/30 text-sm">No legacy years yet</p></div>
+      )}
+
+      {!loading && years.map(y => (
+        <div key={y.legacy_id} className="bg-dark-card rounded-2xl border border-white/5 p-5">
+          {editing === y.riy_year ? (
+            <div className="space-y-3">
+              <FileUploadField label="Year Video" value={form.year_video_url} folder="videos" onUploaded={url => setForm(f => ({ ...f, year_video_url: url }))} />
+              <div className="flex gap-2">
+                <button onClick={() => handleUpdate(y.riy_year)} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium">Save</button>
+                <button onClick={() => setEditing(null)} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/80 to-accent-light flex items-center justify-center text-white text-xs font-bold">
+                    {y.riy_year.slice(0, 4)}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-white">RIY {y.riy_year}</h4>
+                    {y.year_video_url && <a href={y.year_video_url} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline flex items-center gap-1"><Video size={10} /> Video</a>}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => { setEditing(y.riy_year); setForm({ riy_year: y.riy_year, year_video_url: y.year_video_url || '' }); }} className="p-2 rounded-lg text-white/50 hover:text-accent hover:bg-white/5"><Edit3 size={14} /></button>
+                  <button onClick={() => handleDelete(y.riy_year)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
+                </div>
+              </div>
+              {y.bod_members && y.bod_members.length > 0 && (
+                <div className="mt-2 pl-13">
+                  <p className="text-xs text-white/40 mb-1">BOD Members ({y.bod_members.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {y.bod_members.map(b => (
+                      <span key={b.bod_id} className="px-2 py-1 text-xs rounded-lg bg-dark-surface text-white/60">{b.full_name} — {b.designation}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Multi-File Upload Helper ─────────────────────────────────
+function MultiFileUpload({ label, urls, folder, onUpdated }: {
+  label: string;
+  urls: string[];
+  folder: 'avatars' | 'videos';
+  onUpdated: (urls: string[]) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setUploading(true);
+    const newUrls = [...urls];
+    for (const file of Array.from(files)) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_URL}/api/upload?folder=${folder}`, {
+          method: 'POST',
+          headers: { 'x-admin-password': getAdminPassword() },
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.data?.url) newUrls.push(data.data.url);
+      } catch { /* skip failed */ }
+    }
+    onUpdated(newUrls);
+    setUploading(false);
+  };
+
+  const remove = (idx: number) => onUpdated(urls.filter((_, i) => i !== idx));
+
+  return (
+    <div>
+      <label className={labelClass}>{label} ({urls.length})</label>
+      {urls.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {urls.map((url, i) => (
+            <div key={i} className="relative group">
+              {folder === 'avatars' ? (
+                <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-white/10" />
+              ) : (
+                <video src={url} className="w-24 h-16 rounded-lg object-cover border border-white/10" />
+              )}
+              <button onClick={() => remove(i)} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <label className="w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white/40 text-sm cursor-pointer flex items-center gap-2 hover:border-accent transition-colors">
+        <Upload size={14} /> {uploading ? 'Uploading...' : `Add ${folder === 'avatars' ? 'images' : 'videos'}`}
+        <input type="file" className="hidden" accept={folder === 'avatars' ? 'image/*' : 'video/*'} multiple onChange={handleUpload} disabled={uploading} />
+      </label>
+    </div>
+  );
+}
+
+// ── FOMO Management Tab ─────────────────────────────────────
+interface FomoItem {
+  fomo_id: string;
+  category: string;
+  name: string;
+  description?: string;
+  thumbnail?: string;
+  images?: string[];
+  videos?: string[];
+  event_id?: string;
+  events?: { event_id: string; event_name: string; event_date?: string } | null;
+}
+
+const EMPTY_FOMO = {
+  category: '', name: '', description: '', thumbnail: '', images: [] as string[], videos: [] as string[], event_id: '',
+};
+
+function FomoTab() {
+  const [items, setItems] = useState<FomoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<Record<string, unknown>>({});
+  const [adding, setAdding] = useState(false);
+  const [newForm, setNewForm] = useState(EMPTY_FOMO);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const fetchItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/fomo`, { headers: adminHeaders() });
+      const data = await res.json();
+      setItems(data.data || []);
+    } catch { showMsg('Failed to fetch FOMO', 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/fomo`, { headers: adminHeaders() });
+        const data = await res.json();
+        if (!cancelled) setItems(data.data || []);
+      } catch { if (!cancelled) showMsg('Failed to fetch FOMO', 'error'); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleCreate = async () => {
+    try {
+      const payload = { ...newForm };
+      if (!payload.event_id) delete (payload as Record<string, unknown>).event_id;
+      const res = await fetch(`${API_URL}/api/fomo`, {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Created', 'success'); setAdding(false); setNewForm(EMPTY_FOMO); fetchItems(); }
+      else showMsg(data.error || data.message || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleUpdate = async (id: string) => {
+    try {
+      const payload = { ...form };
+      if (!payload.event_id) delete payload.event_id;
+      const res = await fetch(`${API_URL}/api/fomo/${id}`, {
+        method: 'PATCH', headers: adminHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Updated', 'success'); setEditing(null); fetchItems(); }
+      else showMsg(data.error || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/fomo/${id}`, {
+        method: 'DELETE', headers: adminHeaders(),
+      });
+      if (res.ok) { showMsg('Deleted', 'success'); fetchItems(); }
+      else showMsg('Delete failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const startEdit = (f: FomoItem) => {
+    setEditing(f.fomo_id);
+    setForm({
+      category: f.category, name: f.name, description: f.description || '',
+      thumbnail: f.thumbnail || '', images: f.images || [], videos: f.videos || [], event_id: f.event_id || '',
+    });
+  };
+
+  const renderForm = (
+    values: Record<string, unknown>,
+    onChange: (key: string, val: unknown) => void,
+    onSave: () => void,
+    onCancel: () => void,
+  ) => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div><label className={labelClass}>Name *</label><input value={String(values.name || '')} onChange={e => onChange('name', e.target.value)} className={inputClass} /></div>
+        <div><label className={labelClass}>Category *</label><input value={String(values.category || '')} onChange={e => onChange('category', e.target.value)} className={inputClass} placeholder="e.g. Service, Fun, Sports" /></div>
+        <div><label className={labelClass}>Event ID (optional)</label><input value={String(values.event_id || '')} onChange={e => onChange('event_id', e.target.value)} className={inputClass} placeholder="UUID of linked event" /></div>
+      </div>
+      <div><label className={labelClass}>Description</label><textarea value={String(values.description || '')} onChange={e => onChange('description', e.target.value)} className={`${inputClass} resize-none`} rows={2} /></div>
+      <FileUploadField label="Thumbnail" value={String(values.thumbnail || '')} folder="avatars" onUploaded={url => onChange('thumbnail', url)} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <MultiFileUpload label="Photos" urls={(values.images as string[]) || []} folder="avatars" onUpdated={urls => onChange('images', urls)} />
+        <MultiFileUpload label="Videos" urls={(values.videos as string[]) || []} folder="videos" onUpdated={urls => onChange('videos', urls)} />
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onSave} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium">Save</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">FOMO Posts ({items.length})</h3>
+        <div className="flex gap-2">
+          <button onClick={fetchItems} className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={() => { setAdding(true); setNewForm(EMPTY_FOMO); }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-medium transition-colors">
+            <Plus size={14} /> Add FOMO
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />} {message.text}
+        </div>
+      )}
+
+      {adding && (
+        <div className="bg-dark-card rounded-2xl border border-accent/20 p-5">
+          <h4 className="text-sm font-semibold text-accent mb-3">New FOMO Post</h4>
+          {renderForm(
+            newForm as unknown as Record<string, unknown>,
+            (k, v) => setNewForm(prev => ({ ...prev, [k]: v } as typeof EMPTY_FOMO)),
+            handleCreate,
+            () => setAdding(false),
+          )}
+        </div>
+      )}
+
+      {loading && <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>}
+
+      {!loading && items.length === 0 && !adding && (
+        <div className="text-center py-12"><FolderOpen size={32} className="text-white/10 mx-auto mb-3" /><p className="text-white/30 text-sm">No FOMO posts yet</p></div>
+      )}
+
+      {!loading && items.map(f => (
+        <div key={f.fomo_id} className="bg-dark-card rounded-2xl border border-white/5 p-5">
+          {editing === f.fomo_id ? (
+            renderForm(
+              form,
+              (k, v) => setForm(prev => ({ ...prev, [k]: v })),
+              () => handleUpdate(f.fomo_id),
+              () => setEditing(null),
+            )
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {(f.thumbnail || f.images?.[0]) ? (
+                  <img src={f.thumbnail || f.images![0]} alt="" className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent/80 to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                    {f.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-white">{f.name}</h4>
+                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-accent/10 text-accent font-medium">{f.category}</span>
+                  </div>
+                  <p className="text-xs text-white/30">
+                    {f.images?.length || 0} photos · {f.videos?.length || 0} videos
+                    {f.events?.event_name && ` · ${f.events.event_name}`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => startEdit(f)} className="p-2 rounded-lg text-white/50 hover:text-accent hover:bg-white/5"><Edit3 size={14} /></button>
+                <button onClick={() => handleDelete(f.fomo_id)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Events Management Tab ───────────────────────────────────
+interface EventItem {
+  event_id: string;
+  event_name: string;
+  event_date?: string;
+  event_time?: string;
+  event_place?: string;
+  event_strength?: number;
+  open_to_all: boolean;
+  event_avenue?: string;
+  event_description?: string;
+  event_images?: string[];
+  event_videos?: string[];
+}
+
+const EMPTY_EVENT = {
+  event_name: '', event_date: '', event_time: '', event_place: '',
+  event_strength: undefined as number | undefined, open_to_all: false,
+  event_avenue: '', event_description: '', event_images: [] as string[], event_videos: [] as string[],
+};
+
+function EventsTab() {
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<Record<string, unknown>>({});
+  const [adding, setAdding] = useState(false);
+  const [newForm, setNewForm] = useState(EMPTY_EVENT);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/events`, { headers: adminHeaders() });
+      const data = await res.json();
+      setEvents(data.data || []);
+    } catch { showMsg('Failed to fetch events', 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/events`, { headers: adminHeaders() });
+        const data = await res.json();
+        if (!cancelled) setEvents(data.data || []);
+      } catch { if (!cancelled) showMsg('Failed to fetch events', 'error'); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleCreate = async () => {
+    try {
+      const payload = { ...newForm };
+      if (!payload.event_strength) delete payload.event_strength;
+      const res = await fetch(`${API_URL}/api/events`, {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Created', 'success'); setAdding(false); setNewForm(EMPTY_EVENT); fetchEvents(); }
+      else showMsg(data.error || data.message || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleUpdate = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/events/${id}`, {
+        method: 'PATCH', headers: adminHeaders(),
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Updated', 'success'); setEditing(null); fetchEvents(); }
+      else showMsg(data.error || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/events/${id}`, {
+        method: 'DELETE', headers: adminHeaders(),
+      });
+      if (res.ok) { showMsg('Deleted', 'success'); fetchEvents(); }
+      else showMsg('Delete failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const startEdit = (e: EventItem) => {
+    setEditing(e.event_id);
+    setForm({
+      event_name: e.event_name, event_date: e.event_date || '', event_time: e.event_time || '',
+      event_place: e.event_place || '', event_strength: e.event_strength, open_to_all: e.open_to_all,
+      event_avenue: e.event_avenue || '', event_description: e.event_description || '',
+      event_images: e.event_images || [], event_videos: e.event_videos || [],
+    });
+  };
+
+  const renderForm = (
+    values: Record<string, unknown>,
+    onChange: (key: string, val: unknown) => void,
+    onSave: () => void,
+    onCancel: () => void,
+  ) => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div><label className={labelClass}>Event Name *</label><input value={String(values.event_name || '')} onChange={e => onChange('event_name', e.target.value)} className={inputClass} /></div>
+        <div><label className={labelClass}>Date</label><input type="date" value={String(values.event_date || '')} onChange={e => onChange('event_date', e.target.value)} className={inputClass} /></div>
+        <div><label className={labelClass}>Time</label><input value={String(values.event_time || '')} onChange={e => onChange('event_time', e.target.value)} className={inputClass} placeholder="10:00 AM" /></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div><label className={labelClass}>Place</label><input value={String(values.event_place || '')} onChange={e => onChange('event_place', e.target.value)} className={inputClass} /></div>
+        <div><label className={labelClass}>Avenue</label>
+          <select value={String(values.event_avenue || '')} onChange={e => onChange('event_avenue', e.target.value)} className={inputClass}>
+            <option value="">Select avenue</option>
+            <option value="Community Service">Community Service</option>
+            <option value="Club Service">Club Service</option>
+            <option value="Professional Development">Professional Development</option>
+            <option value="International Service">International Service</option>
+            <option value="Sports & Recreation">Sports & Recreation</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div><label className={labelClass}>Expected Strength</label><input type="number" value={values.event_strength !== undefined && values.event_strength !== null ? String(values.event_strength) : ''} onChange={e => onChange('event_strength', e.target.value ? Number(e.target.value) : undefined)} className={inputClass} /></div>
+      </div>
+      <div><label className={labelClass}>Description</label><textarea value={String(values.event_description || '')} onChange={e => onChange('event_description', e.target.value)} className={`${inputClass} resize-none`} rows={3} /></div>
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+          <input type="checkbox" checked={Boolean(values.open_to_all)} onChange={e => onChange('open_to_all', e.target.checked)} className="accent-accent" /> Open to All
+        </label>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <FileUploadField label="Event Image" value={(values.event_images as string[])?.[0] || ''} folder="avatars" onUploaded={url => onChange('event_images', [url, ...((values.event_images as string[]) || []).slice(1)])} />
+        <FileUploadField label="Event Video" value={(values.event_videos as string[])?.[0] || ''} folder="videos" onUploaded={url => onChange('event_videos', [url, ...((values.event_videos as string[]) || []).slice(1)])} />
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onSave} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium">Save</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Events ({events.length})</h3>
+        <div className="flex gap-2">
+          <button onClick={fetchEvents} className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={() => { setAdding(true); setNewForm(EMPTY_EVENT); }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-medium transition-colors">
+            <Plus size={14} /> Add Event
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />} {message.text}
+        </div>
+      )}
+
+      {adding && (
+        <div className="bg-dark-card rounded-2xl border border-accent/20 p-5">
+          <h4 className="text-sm font-semibold text-accent mb-3">New Event</h4>
+          {renderForm(
+            newForm as unknown as Record<string, unknown>,
+            (k, v) => setNewForm(prev => ({ ...prev, [k]: v } as typeof EMPTY_EVENT)),
+            handleCreate,
+            () => setAdding(false),
+          )}
+        </div>
+      )}
+
+      {loading && <div className="flex justify-center py-12"><div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" /></div>}
+
+      {!loading && events.length === 0 && !adding && (
+        <div className="text-center py-12"><CalendarDays size={32} className="text-white/10 mx-auto mb-3" /><p className="text-white/30 text-sm">No events yet</p></div>
+      )}
+
+      {!loading && events.map(ev => (
+        <div key={ev.event_id} className="bg-dark-card rounded-2xl border border-white/5 p-5">
+          {editing === ev.event_id ? (
+            renderForm(
+              form,
+              (k, v) => setForm(prev => ({ ...prev, [k]: v })),
+              () => handleUpdate(ev.event_id),
+              () => setEditing(null),
+            )
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                  {ev.event_date ? new Date(ev.event_date).getDate() : '?'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-white">{ev.event_name}</h4>
+                    {ev.open_to_all && <span className="px-2 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-400 font-medium">Open</span>}
+                  </div>
+                  <p className="text-sm text-white/50">
+                    {ev.event_date || 'No date'} {ev.event_time && `· ${ev.event_time}`} {ev.event_place && `· ${ev.event_place}`}
+                  </p>
+                  {ev.event_avenue && <p className="text-xs text-white/30">{ev.event_avenue}</p>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => startEdit(ev)} className="p-2 rounded-lg text-white/50 hover:text-accent hover:bg-white/5"><Edit3 size={14} /></button>
+                <button onClick={() => handleDelete(ev.event_id)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Admin Dashboard ─────────────────────────────────────
-type Tab = 'members' | 'content' | 'board' | 'projects' | 'events' | 'settings';
+type Tab = 'members' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings';
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const store = useStore();
   const [tab, setTab] = useState<Tab>('members');
-  const [editingBoard, setEditingBoard] = useState<string | null>(null);
-  const [editingProject, setEditingProject] = useState<string | null>(null);
-  const [editingEvent, setEditingEvent] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const showSaved = () => {
@@ -370,7 +1476,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'members', label: 'Members', icon: <Users size={16} /> },
     { id: 'content', label: 'Content', icon: <FileText size={16} /> },
     { id: 'board', label: 'Board', icon: <Users size={16} /> },
-    { id: 'projects', label: 'Projects', icon: <FolderOpen size={16} /> },
+    { id: 'legacy', label: 'Legacy', icon: <History size={16} /> },
+    { id: 'fomo', label: 'FOMO', icon: <FolderOpen size={16} /> },
     { id: 'events', label: 'Events', icon: <CalendarDays size={16} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={16} /> },
   ];
@@ -430,356 +1537,19 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             {tab === 'members' && <MembersTab />}
 
             {/* === CONTENT TAB === */}
-            {tab === 'content' && (
-              <div className="space-y-6">
-                <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
-                  <h3 className="text-lg font-semibold mb-4">Hero Section</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className={labelClass}>Title</label>
-                      <input
-                        value={store.content.heroTitle}
-                        onChange={e => store.updateContent({ heroTitle: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Subtitle</label>
-                      <input
-                        value={store.content.heroSubtitle}
-                        onChange={e => store.updateContent({ heroSubtitle: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className={labelClass}>Tagline</label>
-                    <input
-                      value={store.content.heroTagline}
-                      onChange={e => store.updateContent({ heroTagline: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
-                  <h3 className="text-lg font-semibold mb-4">About Text</h3>
-                  <textarea
-                    value={store.content.aboutText}
-                    onChange={e => store.updateContent({ aboutText: e.target.value })}
-                    rows={5}
-                    className={`${inputClass} resize-none`}
-                  />
-                </div>
-
-                <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
-                  <h3 className="text-lg font-semibold mb-4">Vision Text</h3>
-                  <textarea
-                    value={store.content.visionText}
-                    onChange={e => store.updateContent({ visionText: e.target.value })}
-                    rows={4}
-                    className={`${inputClass} resize-none`}
-                  />
-                </div>
-
-                <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
-                  <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className={labelClass}>Email</label>
-                      <input
-                        value={store.content.contactEmail}
-                        onChange={e => store.updateContent({ contactEmail: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Phone</label>
-                      <input
-                        value={store.content.contactPhone}
-                        onChange={e => store.updateContent({ contactPhone: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Address</label>
-                      <input
-                        value={store.content.contactAddress}
-                        onChange={e => store.updateContent({ contactAddress: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
-                  <h3 className="text-lg font-semibold mb-4">Pillars</h3>
-                  <div className="space-y-4">
-                    {store.content.pillars.map((pillar, i) => (
-                      <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-xl bg-dark-surface">
-                        <div>
-                          <label className={labelClass}>Icon (emoji)</label>
-                          <input
-                            value={pillar.icon}
-                            onChange={e => {
-                              const pillars = [...store.content.pillars];
-                              pillars[i] = { ...pillars[i], icon: e.target.value };
-                              store.updateContent({ pillars });
-                            }}
-                            className={inputClass}
-                          />
-                        </div>
-                        <div>
-                          <label className={labelClass}>Title</label>
-                          <input
-                            value={pillar.title}
-                            onChange={e => {
-                              const pillars = [...store.content.pillars];
-                              pillars[i] = { ...pillars[i], title: e.target.value };
-                              store.updateContent({ pillars });
-                            }}
-                            className={inputClass}
-                          />
-                        </div>
-                        <div>
-                          <label className={labelClass}>Description</label>
-                          <input
-                            value={pillar.description}
-                            onChange={e => {
-                              const pillars = [...store.content.pillars];
-                              pillars[i] = { ...pillars[i], description: e.target.value };
-                              store.updateContent({ pillars });
-                            }}
-                            className={inputClass}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <button onClick={showSaved} className="px-6 py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold text-sm transition-all flex items-center gap-2">
-                  <Save size={14} /> Save Changes
-                </button>
-              </div>
-            )}
+            {tab === 'content' && <ContentTab />}
 
             {/* === BOARD TAB === */}
-            {tab === 'board' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Board Members ({store.content.boardMembers.length})</h3>
-                  <button
-                    onClick={() => {
-                      const id = Date.now().toString();
-                      store.addBoardMember({ id, name: 'New Member', role: 'Director', bio: 'Bio here...', gradient: 'from-gray-500 to-gray-600' });
-                      setEditingBoard(id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-medium transition-colors"
-                  >
-                    <Plus size={14} /> Add Member
-                  </button>
-                </div>
+            {tab === 'board' && <BoardTab />}
 
-                {store.content.boardMembers.map(member => (
-                  <div key={member.id} className="bg-dark-card rounded-2xl border border-white/5 p-5">
-                    {editingBoard === member.id ? (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className={labelClass}>Name</label>
-                            <input value={member.name} onChange={e => store.updateBoardMember(member.id, { name: e.target.value })} className={inputClass} />
-                          </div>
-                          <div>
-                            <label className={labelClass}>Role</label>
-                            <input value={member.role} onChange={e => store.updateBoardMember(member.id, { role: e.target.value })} className={inputClass} />
-                          </div>
-                        </div>
-                        <div>
-                          <label className={labelClass}>Bio</label>
-                          <textarea value={member.bio} onChange={e => store.updateBoardMember(member.id, { bio: e.target.value })} className={`${inputClass} resize-none`} rows={2} />
-                        </div>
-                        <div>
-                          <label className={labelClass}>Gradient (Tailwind classes)</label>
-                          <input value={member.gradient} onChange={e => store.updateBoardMember(member.id, { gradient: e.target.value })} className={inputClass} placeholder="from-orange-500 to-red-500" />
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => { setEditingBoard(null); showSaved(); }} className="px-4 py-2 bg-accent text-white rounded-lg text-sm">Save</button>
-                          <button onClick={() => setEditingBoard(null)} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${member.gradient}`} />
-                          <div>
-                            <h4 className="font-semibold">{member.name}</h4>
-                            <p className="text-sm text-white/50">{member.role}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => setEditingBoard(member.id)} className="p-2 rounded-lg text-white/50 hover:text-accent hover:bg-white/5"><Edit3 size={14} /></button>
-                          <button onClick={() => store.removeBoardMember(member.id)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* === LEGACY TAB === */}
+            {tab === 'legacy' && <LegacyTab />}
 
-            {/* === PROJECTS TAB === */}
-            {tab === 'projects' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Projects ({store.content.projects.length})</h3>
-                  <button
-                    onClick={() => {
-                      const id = Date.now().toString();
-                      store.addProject({ id, title: 'New Project', category: 'Service', description: 'Description...', gradient: 'from-gray-500 to-gray-600', date: new Date().toISOString().split('T')[0] });
-                      setEditingProject(id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-medium transition-colors"
-                  >
-                    <Plus size={14} /> Add Project
-                  </button>
-                </div>
-
-                {store.content.projects.map(project => (
-                  <div key={project.id} className="bg-dark-card rounded-2xl border border-white/5 p-5">
-                    {editingProject === project.id ? (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <label className={labelClass}>Title</label>
-                            <input value={project.title} onChange={e => store.updateProject(project.id, { title: e.target.value })} className={inputClass} />
-                          </div>
-                          <div>
-                            <label className={labelClass}>Category</label>
-                            <input value={project.category} onChange={e => store.updateProject(project.id, { category: e.target.value })} className={inputClass} />
-                          </div>
-                          <div>
-                            <label className={labelClass}>Date</label>
-                            <input type="date" value={project.date} onChange={e => store.updateProject(project.id, { date: e.target.value })} className={inputClass} />
-                          </div>
-                        </div>
-                        <div>
-                          <label className={labelClass}>Description</label>
-                          <textarea value={project.description} onChange={e => store.updateProject(project.id, { description: e.target.value })} className={`${inputClass} resize-none`} rows={2} />
-                        </div>
-                        <div>
-                          <label className={labelClass}>Gradient</label>
-                          <input value={project.gradient} onChange={e => store.updateProject(project.id, { gradient: e.target.value })} className={inputClass} />
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => { setEditingProject(null); showSaved(); }} className="px-4 py-2 bg-accent text-white rounded-lg text-sm">Save</button>
-                          <button onClick={() => setEditingProject(null)} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${project.gradient}`} />
-                          <div>
-                            <h4 className="font-semibold">{project.title}</h4>
-                            <p className="text-sm text-white/50">{project.category} · {project.date}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => setEditingProject(project.id)} className="p-2 rounded-lg text-white/50 hover:text-accent hover:bg-white/5"><Edit3 size={14} /></button>
-                          <button onClick={() => store.removeProject(project.id)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* === FOMO TAB === */}
+            {tab === 'fomo' && <FomoTab />}
 
             {/* === EVENTS TAB === */}
-            {tab === 'events' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Events ({store.content.events.length})</h3>
-                  <button
-                    onClick={() => {
-                      const id = Date.now().toString();
-                      store.addEvent({ id, title: 'New Event', date: new Date().toISOString().split('T')[0], time: '10:00 AM', location: 'TBD', description: 'Description...', category: 'Service' });
-                      setEditingEvent(id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-medium transition-colors"
-                  >
-                    <Plus size={14} /> Add Event
-                  </button>
-                </div>
-
-                {store.content.events.map(event => (
-                  <div key={event.id} className="bg-dark-card rounded-2xl border border-white/5 p-5">
-                    {editingEvent === event.id ? (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <label className={labelClass}>Title</label>
-                            <input value={event.title} onChange={e => store.updateEvent(event.id, { title: e.target.value })} className={inputClass} />
-                          </div>
-                          <div>
-                            <label className={labelClass}>Date</label>
-                            <input type="date" value={event.date} onChange={e => store.updateEvent(event.id, { date: e.target.value })} className={inputClass} />
-                          </div>
-                          <div>
-                            <label className={labelClass}>Time</label>
-                            <input value={event.time} onChange={e => store.updateEvent(event.id, { time: e.target.value })} className={inputClass} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className={labelClass}>Location</label>
-                            <input value={event.location} onChange={e => store.updateEvent(event.id, { location: e.target.value })} className={inputClass} />
-                          </div>
-                          <div>
-                            <label className={labelClass}>Category</label>
-                            <select
-                              value={event.category}
-                              onChange={e => store.updateEvent(event.id, { category: e.target.value })}
-                              className={inputClass}
-                            >
-                              <option value="Ceremony">Ceremony</option>
-                              <option value="Workshop">Workshop</option>
-                              <option value="Celebration">Celebration</option>
-                              <option value="Service">Service</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div>
-                          <label className={labelClass}>Description</label>
-                          <textarea value={event.description} onChange={e => store.updateEvent(event.id, { description: e.target.value })} className={`${inputClass} resize-none`} rows={2} />
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => { setEditingEvent(null); showSaved(); }} className="px-4 py-2 bg-accent text-white rounded-lg text-sm">Save</button>
-                          <button onClick={() => setEditingEvent(null)} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-sm font-bold">
-                            {new Date(event.date).getDate()}
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">{event.title}</h4>
-                            <p className="text-sm text-white/50">{event.date} · {event.time} · {event.location}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => setEditingEvent(event.id)} className="p-2 rounded-lg text-white/50 hover:text-accent hover:bg-white/5"><Edit3 size={14} /></button>
-                          <button onClick={() => store.removeEvent(event.id)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            {tab === 'events' && <EventsTab />}
 
             {/* === SETTINGS TAB === */}
             {tab === 'settings' && (
@@ -865,19 +1635,15 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
 // ── Main Page ────────────────────────────────────────────────
 export default function AdminPage() {
-  const [authenticated, setAuthenticated] = useState(() => isAdminAuthenticated());
-  const [ready] = useState(() => typeof window !== 'undefined');
-
-  const handleLogout = () => {
-    clearAdminAuth();
-    setAuthenticated(false);
-  };
-
-  if (!ready) return null;
+  const authenticated = useSyncExternalStore(
+    subscribeAdminAuth,
+    getAdminAuthSnapshot,
+    getAdminAuthServerSnapshot,
+  );
 
   if (!authenticated) {
-    return <LoginForm onLogin={() => setAuthenticated(true)} />;
+    return <LoginForm onLogin={() => {}} />;
   }
 
-  return <AdminDashboard onLogout={handleLogout} />;
+  return <AdminDashboard onLogout={clearAdminAuth} />;
 }

@@ -27,6 +27,20 @@ export function requireAdmin(
   next();
 }
 
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'rotaract@2025';
+
+export function requireAdminPassword(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const pw = req.headers['x-admin-password'];
+  if (pw !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid admin password' });
+  }
+  next();
+}
+
 export function requireApproved(
   _req: Request,
   res: Response,

@@ -10,14 +10,15 @@ import { useAuthStore } from '@/lib/auth-store';
 const baseNavLinks = [
   { label: 'Home', path: '/', num: '01' },
   { label: 'About', path: '/about', num: '02' },
-  { label: 'Projects', path: '/projects', num: '03' },
+  { label: 'FOMO', path: '/projects', num: '03' },
   { label: 'Events', path: '/events', num: '04' },
   { label: 'Board', path: '/board', num: '05' },
-  { label: 'Join Us', path: '/join', num: '06' },
-  { label: 'Contact', path: '/contact', num: '07' },
+  { label: 'Legacy', path: '/legacy', num: '06' },
+  { label: 'Join Us', path: '/join', num: '07' },
+  { label: 'Contact', path: '/contact', num: '08' },
 ];
 
-const directoryLink = { label: 'Directory', path: '/directory', num: '08' };
+const directoryLink = { label: 'Directory', path: '/directory', num: '09' };
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -225,12 +226,12 @@ export default function Navbar() {
         />
 
         {/* Navigation links */}
-        <div className="relative z-10 h-full flex items-center">
-          <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-16 w-full">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-12">
+        <div className="relative z-10 h-full overflow-y-auto pt-20 pb-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-16 w-full min-h-full flex items-center">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-12 w-full">
               {/* Links */}
               <nav className="flex-1">
-                <ul className="space-y-2 md:space-y-4">
+                <ul className="space-y-1 sm:space-y-2 md:space-y-3">
                   {navLinks.map((link, i) => {
                     const isActive = pathname === link.path;
                     const isHovered = hoveredIdx === i;
@@ -252,7 +253,7 @@ export default function Navbar() {
                             {link.num}
                           </span>
                           <span
-                            className={`font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl transition-all duration-300 ${
+                            className={`font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl transition-all duration-300 ${
                               isActive
                                 ? 'text-accent'
                                 : isHovered

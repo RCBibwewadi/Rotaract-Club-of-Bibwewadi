@@ -96,12 +96,11 @@ export const UpdateProfessionSchema = CreateProfessionSchema.partial();
 
 export const CreateBodSchema = z.object({
   member_id:     z.string().uuid('Invalid member ID').optional(),
+  full_name:     z.string().min(2, 'Name must be at least 2 characters'),
   designation:   z.string().min(1, 'Designation is required'),
   linkedin_url:  z.string().url('Invalid LinkedIn URL').optional().or(z.literal('')),
   instagram_url: z.string().url('Invalid Instagram URL').optional().or(z.literal('')),
-  twitter_url:   z.string().url('Invalid Twitter URL').optional().or(z.literal('')),
   gmail:         z.string().email('Invalid email').optional().or(z.literal('')),
-  dob:           z.string().optional(),
   avatar_url:    z.string().url('Invalid avatar URL').optional().or(z.literal('')),
   description:   z.string().optional(),
   riy_year:      z.string()
@@ -123,12 +122,12 @@ export const CreateEventSchema = z.object({
   event_place:       z.string().optional(),
   event_strength:    z.number().positive('Strength must be positive').optional(),
   open_to_all:       z.boolean().default(false),
-  event_lead_id:     z.string().uuid('Invalid member ID').optional(),
+  event_lead_id:     z.string().uuid('Invalid member ID').optional().or(z.literal('')),
   event_avenue:      z.string().optional(),
   event_description: z.string().optional(),
-  event_images:      z.array(z.string().url()).optional(),
-  event_videos:      z.array(z.string().url()).optional(),
-  event_best_member: z.string().uuid('Invalid member ID').optional(),
+  event_images:      z.array(z.string()).optional(),
+  event_videos:      z.array(z.string()).optional(),
+  event_best_member: z.string().uuid('Invalid member ID').optional().or(z.literal('')),
 });
 
 export const UpdateEventSchema = CreateEventSchema.partial();
@@ -139,9 +138,10 @@ export const CreateFomoSchema = z.object({
   category:    z.string().min(1, 'Category is required'),
   name:        z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  videos:      z.array(z.string().url('Invalid video URL')).optional(),
-  images:      z.array(z.string().url('Invalid image URL')).optional(),
-  event_id:    z.string().uuid('Invalid event ID').optional(),
+  thumbnail:   z.string().optional(),
+  videos:      z.array(z.string()).optional(),
+  images:      z.array(z.string()).optional(),
+  event_id:    z.string().uuid('Invalid event ID').optional().or(z.literal('')),
 });
 
 export const UpdateFomoSchema = CreateFomoSchema.partial();

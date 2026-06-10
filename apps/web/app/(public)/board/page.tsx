@@ -1,10 +1,42 @@
 'use client';
 
-import { useStore } from '@/lib/store';
+import { useState, useEffect } from 'react';
+import { Mail, Camera, Briefcase } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+interface BodMember {
+  bod_id: string;
+  full_name: string;
+  designation: string;
+  linkedin_url?: string;
+  instagram_url?: string;
+  gmail?: string;
+  avatar_url?: string;
+  description?: string;
+  riy_year: string;
+  is_current: boolean;
+}
+
 export default function BoardPage() {
-  const boardMembers = useStore((s) => s.content.boardMembers);
+  const [members, setMembers] = useState<BodMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/bod/current`);
+        const data = await res.json();
+        if (!cancelled) setMembers(data.data || []);
+      } catch { /* silent */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const year = members[0]?.riy_year || '2025-26';
 
   return (
     <div className="min-h-screen bg-light dark:bg-dark transition-colors">
@@ -31,23 +63,61 @@ export default function BoardPage() {
         <div className="max-w-7xl mx-auto w-full">
           <AnimatedSection>
             <h2 className="font-[Instrument_Serif] text-3xl md:text-5xl text-dark dark:text-white mb-8">
-              Board of Directors 2025-26
+              Board of Directors {year}
             </h2>
           </AnimatedSection>
 
+          {loading && (
+            <div className="flex justify-center py-20">
+              <div className="h-8 w-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {!loading && members.length === 0 && (
+            <div className="text-center py-20">
+              <p className="text-dark/40 dark:text-white/40 text-lg">No board members found.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {boardMembers.map((member, i) => (
-              <AnimatedSection key={member.id} delay={i * 80}>
+            {members.map((member, i) => (
+              <AnimatedSection key={member.bod_id} delay={i * 80}>
                 <div className="group rounded-2xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:border-accent/30 transition-all duration-300">
-                  <div className={`h-48 bg-gradient-to-br ${member.gradient} relative flex items-center justify-center`}>
-                    <span className="text-white/30 font-[Instrument_Serif] text-6xl">
-                      {member.name.charAt(0)}
-                    </span>
+                  <div className="h-48 bg-gradient-to-br from-accent to-accent-light relative flex items-center justify-center">
+                    {member.avatar_url ? (
+                      <img src={member.avatar_url} alt={member.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white/30 font-[Instrument_Serif] text-6xl">
+                        {member.full_name.charAt(0)}
+                      </span>
+                    )}
                   </div>
                   <div className="p-6">
-                    <p className="text-accent text-sm font-medium mb-1">{member.role}</p>
-                    <h3 className="text-dark dark:text-white text-xl font-semibold mb-2">{member.name}</h3>
-                    <p className="text-dark/50 dark:text-white/50 text-sm leading-relaxed">{member.bio}</p>
+                    <p className="text-accent text-sm font-medium mb-1">{member.designation}</p>
+                    <h3 className="text-dark dark:text-white text-xl font-semibold mb-2">{member.full_name}</h3>
+                    {member.description && (
+                      <p className="text-dark/50 dark:text-white/50 text-sm leading-relaxed mb-3">{member.description}</p>
+                    )}
+                    <div className="flex items-center gap-3">
+                      {member.instagram_url && (
+                        <a href={member.instagram_url} target="_blank" rel="noreferrer"
+                          className="text-dark/30 dark:text-white/30 hover:text-accent transition-colors" title="Instagram">
+                          <Camera size={16} />
+                        </a>
+                      )}
+                      {member.linkedin_url && (
+                        <a href={member.linkedin_url} target="_blank" rel="noreferrer"
+                          className="text-dark/30 dark:text-white/30 hover:text-accent transition-colors" title="LinkedIn">
+                          <Briefcase size={16} />
+                        </a>
+                      )}
+                      {member.gmail && (
+                        <a href={`mailto:${member.gmail}`}
+                          className="text-dark/30 dark:text-white/30 hover:text-accent transition-colors" title="Email">
+                          <Mail size={16} />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </AnimatedSection>

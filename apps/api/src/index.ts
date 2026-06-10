@@ -16,12 +16,17 @@ import { errorResponse, fromZodError, AppError } from '@rcb-2.0/shared';
 import { ZodError } from 'zod';
 import { adminRoutes } from './routes/admin';
 import { visibilityRoutes } from './routes/visibility';
+import { uploadRoutes } from './routes/upload';
+import { contentRoutes } from './routes/content';
 
 const app  = express();
 const PORT = process.env.API_PORT || 4000;
 
-app.use(cors({ origin: process.env.WEB_URL || 'http://localhost:3000' }));
-app.use(express.json());
+app.use(cors({
+  origin: process.env.WEB_URL || 'http://localhost:3000',
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password'],
+}));
+app.use(express.json({ limit: '50mb' }));
 
 // ── routes ────────────────────────────────────────────────────
 app.use('/auth',             authRoutes);
@@ -33,7 +38,9 @@ app.use('/api/bod',          bodRoutes);
 app.use('/api/events',       eventRoutes);
 app.use('/api/fomo',         fomoRoutes);
 app.use('/api/legacy',       legacyRoutes);
-app.use('/api/visibility', visibilityRoutes)
+app.use('/api/visibility', visibilityRoutes);
+app.use('/api/upload',     uploadRoutes);
+app.use('/api/content',    contentRoutes);
 
 // ── health check ──────────────────────────────────────────────
 app.get('/health', (_req, res) => {

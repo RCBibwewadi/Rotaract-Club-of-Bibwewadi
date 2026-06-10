@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../lib/supabase';
-import { authenticate, requireAdmin } from '../middleware/authenticate';
+import { requireAdminPassword } from '../middleware/authenticate';
 import { validate } from '../middleware/validate';
 import {
   CreateFomoSchema,
@@ -23,6 +23,7 @@ fomoRoutes.get('/', async (_req, res) => {
       category,
       name,
       description,
+      thumbnail,
       images,
       videos,
       event_id,
@@ -54,6 +55,7 @@ fomoRoutes.get('/category/:category', async (req, res) => {
       category,
       name,
       description,
+      thumbnail,
       images,
       videos,
       events (
@@ -104,8 +106,7 @@ fomoRoutes.get('/:id', async (req, res) => {
 // admin only
 fomoRoutes.post(
   '/',
-  authenticate,
-  requireAdmin,
+  requireAdminPassword,
   validate(CreateFomoSchema),
   async (req, res) => {
     const body = req.body as CreateFomoInput;
@@ -146,8 +147,7 @@ fomoRoutes.post(
 // ── PATCH /api/fomo/:id ───────────────────────────────────────
 fomoRoutes.patch(
   '/:id',
-  authenticate,
-  requireAdmin,
+  requireAdminPassword,
   validate(UpdateFomoSchema),
   async (req, res) => {
     const body = req.body as UpdateFomoInput;
@@ -185,7 +185,7 @@ fomoRoutes.patch(
 );
 
 // ── DELETE /api/fomo/:id ──────────────────────────────────────
-fomoRoutes.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+fomoRoutes.delete('/:id', requireAdminPassword, async (req, res) => {
   const { error } = await supabase
     .from('fomo')
     .delete()

@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { supabase } from "../lib/supabase";
-import { authenticate, requireAdmin } from "../middleware/authenticate";
+import { requireAdminPassword } from "../middleware/authenticate";
 import { successResponse, errorResponse } from "@rcb-2.0/shared";
 
 // Admin Control to approve , reject , deactivate and reactive an member
 
 export const adminRoutes: Router = Router();
 
-adminRoutes.use(authenticate, requireAdmin);
+adminRoutes.use(requireAdminPassword);
 
 // ── GET /admin/members/pending ────────────────────────────────
 adminRoutes.get("/members/pending", async (_req, res) => {

@@ -1,22 +1,23 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import AnimatedSection from '@/components/AnimatedSection';
 import { Sprout, Handshake, Rocket, Heart, Users, Award, Calendar, Globe } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
-  Sprout, Handshake, Rocket, Heart,
+  Sprout, Handshake, Rocket, Heart, Users, Award, Calendar, Globe,
 };
 
-const stats = [
-  { icon: Users, value: '200+', label: 'Active Members' },
-  { icon: Award, value: '50+', label: 'Projects Completed' },
-  { icon: Calendar, value: '100+', label: 'Events Organized' },
-  { icon: Globe, value: '15+', label: 'Community Partners' },
-];
+const statIcons = [Users, Award, Calendar, Globe];
 
 export default function AboutPage() {
-  const content = useStore((s) => s.content);
+  const { content, fetchContent } = useStore();
+
+  useEffect(() => { fetchContent(); }, [fetchContent]);
+
+  const stats = content.stats || [];
+  const pillars = content.pillars || [];
 
   return (
     <div className="min-h-screen bg-light dark:bg-dark transition-colors">
@@ -41,10 +42,14 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <AnimatedSection>
             <div className="relative">
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-accent to-accent-light/60 p-1">
-                <div className="w-full h-full rounded-3xl bg-light dark:bg-dark flex items-center justify-center">
-                  <span className="font-[Instrument_Serif] text-8xl text-accent/20">RCB</span>
-                </div>
+              <div className="aspect-square rounded-3xl bg-gradient-to-br from-accent to-accent-light/60 p-1 overflow-hidden">
+                {content.aboutImage ? (
+                  <img src={content.aboutImage} alt="About RCB" className="w-full h-full rounded-3xl object-cover" />
+                ) : (
+                  <div className="w-full h-full rounded-3xl bg-light dark:bg-dark flex items-center justify-center">
+                    <span className="font-[Instrument_Serif] text-8xl text-accent/20">RCB</span>
+                  </div>
+                )}
               </div>
             </div>
           </AnimatedSection>
@@ -83,18 +88,21 @@ export default function AboutPage() {
             </h2>
           </AnimatedSection>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            {stats.map((stat, i) => (
-              <AnimatedSection key={i} delay={i * 100}>
-                <div className="text-center p-6 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
-                  <stat.icon size={28} className="text-accent mx-auto mb-3" />
-                  <p className="text-3xl font-bold text-dark dark:text-white mb-1">{stat.value}</p>
-                  <p className="text-dark/50 dark:text-white/50 text-sm">{stat.label}</p>
-                </div>
-              </AnimatedSection>
-            ))}
+            {stats.map((stat, i) => {
+              const Icon = statIcons[i % statIcons.length];
+              return (
+                <AnimatedSection key={i} delay={i * 100}>
+                  <div className="text-center p-6 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
+                    <Icon size={28} className="text-accent mx-auto mb-3" />
+                    <p className="text-3xl font-bold text-dark dark:text-white mb-1">{stat.value}</p>
+                    <p className="text-dark/50 dark:text-white/50 text-sm">{stat.label}</p>
+                  </div>
+                </AnimatedSection>
+              );
+            })}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {content.pillars.map((pillar, i) => {
+            {pillars.map((pillar, i) => {
               const Icon = iconMap[pillar.icon] || Heart;
               return (
                 <AnimatedSection key={i} delay={i * 100}>
