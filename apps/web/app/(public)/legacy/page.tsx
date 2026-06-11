@@ -59,7 +59,7 @@ export default function LegacyPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark transition-colors">
+    <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="hero" className="min-h-[60vh] flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
@@ -68,7 +68,7 @@ export default function LegacyPage() {
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">
               Our Journey
             </p>
-            <h1 className="font-[Instrument_Serif] text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
               The <span className="gradient-text">Legacy</span>
             </h1>
             <p className="text-dark/60 dark:text-white/60 text-lg md:text-xl max-w-2xl mx-auto">
@@ -108,7 +108,7 @@ export default function LegacyPage() {
                         {year.riy_year.slice(0, 4)}
                       </div>
                       <div>
-                        <h2 className="font-[Instrument_Serif] text-3xl md:text-4xl text-dark dark:text-white">
+                        <h2 className="font-display text-3xl md:text-4xl text-dark dark:text-white">
                           RIY {year.riy_year}
                         </h2>
                         <p className="text-dark/40 dark:text-white/40 text-sm">Board of Directors</p>

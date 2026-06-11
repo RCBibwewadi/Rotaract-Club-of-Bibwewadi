@@ -175,10 +175,10 @@ export default function ProfilePage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-light dark:bg-dark transition-colors flex items-center justify-center px-6">
+      <div className="min-h-screen transition-colors flex items-center justify-center px-6">
         <div className="text-center max-w-md">
           <Lock size={48} className="text-dark/20 dark:text-white/20 mx-auto mb-4" />
-          <h1 className="font-[Instrument_Serif] text-4xl text-dark dark:text-white mb-3">Not Logged In</h1>
+          <h1 className="font-display text-4xl text-dark dark:text-white mb-3">Not Logged In</h1>
           <p className="text-dark/50 dark:text-white/50 mb-6">Login to view your member profile.</p>
           <div className="flex gap-3 justify-center">
             <Link href="/login" className="px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors">Login</Link>
@@ -191,7 +191,7 @@ export default function ProfilePage() {
 
   if (!member) {
     return (
-      <div className="min-h-screen bg-light dark:bg-dark transition-colors flex items-center justify-center">
+      <div className="min-h-screen transition-colors flex items-center justify-center">
         <div className="h-8 w-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto" />
       </div>
     );
@@ -202,7 +202,7 @@ export default function ProfilePage() {
   const hasProf = member.professions && member.professions.length > 0;
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark transition-colors">
+    <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section className="relative overflow-hidden pt-28 pb-12 px-6">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                 </label>
               </div>
               <div className="text-center sm:text-left flex-1">
-                <h1 className="font-[Instrument_Serif] text-4xl md:text-5xl text-dark dark:text-white mb-1">{member.full_name}</h1>
+                <h1 className="font-display text-4xl md:text-5xl text-dark dark:text-white mb-1">{member.full_name}</h1>
                 <p className="text-dark/50 dark:text-white/50">@{member.username}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <span className="px-3 py-1 text-xs rounded-full bg-accent/10 text-accent font-medium">{member.member_type.replace('_', ' ')}</span>

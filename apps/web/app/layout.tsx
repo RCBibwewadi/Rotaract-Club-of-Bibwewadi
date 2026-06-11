@@ -18,7 +18,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+          href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap"
           rel="stylesheet"
         />
         <script
@@ -34,7 +34,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-[Inter] antialiased dark:bg-dark dark:text-white bg-light text-dark transition-colors duration-300">
+      <body className="font-[DM_Sans] antialiased dark:text-white text-dark transition-colors duration-300 bg-transparent">
         {children}
       </body>
     </html>

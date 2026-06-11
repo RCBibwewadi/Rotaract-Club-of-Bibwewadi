@@ -38,14 +38,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark transition-colors flex items-center justify-center px-6">
+    <div className="min-h-screen transition-colors flex items-center justify-center px-6">
       <div className="w-full max-w-md py-20">
         <AnimatedSection>
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
               <Lock size={28} className="text-accent" />
             </div>
-            <h1 className="font-[Instrument_Serif] text-4xl md:text-5xl text-dark dark:text-white mb-2">
+            <h1 className="font-display text-4xl md:text-5xl text-dark dark:text-white mb-2">
               Welcome <span className="gradient-text">Back</span>
             </h1>
             <p className="text-dark/50 dark:text-white/50">

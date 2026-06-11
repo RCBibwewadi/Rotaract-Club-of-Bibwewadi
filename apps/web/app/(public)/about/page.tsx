@@ -20,14 +20,14 @@ export default function AboutPage() {
   const pillars = content.pillars || [];
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark transition-colors">
+    <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="hero" className="min-h-[60vh] flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
         <div className="relative z-10 text-center px-6 max-w-4xl py-20">
           <AnimatedSection>
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">About Us</p>
-            <h1 className="font-[Instrument_Serif] text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
               Our <span className="gradient-text">Story</span>
             </h1>
             <p className="text-dark/60 dark:text-white/60 text-lg md:text-xl max-w-2xl mx-auto">
@@ -40,23 +40,10 @@ export default function AboutPage() {
       {/* Story */}
       <section data-rota="story" className="py-20 px-6 md:px-12 lg:px-24">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <AnimatedSection>
-            <div className="relative">
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-accent to-accent-light/60 p-1 overflow-hidden">
-                {content.aboutImage ? (
-                  <img src={content.aboutImage} alt="About RCB" className="w-full h-full rounded-3xl object-cover" />
-                ) : (
-                  <div className="w-full h-full rounded-3xl bg-light dark:bg-dark flex items-center justify-center">
-                    <span className="font-[Instrument_Serif] text-8xl text-accent/20">RCB</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </AnimatedSection>
-          <AnimatedSection delay={200}>
+                    <AnimatedSection delay={200}>
             <div>
               <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-3">Who We Are</p>
-              <h2 className="font-[Instrument_Serif] text-3xl md:text-5xl text-dark dark:text-white mb-6">
+              <h2 className="font-display text-3xl md:text-5xl text-dark dark:text-white mb-6">
                 Building Leaders,<br />Serving Communities
               </h2>
               <p className="text-dark/60 dark:text-white/60 leading-relaxed text-lg">
@@ -64,6 +51,24 @@ export default function AboutPage() {
               </p>
             </div>
           </AnimatedSection>
+          <AnimatedSection>
+            <div className="relative">
+              <div className="aspect-square rounded-3xl bg-gradient-to-br from-accent to-accent-light/60 p-1 overflow-hidden">
+                {content.aboutImage ? (
+                  <img src={content.aboutImage} alt="About RCB" className="w-full h-full rounded-3xl object-cover" />
+                ) : (
+                  <div className="w-full h-full rounded-3xl bg-light dark:bg-dark flex items-center justify-center">
+                    <span className="font-display text-8xl text-accent/20">RCB</span>
+                  </div>
+                  
+                )}
+                <div className="absolute -bottom-6 -right-6 w-32 h-32 rounded-2xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white">
+                  <div className="text-center"><span className="text-3xl font-bold">10+</span><span className="block text-xs mt-1">Years of<br />Service</span></div>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
+
         </div>
       </section>
 
@@ -72,7 +77,7 @@ export default function AboutPage() {
         <div className="max-w-4xl mx-auto text-center">
           <AnimatedSection>
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">Our Vision</p>
-            <h2 className="font-[Instrument_Serif] text-4xl md:text-6xl lg:text-7xl text-dark dark:text-white leading-tight mb-8">
+            <h2 className="font-display text-4xl md:text-6xl lg:text-7xl text-dark dark:text-white leading-tight mb-8">
               &ldquo;{content.visionText}&rdquo;
             </h2>
           </AnimatedSection>
@@ -83,7 +88,7 @@ export default function AboutPage() {
       <section data-rota="stats" className="py-20 px-6 md:px-12 lg:px-16">
         <div className="max-w-7xl mx-auto w-full">
           <AnimatedSection>
-            <h2 className="font-[Instrument_Serif] text-4xl md:text-5xl text-dark dark:text-white mb-8">
+            <h2 className="font-display text-4xl md:text-5xl text-dark dark:text-white mb-8">
               Our Pillars & Impact
             </h2>
           </AnimatedSection>

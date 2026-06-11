@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sun, Moon, Shield, User, LogOut } from 'lucide-react';
+import { FaInstagram, FaLinkedinIn, FaFacebookF } from 'react-icons/fa';
 import { useStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
 
@@ -108,15 +109,15 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group relative z-[110]">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white font-bold text-sm group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center text-accent text-[11px] font-semibold group-hover:bg-accent/20 transition-colors">
                 RC
               </div>
               <div className="hidden sm:block">
-                <span className={`font-display text-lg leading-tight transition-colors ${menuOpen ? 'text-white' : isDark ? 'text-white' : 'text-dark'}`}>
+                <span className={`text-sm font-medium tracking-tight leading-tight transition-colors ${menuOpen ? 'text-white/90' : isDark ? 'text-white/90' : 'text-dark/90'}`}>
                   Rotaract
                 </span>
-                <span className={`block text-[10px] tracking-[0.2em] uppercase leading-none transition-colors ${menuOpen ? 'text-white/50' : isDark ? 'text-white/50' : 'text-dark/50'}`}>
-                  Bibwewadi Pune
+                <span className={`block text-[9px] tracking-[0.15em] uppercase leading-none transition-colors ${menuOpen ? 'text-white/35' : isDark ? 'text-white/35' : 'text-dark/35'}`}>
+                  BIBWEWADI · PUNE
                 </span>
               </div>
             </Link>
@@ -127,12 +128,12 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                  className={`px-3 py-2 text-[13px] font-medium rounded-lg transition-all duration-300 ${
                     pathname === link.path
                       ? 'text-accent bg-accent/10'
                       : isDark
-                        ? 'text-white/70 hover:text-white hover:bg-white/5'
-                        : 'text-dark/70 hover:text-dark hover:bg-dark/5'
+                        ? 'text-white/60 hover:text-white/90 hover:bg-white/5'
+                        : 'text-dark/60 hover:text-dark/90 hover:bg-dark/5'
                   }`}
                 >
                   {link.label}
@@ -249,7 +250,7 @@ export default function Navbar() {
                           onClick={() => handleNavClick(link.path)}
                           className={`group flex items-center gap-4 md:gap-6 transition-all duration-300 ${isFaded ? 'opacity-30' : 'opacity-100'}`}
                         >
-                          <span className={`text-xs font-mono transition-colors ${isActive ? 'text-accent' : 'text-white/30'}`}>
+                          <span className={`text-xs font-mono transition-colors ${isActive ? 'text-accent' : 'text-white/40'}`}>
                             {link.num}
                           </span>
                           <span
@@ -258,7 +259,7 @@ export default function Navbar() {
                                 ? 'text-accent'
                                 : isHovered
                                   ? 'text-white translate-x-3'
-                                  : 'text-white/80'
+                                  : 'text-white/70'
                             }`}
                           >
                             {link.label}
@@ -316,21 +317,25 @@ export default function Navbar() {
                 style={{ transitionDelay: menuOpen ? '500ms' : '0ms' }}
               >
                 <div>
-                  <span className="text-white/30 text-xs uppercase tracking-[0.2em]">Part of</span>
-                  <p className="text-white/60 text-sm mt-1">Rotary International District 3131</p>
+                  <span className="text-white/40 text-xs uppercase tracking-[0.2em]">Part of</span>
+                  <p className="text-white/65 text-sm mt-1">Rotary International District 3131</p>
                 </div>
                 <div>
-                  <span className="text-white/30 text-xs uppercase tracking-[0.2em]">Follow us</span>
+                  <span className="text-white/40 text-xs uppercase tracking-[0.2em]">Follow us</span>
                   <div className="flex gap-3 mt-2">
-                    {['IG', 'FB', 'IN'].map(s => (
-                      <div key={s} className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-accent hover:border-accent transition-all text-xs font-medium cursor-pointer">
-                        {s}
+                    {[
+                      { icon: FaInstagram, label: 'Instagram' },
+                      { icon: FaFacebookF, label: 'Facebook' },
+                      { icon: FaLinkedinIn, label: 'LinkedIn' },
+                    ].map(({ icon: Icon, label }) => (
+                      <div key={label} className="w-10 h-10 rounded-full border border-white/15 flex items-center justify-center text-white/50 hover:text-accent hover:border-accent transition-all cursor-pointer">
+                        <Icon size={16} />
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="mt-auto">
-                  <p className="text-white/20 text-xs">&copy; {new Date().getFullYear()} RCB Pune</p>
+                  <p className="text-white/30 text-xs">&copy; {new Date().getFullYear()} RCB Pune</p>
                 </div>
               </div>
             </div>

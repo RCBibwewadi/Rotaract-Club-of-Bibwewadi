@@ -3,18 +3,20 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --color-accent: #E85D04;
-  --color-accent-light: #F48C06;
-  --color-dark: #0A0A0A;
-  --color-dark-card: #141414;
-  --color-dark-surface: #1A1A1A;
+  /* Primary Colors — Burgundy + Gold */
+  --color-accent: #8b1a2b;
+  --color-accent-light: #a82640;
+  --color-warm: #c9a84c;
+  --color-dark: #09090b;
+  --color-dark-card: #111113;
+  --color-dark-surface: #18181b;
   --color-dark-border: #262626;
-  --color-light: #FAFAFA;
-  --color-light-card: #FFFFFF;
-  --color-light-surface: #F0F0F0;
-  --color-light-border: #E5E5E5;
-  --font-serif: 'Instrument Serif', Georgia, serif;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-light: #fafaf9;
+  --color-light-card: #f4f4f2;
+  --color-light-surface: #e8e8e4;
+  --color-light-border: #e5e5e5;
+  --font-display: 'DM Sans', system-ui, sans-serif;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
 }
 
 /* Dark mode */
@@ -22,12 +24,34 @@
   color-scheme: dark;
 }
 
-/* Gradient text utility */
+/* Gradient text — burgundy to gold */
 .gradient-text {
-  background: linear-gradient(135deg, #E85D04, #F48C06);
+  background: linear-gradient(135deg, #8b1a2b 30%, #c9a84c);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Matter accent text */
+.matter-text {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* Section connector — vertical fade line between sections */
+.section-connector {
+  width: 1px;
+  height: 64px;
+  background: linear-gradient(to bottom, transparent, currentColor, transparent);
+  opacity: 0.1; /* connector stays at 0.1 */
+}
+
+/* Fade rule divider — horizontal within sections */
+.fade-rule {
+  height: 1px;
+  background: linear-gradient(to right, transparent, currentColor, transparent);
+  opacity: 0.12;
 }
 
 /* Custom scrollbar */
@@ -38,11 +62,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #E85D04;
+  background: #8b1a2b;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #F48C06;
+  background: #a82640;
 }
 
 /* Wave bar animation for hero */
@@ -68,11 +92,58 @@
   animation: rota-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* Page transition flash */
-@keyframes flash-overlay {
-  0% { opacity: 0; }
-  50% { opacity: 1; }
-  100% { opacity: 0; }
+/* Slow spin for hero ornament */
+@keyframes slowSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-slow-spin,
+.slow-spin {
+  animation: slowSpin 180s linear infinite;
+}
+
+/* Gentle pulse for subtle elements */
+@keyframes gentlePulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+.animate-gentle-pulse {
+  animation: gentlePulse 5s ease-in-out infinite;
+}
+
+/* Rota slide-in for chat widget */
+@keyframes rotaSlideIn {
+  from { transform: translateY(20px) scale(0.9); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Rota pulse ring for chat button */
+@keyframes rotaPulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(139, 26, 43, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(139, 26, 43, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 26, 43, 0); }
+}
+.rota-pulse {
+  animation: rotaPulseRing 3s ease-out infinite;
+}
+
+/* Rota bubble entrance */
+@keyframes rotaBubbleIn {
+  from { transform: translateY(10px) scale(0.9); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Page transition — fade in */
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: pageFadeIn 400ms ease both;
+}
+.page-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Smooth scroll on html */
@@ -80,9 +151,9 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Selection color */
+/* Selection color — burgundy */
 ::selection {
-  background: rgba(232, 93, 4, 0.3);
+  background: rgba(139, 26, 43, 0.3);
   color: inherit;
 }
 
@@ -97,4 +168,127 @@ html {
 
 body {
   overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   Ambient Background Layer
+   ═══════════════════════════════════════════ */
+
+/* Aurora blobs — shared base */
+.ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  will-change: transform, opacity;
+}
+
+/* Blob 1: Large cranberry — top-left drift */
+.ambient-blob-1 {
+  width: 600px;
+  height: 600px;
+  top: 10%;
+  left: 5%;
+  background: radial-gradient(circle, rgba(139, 26, 43, 0.08) 0%, transparent 70%);
+  animation: ambientDrift1 25s ease-in-out infinite;
+}
+
+/* Blob 2: Smaller cranberry — bottom-right drift */
+.ambient-blob-2 {
+  width: 450px;
+  height: 450px;
+  bottom: 10%;
+  right: 5%;
+  background: radial-gradient(circle, rgba(168, 38, 64, 0.06) 0%, transparent 70%);
+  animation: ambientDrift2 30s ease-in-out infinite;
+}
+
+/* Blob 3: Gold accent — centre wander */
+.ambient-blob-3 {
+  width: 350px;
+  height: 350px;
+  top: 40%;
+  left: 50%;
+  margin-left: -175px;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.05) 0%, transparent 70%);
+  animation: ambientDrift3 20s ease-in-out infinite;
+}
+
+/* Blob 4: Wide warm ambient pulse */
+.ambient-blob-4 {
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(139, 26, 43, 0.025) 0%, transparent 60%);
+  animation: ambientBreathe 18s ease-in-out infinite;
+}
+
+@keyframes ambientDrift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(60px, 40px) scale(1.05); }
+  66%      { transform: translate(-30px, 80px) scale(0.97); }
+}
+
+@keyframes ambientDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-50px, -30px) scale(1.08); }
+  66%      { transform: translate(40px, -60px) scale(0.95); }
+}
+
+@keyframes ambientDrift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25%      { transform: translate(80px, -40px) scale(1.1); }
+  50%      { transform: translate(40px, 50px) scale(0.92); }
+  75%      { transform: translate(-60px, 20px) scale(1.05); }
+}
+
+@keyframes ambientBreathe {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* Rotaract wheel motif */
+.ambient-wheel-container {
+  opacity: 0.04;
+  color: var(--color-dark);
+}
+.dark .ambient-wheel-container {
+  color: #ffffff;
+  opacity: 0.035;
+}
+.ambient-wheel {
+  animation: slowSpin 180s linear infinite;
+}
+
+/* Film grain — inline SVG noise via CSS */
+.ambient-grain {
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* ── prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob,
+  .ambient-wheel {
+    animation: none !important;
+  }
+  .ambient-blob-1,
+  .ambient-blob-2,
+  .ambient-blob-3 {
+    transform: none !important;
+  }
+  .ambient-blob-4 {
+    opacity: 0.8;
+  }
+}
+
+/* ── Mobile: smaller blobs, skip grain to save GPU ── */
+@media (max-width: 767px) {
+  .ambient-blob-1 { width: 300px; height: 300px; }
+  .ambient-blob-2 { width: 250px; height: 250px; }
+  .ambient-blob-3 { width: 200px; height: 200px; }
+  .ambient-grain { display: none; }
 }

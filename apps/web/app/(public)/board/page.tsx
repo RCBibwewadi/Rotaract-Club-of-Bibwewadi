@@ -39,7 +39,7 @@ export default function BoardPage() {
   const year = members[0]?.riy_year || '2025-26';
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark transition-colors">
+    <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="hero" className="min-h-[60vh] flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
@@ -48,7 +48,7 @@ export default function BoardPage() {
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">
               Leadership
             </p>
-            <h1 className="font-[Instrument_Serif] text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
               Our <span className="gradient-text">Board</span>
             </h1>
             <p className="text-dark/60 dark:text-white/60 text-lg md:text-xl max-w-2xl mx-auto">
@@ -62,7 +62,7 @@ export default function BoardPage() {
       <section data-rota="board" className="py-20 px-6 md:px-12 lg:px-16">
         <div className="max-w-7xl mx-auto w-full">
           <AnimatedSection>
-            <h2 className="font-[Instrument_Serif] text-3xl md:text-5xl text-dark dark:text-white mb-8">
+            <h2 className="font-display text-3xl md:text-5xl text-dark dark:text-white mb-8">
               Board of Directors {year}
             </h2>
           </AnimatedSection>
@@ -87,7 +87,7 @@ export default function BoardPage() {
                     {member.avatar_url ? (
                       <img src={member.avatar_url} alt={member.full_name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-white/30 font-[Instrument_Serif] text-6xl">
+                      <span className="text-white/30 font-display text-6xl">
                         {member.full_name.charAt(0)}
                       </span>
                     )}

@@ -49,7 +49,7 @@ export default function FomoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark transition-colors">
+    <div className="min-h-screen transition-colors">
       {/* Lightbox */}
       {lightbox && (
         <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center" onClick={closeLightbox}>
@@ -79,7 +79,7 @@ export default function FomoPage() {
         <div className="relative z-10 text-center px-6 max-w-4xl py-20">
           <AnimatedSection>
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">Don&apos;t Miss Out</p>
-            <h1 className="font-[Instrument_Serif] text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
               <span className="gradient-text">FOMO</span>
             </h1>
             <p className="text-dark/60 dark:text-white/60 text-lg md:text-xl max-w-2xl mx-auto">

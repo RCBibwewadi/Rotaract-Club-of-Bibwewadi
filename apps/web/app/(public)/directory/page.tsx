@@ -143,10 +143,10 @@ export default function DirectoryPage() {
   // Gate: not logged in
   if (!token) {
     return (
-      <div className="min-h-screen bg-light dark:bg-dark transition-colors flex items-center justify-center px-6">
+      <div className="min-h-screen transition-colors flex items-center justify-center px-6">
         <div className="text-center max-w-md">
           <Lock size={48} className="text-dark/20 dark:text-white/20 mx-auto mb-4" />
-          <h1 className="font-[Instrument_Serif] text-4xl text-dark dark:text-white mb-3">
+          <h1 className="font-display text-4xl text-dark dark:text-white mb-3">
             Members Only
           </h1>
           <p className="text-dark/50 dark:text-white/50 mb-6">
@@ -182,7 +182,7 @@ export default function DirectoryPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark transition-colors">
+    <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="members-hero" className="relative overflow-hidden pt-28 pb-12 px-6">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent-light/5" />
@@ -190,7 +190,7 @@ export default function DirectoryPage() {
         <div className="relative z-10 max-w-7xl mx-auto">
           <AnimatedSection>
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-3">Our Network</p>
-            <h1 className="font-[Instrument_Serif] text-5xl md:text-7xl text-dark dark:text-white mb-4">
+            <h1 className="font-display text-5xl md:text-7xl text-dark dark:text-white mb-4">
               Member <span className="gradient-text italic">Directory</span>
             </h1>
             <p className="text-dark/50 dark:text-white/50 text-lg max-w-2xl mb-6">
@@ -364,7 +364,7 @@ export default function DirectoryPage() {
                         <div className="p-5">
                           <div className="flex items-start gap-3 mb-3">
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-[Instrument_Serif] text-dark dark:text-white text-xl">{b.business_name}</h3>
+                              <h3 className="font-display text-dark dark:text-white text-xl">{b.business_name}</h3>
                               <p className="text-dark/40 dark:text-white/40 text-sm">by {ownerName}</p>
                             </div>
                             {ownerAvatar ? (
