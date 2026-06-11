@@ -11,7 +11,7 @@ import {
   Eye, Handshake, Plus, Trash2,
 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 function useAuthHeaders() {
   const token = useAuthStore(s => s.token);
@@ -59,7 +59,7 @@ export default function ProfilePage() {
     if (!token) return;
     setVisLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/visibility/me`, { headers: headers.json });
+      const res = await fetch(`/api/visibility/me`, { headers: headers.json });
       if (res.ok) { const data = await res.json(); setVisibility(data.data); }
     } catch { /* silent */ }
     finally { setVisLoading(false); }
@@ -84,7 +84,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/members/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify(form) });
+      const res = await fetch(`/api/members/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify(form) });
       const data = await res.json();
       if (res.ok) { showMsg(data.message || 'Profile updated', 'success'); setEditing(false); await fetchProfile(); }
       else showMsg(data.message || 'Update failed', 'error');
@@ -98,10 +98,10 @@ export default function ProfilePage() {
     setUploading(true);
     try {
       const fd = new FormData(); fd.append('file', file);
-      const upRes = await fetch(`${API_URL}/api/upload/avatar`, { method: 'POST', headers: headers.upload, body: fd });
+      const upRes = await fetch(`/api/upload/avatar`, { method: 'POST', headers: headers.upload, body: fd });
       const upData = await upRes.json();
       if (!upRes.ok || !upData.data?.url) { showMsg('Upload failed', 'error'); return; }
-      const pRes = await fetch(`${API_URL}/api/members/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify({ avatar_url: upData.data.url }) });
+      const pRes = await fetch(`/api/members/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify({ avatar_url: upData.data.url }) });
       if (pRes.ok) { showMsg('Profile picture updated', 'success'); await fetchProfile(); }
       else showMsg('Failed to save', 'error');
     } catch { showMsg('Network error', 'error'); }
@@ -113,7 +113,7 @@ export default function ProfilePage() {
     if (!visibility) return;
     setVisSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/visibility/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify({ [key]: !visibility[key] }) });
+      const res = await fetch(`/api/visibility/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify({ [key]: !visibility[key] }) });
       if (res.ok) { const d = await res.json(); setVisibility(d.data); }
     } catch { /* silent */ }
     finally { setVisSaving(false); }
@@ -128,7 +128,7 @@ export default function ProfilePage() {
   const saveBiz = async (id?: string) => {
     setBizSaving(true);
     try {
-      const url = id ? `${API_URL}/api/businesses/${id}` : `${API_URL}/api/businesses`;
+      const url = id ? `/api/businesses/${id}` : `/api/businesses`;
       const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: headers.json, body: JSON.stringify(bizForm) });
       const data = await res.json();
       if (res.ok) { showMsg(data.message || 'Saved', 'success'); setEditingBiz(null); setAddingBiz(false); await fetchProfile(); }
@@ -139,7 +139,7 @@ export default function ProfilePage() {
 
   const deleteBiz = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/businesses/${id}`, { method: 'DELETE', headers: headers.json });
+      const res = await fetch(`/api/businesses/${id}`, { method: 'DELETE', headers: headers.json });
       if (res.ok) { showMsg('Business removed', 'success'); await fetchProfile(); }
       else showMsg('Delete failed', 'error');
     } catch { showMsg('Network error', 'error'); }
@@ -154,7 +154,7 @@ export default function ProfilePage() {
   const saveProf = async (id?: string) => {
     setProfSaving(true);
     try {
-      const url = id ? `${API_URL}/api/professions/${id}` : `${API_URL}/api/professions`;
+      const url = id ? `/api/professions/${id}` : `/api/professions`;
       const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: headers.json, body: JSON.stringify(profForm) });
       const data = await res.json();
       if (res.ok) { showMsg(data.message || 'Saved', 'success'); setEditingProf(null); setAddingProf(false); await fetchProfile(); }
@@ -165,7 +165,7 @@ export default function ProfilePage() {
 
   const deleteProf = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/professions/${id}`, { method: 'DELETE', headers: headers.json });
+      const res = await fetch(`/api/professions/${id}`, { method: 'DELETE', headers: headers.json });
       if (res.ok) { showMsg('Profession removed', 'success'); await fetchProfile(); }
       else showMsg('Delete failed', 'error');
     } catch { showMsg('Network error', 'error'); }

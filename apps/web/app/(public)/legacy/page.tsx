@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Mail, ExternalLink, Play } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 interface BodMember {
   bod_id: string;
@@ -49,7 +49,7 @@ export default function LegacyPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/legacy`);
+        const res = await fetch(`/api/legacy`);
         const data = await res.json();
         if (!cancelled) setYears(data.data || []);
       } catch { /* silent */ }

@@ -23,9 +23,12 @@
     "typescript": "^5.0.0"
   },
   "packageManager": "pnpm@10.34.2",
-  
+  "pnpm": {
+    "onlyBuiltDependencies": ["bcrypt", "esbuild", "sharp", "unrs-resolver"]
+  },
+
     "engines": {
       "node":">=22.0.0"
     }
-  
+
 }

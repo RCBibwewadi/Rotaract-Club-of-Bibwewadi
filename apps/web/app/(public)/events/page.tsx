@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Tag, Users } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 interface EventItem {
   event_id: string;
@@ -30,8 +30,8 @@ export default function EventsPage() {
     (async () => {
       try {
         const [upRes, pastRes] = await Promise.all([
-          fetch(`${API_URL}/api/events/upcoming`),
-          fetch(`${API_URL}/api/events/past`),
+          fetch(`/api/events/upcoming`),
+          fetch(`/api/events/past`),
         ]);
         const [upData, pastData] = await Promise.all([upRes.json(), pastRes.json()]);
         if (!cancelled) {

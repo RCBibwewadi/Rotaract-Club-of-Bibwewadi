@@ -20,7 +20,7 @@ const memberTypes = [
   { value: 'both', label: 'Both', desc: 'I have a business and a profession' },
 ] as const;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 interface FormData {
   // Step 1: Account
@@ -157,7 +157,7 @@ export default function JoinPage() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
+      const res = await fetch(`/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

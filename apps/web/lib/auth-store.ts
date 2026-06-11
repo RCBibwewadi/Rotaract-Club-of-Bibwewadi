@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 const AUTH_KEY = 'rcb-auth';
 
 export interface MemberProfile {
@@ -90,7 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (username: string, password: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetch(`/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -122,7 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/members/me`, {
+      const res = await fetch(`/api/members/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

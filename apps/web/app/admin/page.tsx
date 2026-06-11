@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // ── Admin Auth State (password-based, persisted in sessionStorage) ──
 const ADMIN_AUTH_KEY = 'rcb-admin-auth';
@@ -77,7 +76,7 @@ function FileUploadField({ label, value, folder, onUploaded }: {
       const formData = new FormData();
       formData.append('file', file);
       const pw = getAdminPassword();
-      const res = await fetch(`${API_URL}/api/upload?folder=${folder}`, {
+      const res = await fetch(`/api/upload?folder=${folder}`, {
         method: 'POST',
         headers: { 'x-admin-password': pw },
         body: formData,
@@ -192,7 +191,7 @@ function MembersTab() {
     setLoading(true);
     try {
       const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
-      const res = await fetch(`${API_URL}${endpoint}`, { headers: adminHeaders() });
+      const res = await fetch(`/api${endpoint}`, { headers: adminHeaders() });
       const data = await res.json();
       setMembers(data.data || []);
     } catch {
@@ -208,7 +207,7 @@ function MembersTab() {
       setLoading(true);
       try {
         const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
-        const res = await fetch(`${API_URL}${endpoint}`, { headers: adminHeaders() });
+        const res = await fetch(`/api${endpoint}`, { headers: adminHeaders() });
         const data = await res.json();
         if (!cancelled) setMembers(data.data || []);
       } catch {
@@ -228,7 +227,7 @@ function MembersTab() {
   const doAction = async (memberId: string, action: string, label: string) => {
     setActionLoading(memberId);
     try {
-      const res = await fetch(`${API_URL}/admin/members/${memberId}/${action}`, {
+      const res = await fetch(`/api/admin/members/${memberId}/${action}`, {
         method: 'PATCH',
         headers: adminHeaders(),
       });
@@ -460,7 +459,7 @@ function ContentTab() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/content`, { headers: adminHeaders() });
+        const res = await fetch(`/api/content`, { headers: adminHeaders() });
         const json = await res.json();
         if (!cancelled && json.data) setData(json.data);
       } catch { if (!cancelled) showMsg('Failed to load content', 'error'); }
@@ -477,7 +476,7 @@ function ContentTab() {
     if (!data) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/content`, {
+      const res = await fetch(`/api/content`, {
         method: 'PATCH', headers: adminHeaders(),
         body: JSON.stringify(data),
       });
@@ -619,7 +618,7 @@ function BoardTab() {
   const fetchMembers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/bod`, { headers: adminHeaders() });
+      const res = await fetch(`/api/bod`, { headers: adminHeaders() });
       const data = await res.json();
       setMembers(data.data || []);
     } catch { showMsg('Failed to fetch BOD', 'error'); }
@@ -631,7 +630,7 @@ function BoardTab() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/bod`, { headers: adminHeaders() });
+        const res = await fetch(`/api/bod`, { headers: adminHeaders() });
         const data = await res.json();
         if (!cancelled) setMembers(data.data || []);
       } catch { if (!cancelled) showMsg('Failed to fetch BOD', 'error'); }
@@ -642,7 +641,7 @@ function BoardTab() {
 
   const handleCreate = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/bod`, {
+      const res = await fetch(`/api/bod`, {
         method: 'POST', headers: adminHeaders(),
         body: JSON.stringify(newForm),
       });
@@ -654,7 +653,7 @@ function BoardTab() {
 
   const handleUpdate = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/bod/${id}`, {
+      const res = await fetch(`/api/bod/${id}`, {
         method: 'PATCH', headers: adminHeaders(),
         body: JSON.stringify(form),
       });
@@ -666,7 +665,7 @@ function BoardTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/bod/${id}`, {
+      const res = await fetch(`/api/bod/${id}`, {
         method: 'DELETE', headers: adminHeaders(),
       });
       if (res.ok) { showMsg('Deleted', 'success'); fetchMembers(); }
@@ -818,7 +817,7 @@ function LegacyTab() {
   const fetchYears = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/legacy`, { headers: adminHeaders() });
+      const res = await fetch(`/api/legacy`, { headers: adminHeaders() });
       const data = await res.json();
       setYears(data.data || []);
     } catch { showMsg('Failed to fetch legacy data', 'error'); }
@@ -830,7 +829,7 @@ function LegacyTab() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/legacy`, { headers: adminHeaders() });
+        const res = await fetch(`/api/legacy`, { headers: adminHeaders() });
         const data = await res.json();
         if (!cancelled) setYears(data.data || []);
       } catch { if (!cancelled) showMsg('Failed to fetch legacy data', 'error'); }
@@ -841,7 +840,7 @@ function LegacyTab() {
 
   const handleCreate = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/legacy`, {
+      const res = await fetch(`/api/legacy`, {
         method: 'POST', headers: adminHeaders(),
         body: JSON.stringify(form),
       });
@@ -853,7 +852,7 @@ function LegacyTab() {
 
   const handleUpdate = async (riyYear: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/legacy/${riyYear}`, {
+      const res = await fetch(`/api/legacy/${riyYear}`, {
         method: 'PATCH', headers: adminHeaders(),
         body: JSON.stringify({ year_video_url: form.year_video_url }),
       });
@@ -865,7 +864,7 @@ function LegacyTab() {
 
   const handleDelete = async (riyYear: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/legacy/${riyYear}`, {
+      const res = await fetch(`/api/legacy/${riyYear}`, {
         method: 'DELETE', headers: adminHeaders(),
       });
       if (res.ok) { showMsg('Deleted', 'success'); fetchYears(); }
@@ -980,7 +979,7 @@ function MultiFileUpload({ label, urls, folder, onUpdated }: {
       try {
         const formData = new FormData();
         formData.append('file', file);
-        const res = await fetch(`${API_URL}/api/upload?folder=${folder}`, {
+        const res = await fetch(`/api/upload?folder=${folder}`, {
           method: 'POST',
           headers: { 'x-admin-password': getAdminPassword() },
           body: formData,
@@ -1057,7 +1056,7 @@ function FomoTab() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/fomo`, { headers: adminHeaders() });
+      const res = await fetch(`/api/fomo`, { headers: adminHeaders() });
       const data = await res.json();
       setItems(data.data || []);
     } catch { showMsg('Failed to fetch FOMO', 'error'); }
@@ -1069,7 +1068,7 @@ function FomoTab() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/fomo`, { headers: adminHeaders() });
+        const res = await fetch(`/api/fomo`, { headers: adminHeaders() });
         const data = await res.json();
         if (!cancelled) setItems(data.data || []);
       } catch { if (!cancelled) showMsg('Failed to fetch FOMO', 'error'); }
@@ -1082,7 +1081,7 @@ function FomoTab() {
     try {
       const payload = { ...newForm };
       if (!payload.event_id) delete (payload as Record<string, unknown>).event_id;
-      const res = await fetch(`${API_URL}/api/fomo`, {
+      const res = await fetch(`/api/fomo`, {
         method: 'POST', headers: adminHeaders(),
         body: JSON.stringify(payload),
       });
@@ -1096,7 +1095,7 @@ function FomoTab() {
     try {
       const payload = { ...form };
       if (!payload.event_id) delete payload.event_id;
-      const res = await fetch(`${API_URL}/api/fomo/${id}`, {
+      const res = await fetch(`/api/fomo/${id}`, {
         method: 'PATCH', headers: adminHeaders(),
         body: JSON.stringify(payload),
       });
@@ -1108,7 +1107,7 @@ function FomoTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/fomo/${id}`, {
+      const res = await fetch(`/api/fomo/${id}`, {
         method: 'DELETE', headers: adminHeaders(),
       });
       if (res.ok) { showMsg('Deleted', 'success'); fetchItems(); }
@@ -1271,7 +1270,7 @@ function EventsTab() {
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/events`, { headers: adminHeaders() });
+      const res = await fetch(`/api/events`, { headers: adminHeaders() });
       const data = await res.json();
       setEvents(data.data || []);
     } catch { showMsg('Failed to fetch events', 'error'); }
@@ -1283,7 +1282,7 @@ function EventsTab() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/events`, { headers: adminHeaders() });
+        const res = await fetch(`/api/events`, { headers: adminHeaders() });
         const data = await res.json();
         if (!cancelled) setEvents(data.data || []);
       } catch { if (!cancelled) showMsg('Failed to fetch events', 'error'); }
@@ -1296,7 +1295,7 @@ function EventsTab() {
     try {
       const payload = { ...newForm };
       if (!payload.event_strength) delete payload.event_strength;
-      const res = await fetch(`${API_URL}/api/events`, {
+      const res = await fetch(`/api/events`, {
         method: 'POST', headers: adminHeaders(),
         body: JSON.stringify(payload),
       });
@@ -1308,7 +1307,7 @@ function EventsTab() {
 
   const handleUpdate = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/events/${id}`, {
+      const res = await fetch(`/api/events/${id}`, {
         method: 'PATCH', headers: adminHeaders(),
         body: JSON.stringify(form),
       });
@@ -1320,7 +1319,7 @@ function EventsTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/events/${id}`, {
+      const res = await fetch(`/api/events/${id}`, {
         method: 'DELETE', headers: adminHeaders(),
       });
       if (res.ok) { showMsg('Deleted', 'success'); fetchEvents(); }

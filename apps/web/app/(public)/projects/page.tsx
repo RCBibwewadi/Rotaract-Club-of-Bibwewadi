@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Tag, X, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 interface FomoItem {
   fomo_id: string;
@@ -27,7 +27,7 @@ export default function FomoPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/fomo`);
+        const res = await fetch(`/api/fomo`);
         const data = await res.json();
         if (!cancelled) setItems(data.data || []);
       } catch { /* silent */ }

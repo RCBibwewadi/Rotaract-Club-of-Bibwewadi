@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Mail, Camera, Briefcase } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 interface BodMember {
   bod_id: string;
@@ -27,7 +27,7 @@ export default function BoardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/bod/current`);
+        const res = await fetch(`/api/bod/current`);
         const data = await res.json();
         if (!cancelled) setMembers(data.data || []);
       } catch { /* silent */ }

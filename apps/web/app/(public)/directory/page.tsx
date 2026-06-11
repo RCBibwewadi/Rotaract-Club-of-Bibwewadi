@@ -9,7 +9,7 @@ import {
   X, Mail, Phone, MessageCircle, EyeOff, ArrowRight,
 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 type Tab = 'members' | 'business' | 'professions';
 
@@ -80,9 +80,9 @@ export default function DirectoryPage() {
     const headers = { Authorization: `Bearer ${token}` };
 
     Promise.all([
-      fetch(`${API_URL}/api/members`, { headers }).then(r => r.json()),
-      fetch(`${API_URL}/api/businesses`, { headers }).then(r => r.json()),
-      fetch(`${API_URL}/api/professions`, { headers }).then(r => r.json()),
+      fetch(`/api/members`, { headers }).then(r => r.json()),
+      fetch(`/api/businesses`, { headers }).then(r => r.json()),
+      fetch(`/api/professions`, { headers }).then(r => r.json()),
     ])
       .then(([m, b, p]) => {
         setMembers(m.data || []);

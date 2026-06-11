@@ -134,7 +134,7 @@ function saveToStorage(state: Partial<AppState>) {
   } catch {}
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 
 export const useStore = create<AppState>((set, get) => ({
   isDark: false,
@@ -182,7 +182,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchContent: async () => {
     if (get()._contentFetched) return;
     try {
-      const res = await fetch(`${API_URL}/api/content`);
+      const res = await fetch(`/api/content`);
       if (res.ok) {
         const json = await res.json();
         const d = json.data;
