@@ -5,6 +5,15 @@ export const metadata: Metadata = {
   title: 'Rotaract Club of Bibwewadi | RCB Pune',
   description:
     'Official website of the Rotaract Club of Bibwewadi, Pune. Make it Matter.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
+  openGraph: {
+    title: 'Rotaract Club of Bibwewadi | RCB Pune',
+    description: 'Official website of the Rotaract Club of Bibwewadi, Pune. Make it Matter.',
+    images: ['/logo.png'],
+  },
 };
 
 export default function RootLayout({

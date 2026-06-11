@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sun, Moon, Shield, User, LogOut } from 'lucide-react';
 import { FaInstagram, FaLinkedinIn, FaFacebookF } from 'react-icons/fa';
@@ -106,29 +107,27 @@ export default function Navbar() {
         <div className="absolute bottom-0 left-0 h-[2px] bg-accent/80 transition-none" style={{ width: `${scrollProgress * 100}%` }} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
+          <div className="flex items-center justify-between h-20 md:h-24">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group relative z-[110]">
-              <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center text-accent text-[11px] font-semibold group-hover:bg-accent/20 transition-colors">
-                RC
-              </div>
+            <Link href="/" className="flex items-center gap-1 group relative z-[110]">
+              <Image src="/logo.png" alt="RCB Logo" width={92} height={92} />
               <div className="hidden sm:block">
-                <span className={`text-sm font-medium tracking-tight leading-tight transition-colors ${menuOpen ? 'text-white/90' : isDark ? 'text-white/90' : 'text-dark/90'}`}>
+                <span className={`text-base font-medium tracking-tight leading-tight transition-colors ${menuOpen ? 'text-white/90' : isDark ? 'text-white/90' : 'text-dark/90'}`}>
                   Rotaract
                 </span>
-                <span className={`block text-[9px] tracking-[0.15em] uppercase leading-none transition-colors ${menuOpen ? 'text-white/35' : isDark ? 'text-white/35' : 'text-dark/35'}`}>
+                <span className={`block text-[10px] tracking-[0.15em] uppercase leading-none transition-colors ${menuOpen ? 'text-white/35' : isDark ? 'text-white/35' : 'text-dark/35'}`}>
                   BIBWEWADI · PUNE
                 </span>
               </div>
             </Link>
 
             {/* Desktop inline links */}
-            <div className="hidden lg:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-1.5">
               {navLinks.map(link => (
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={`px-3 py-2 text-[13px] font-medium rounded-lg transition-all duration-300 ${
+                  className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
                     pathname === link.path
                       ? 'text-accent bg-accent/10'
                       : isDark
@@ -142,13 +141,13 @@ export default function Navbar() {
             </div>
 
             {/* Right actions */}
-            <div className="flex items-center gap-2 relative z-[110]">
+            <div className="flex items-center gap-3 relative z-[110]">
               <button
                 onClick={toggleDark}
-                className={`p-2 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-white' : isDark ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-dark/70 hover:text-dark hover:bg-dark/10'}`}
+                className={`p-2.5 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-white' : isDark ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-dark/70 hover:text-dark hover:bg-dark/10'}`}
                 aria-label="Toggle theme"
               >
-                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                {isDark ? <Sun size={22} /> : <Moon size={22} />}
               </button>
 
               {isLoggedIn ? (
@@ -158,9 +157,9 @@ export default function Navbar() {
                   aria-label="Profile"
                 >
                   {member?.avatar_url ? (
-                    <img src={member.avatar_url} alt="" className="w-8 h-8 rounded-lg object-cover border border-accent/30" />
+                    <img src={member.avatar_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-accent/30" />
                   ) : (
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-sm font-bold">
                       {memberInitials}
                     </div>
                   )}
@@ -171,7 +170,7 @@ export default function Navbar() {
                   className={`p-2 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-accent' : isDark ? 'text-white/70 hover:text-accent hover:bg-white/10' : 'text-dark/70 hover:text-accent hover:bg-dark/10'}`}
                   aria-label="Login"
                 >
-                  <User size={18} />
+                  <User size={22} />
                 </Link>
               )}
 
@@ -180,7 +179,7 @@ export default function Navbar() {
                 className={`p-2 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-accent' : isDark ? 'text-white/70 hover:text-accent hover:bg-white/10' : 'text-dark/70 hover:text-accent hover:bg-dark/10'}`}
                 aria-label="Admin"
               >
-                <Shield size={18} />
+                <Shield size={22} />
               </Link>
 
               {/* Hamburger */}
@@ -189,7 +188,7 @@ export default function Navbar() {
                 className={`p-2 rounded-lg transition-all ${menuOpen ? 'text-white' : isDark ? 'text-white' : 'text-dark'}`}
                 aria-label="Menu"
               >
-                <div className="w-6 h-5 flex flex-col justify-between relative">
+                <div className="w-7 h-6 flex flex-col justify-between relative">
                   <span
                     className={`block h-0.5 rounded-full transition-all duration-500 origin-center ${menuOpen ? 'bg-white rotate-45 translate-y-[9px]' : isDark ? 'bg-white' : 'bg-dark'}`}
                   />
