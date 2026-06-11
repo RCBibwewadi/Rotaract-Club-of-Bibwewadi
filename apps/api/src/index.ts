@@ -20,7 +20,7 @@ import { uploadRoutes } from './routes/upload';
 import { contentRoutes } from './routes/content';
 
 const app  = express();
-const PORT = process.env.API_PORT || 4000;
+const PORT = process.env.PORT || process.env.API_PORT || 4000;
 
 app.use(cors({
   origin: process.env.WEB_URL || 'http://localhost:3000',
