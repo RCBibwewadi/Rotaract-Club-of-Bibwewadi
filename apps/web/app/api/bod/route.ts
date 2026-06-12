@@ -20,7 +20,8 @@ const BOD_SELECT = `
   avatar_url,
   description,
   riy_year,
-  is_current
+  is_current,
+  sort_order
 `;
 
 export async function GET() {
@@ -29,7 +30,7 @@ export async function GET() {
       .from('bod')
       .select(BOD_SELECT)
       .order('riy_year', { ascending: false })
-      .order('designation');
+      .order('sort_order', { ascending: true });
 
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);

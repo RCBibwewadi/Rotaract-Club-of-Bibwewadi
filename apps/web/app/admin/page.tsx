@@ -590,12 +590,13 @@ interface BodMember {
   description?: string;
   riy_year: string;
   is_current: boolean;
+  sort_order: number;
 }
 
 const EMPTY_BOD: Omit<BodMember, 'bod_id'> = {
   full_name: '', designation: '', linkedin_url: '', instagram_url: '',
   gmail: '', avatar_url: '', description: '', riy_year: new Date().getFullYear() + '-' + String(new Date().getFullYear() + 1).slice(2),
-  is_current: true,
+  is_current: true, sort_order: 0,
 };
 
 function BoardTab() {
@@ -675,7 +676,7 @@ function BoardTab() {
 
   const startEdit = (m: BodMember) => {
     setEditing(m.bod_id);
-    setForm({ full_name: m.full_name, designation: m.designation, linkedin_url: m.linkedin_url, instagram_url: m.instagram_url, gmail: m.gmail, avatar_url: m.avatar_url, description: m.description, riy_year: m.riy_year, is_current: m.is_current });
+    setForm({ full_name: m.full_name, designation: m.designation, linkedin_url: m.linkedin_url, instagram_url: m.instagram_url, gmail: m.gmail, avatar_url: m.avatar_url, description: m.description, riy_year: m.riy_year, is_current: m.is_current, sort_order: m.sort_order ?? 0 });
   };
 
   const renderForm = (
@@ -699,10 +700,14 @@ function BoardTab() {
         <div><label className={labelClass}>RIY Year *</label><input value={String(values.riy_year || '')} onChange={e => onChange('riy_year', e.target.value)} className={inputClass} placeholder="2025-26" /></div>
       </div>
       <div><label className={labelClass}>Description</label><textarea value={String(values.description || '')} onChange={e => onChange('description', e.target.value)} className={`${inputClass} resize-none`} rows={2} /></div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
           <input type="checkbox" checked={Boolean(values.is_current)} onChange={e => onChange('is_current', e.target.checked)} className="accent-accent" /> Current BOD
         </label>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-white/70">Sort Order</label>
+          <input type="number" value={values.sort_order !== undefined && values.sort_order !== null ? String(values.sort_order) : '0'} onChange={e => onChange('sort_order', e.target.value ? Number(e.target.value) : 0)} className="w-20 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-white outline-none focus:border-accent transition-colors text-sm" />
+        </div>
       </div>
       <div className="flex gap-2">
         <button onClick={onSave} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium">Save</button>
@@ -770,7 +775,7 @@ function BoardTab() {
                     <h4 className="font-semibold text-white">{m.full_name}</h4>
                     {m.is_current && <span className="px-2 py-0.5 text-[10px] rounded-full bg-green-500/10 text-green-400 font-medium">Current</span>}
                   </div>
-                  <p className="text-sm text-white/50">{m.designation} &middot; {m.riy_year}</p>
+                  <p className="text-sm text-white/50">{m.designation} &middot; {m.riy_year} &middot; <span className="text-white/30">#{m.sort_order ?? 0}</span></p>
                   <div className="flex gap-2 mt-1">
                     {m.instagram_url && <a href={m.instagram_url} target="_blank" rel="noreferrer" className="text-white/30 hover:text-accent"><ExternalLink size={12} /></a>}
                     {m.linkedin_url && <a href={m.linkedin_url} target="_blank" rel="noreferrer" className="text-white/30 hover:text-accent"><ExternalLink size={12} /></a>}
