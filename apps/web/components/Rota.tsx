@@ -88,7 +88,7 @@ export default function Rota() {
   // Lifecycle phases
   type Phase = 'idle' | 'intro-appear' | 'intro-typing' | 'intro-done' | 'transitioning';
   const [phase, setPhase] = useState<Phase>('idle');
-  const [hasIntroPlayed, setHasIntroPlayed] = useState(false);
+  const [hasIntroPlayed, setHasIntroPlayed] = useState(true);
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -131,14 +131,7 @@ export default function Rota() {
     200
   );
 
-  // Kick off intro on home (once only)
-  useEffect(() => {
-    if (pathname !== '/') return;
-    const t1 = setTimeout(() => setPhase('intro-appear'), 0);
-    const t2 = setTimeout(() => setPhase('intro-typing'), 600);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Intro removed — splash screen handles welcome
 
   // Step from line1 → line2
   useEffect(() => {
@@ -228,64 +221,6 @@ export default function Rota() {
 
   return (
     <>
-      {/* ═══════════ INTRO OVERLAY ═══════════ */}
-      {(isIntro || isTransitioning) && (
-        <div
-          className={`fixed inset-0 z-[9999] flex items-center justify-center transition-all duration-700 ${
-            isTransitioning ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
-        >
-          {/* Blurred backdrop */}
-          <div className="absolute inset-0 backdrop-blur-xl bg-black/60" />
-
-          {/* Subtle radial glow */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-accent/10 blur-3xl" />
-          </div>
-
-          {/* Rota content */}
-          <div
-            className={`relative z-10 flex flex-col items-center text-center px-6 transition-all duration-700 ${
-              phase === 'intro-appear' ? 'scale-75 opacity-0' : 'scale-100 opacity-100'
-            } ${isTransitioning ? 'scale-50 translate-x-[40vw] translate-y-[40vh] opacity-0' : ''}`}
-          >
-            {/* Avatar */}
-            <div className="relative mb-8">
-              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden border-4 border-accent/40 shadow-2xl shadow-accent/20 animate-[bounce_2s_ease-in-out_infinite]">
-                <RotaAvatar size={144} className="w-full h-full" />
-              </div>
-              {/* Online dot */}
-              <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-green-400 border-2 border-black/40 animate-pulse" />
-            </div>
-
-            {/* Speech */}
-            <div className="max-w-md">
-              <p className="font-display text-2xl sm:text-3xl text-white leading-snug min-h-[2.2em]">
-                {line1.displayed}
-                {!line1.done && <span className="inline-block w-0.5 h-6 bg-accent ml-1 animate-pulse" />}
-              </p>
-              {introStep === 2 && (
-                <p className="font-display text-xl sm:text-2xl text-accent mt-3 min-h-[1.6em]">
-                  {line2.displayed}
-                  {!line2.done && <span className="inline-block w-0.5 h-5 bg-accent ml-1 animate-pulse" />}
-                </p>
-              )}
-            </div>
-
-            {/* Skip button */}
-            <button
-              onClick={() => {
-                setPhase('transitioning');
-                setTimeout(() => { setPhase('idle'); setHasIntroPlayed(true); }, 400);
-              }}
-              className="mt-10 text-white/30 hover:text-white/60 text-xs tracking-wider uppercase transition-colors"
-            >
-              Skip intro →
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ═══════════ FLOATING WIDGET ═══════════ */}
       {isWidget && (
         <div

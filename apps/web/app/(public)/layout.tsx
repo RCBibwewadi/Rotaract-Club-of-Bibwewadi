@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import PageTransition from '@/components/PageTransition';
 import Rota from '@/components/Rota';
+import SplashScreen from '@/components/SplashScreen';
 import BackgroundAmbient from '@/components/BackgroundAmbient';
 import { useStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
@@ -27,6 +28,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <Footer />
       </PageTransition>
       <Rota />
+      <SplashScreen />
     </>
   );
 }
