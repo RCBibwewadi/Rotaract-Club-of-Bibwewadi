@@ -52,21 +52,6 @@ export async function PATCH(
       throw err;
     }
 
-    if (body.is_current) {
-      const { data: existing } = await supabase
-        .from('bod')
-        .select('riy_year')
-        .eq('bod_id', id)
-        .single();
-
-      if (existing) {
-        await supabase
-          .from('bod')
-          .update({ is_current: false })
-          .eq('riy_year', existing.riy_year);
-      }
-    }
-
     const { data, error } = await supabase
       .from('bod')
       .update(body)

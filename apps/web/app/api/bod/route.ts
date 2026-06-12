@@ -56,13 +56,6 @@ export async function POST(request: NextRequest) {
       throw err;
     }
 
-    if (body.is_current) {
-      await supabase
-        .from('bod')
-        .update({ is_current: false })
-        .eq('riy_year', body.riy_year);
-    }
-
     const { data, error } = await supabase
       .from('bod')
       .insert(body)
