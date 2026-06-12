@@ -85,6 +85,10 @@ export interface BodMember {
   description?: string;            // text
   riy_year?: string;               // Rotary year e.g. "2024-25"
   is_current: boolean;
+  was_previous_bod: boolean;
+  previous_designation?: string;
+  previous_description?: string;
+  previous_riy_year?: string;            // e.g. "2023-24"
 }
 
 // ── EVENTS ───────────────────────────────────────────────────

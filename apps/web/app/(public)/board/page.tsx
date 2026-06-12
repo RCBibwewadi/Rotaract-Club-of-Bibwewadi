@@ -18,6 +18,10 @@ interface BodMember {
   description?: string;
   riy_year: string;
   is_current: boolean;
+  was_previous_bod?: boolean;
+  previous_designation?: string;
+  previous_description?: string;
+  previous_riy_year?: string;
 }
 
 export default function BoardPage() {
@@ -98,6 +102,14 @@ export default function BoardPage() {
                     <h3 className="text-dark dark:text-white text-xl font-semibold mb-2">{member.full_name}</h3>
                     {member.description && (
                       <p className="text-dark/50 dark:text-white/50 text-sm leading-relaxed mb-3">{member.description}</p>
+                    )}
+                    {member.was_previous_bod && member.previous_designation && (
+                      <div className="mb-3 px-3 py-2 rounded-lg bg-accent/5 border border-accent/10">
+                        <p className="text-accent text-xs font-medium">Previously: {member.previous_designation}{member.previous_riy_year ? ` (${member.previous_riy_year})` : ''}</p>
+                        {member.previous_description && (
+                          <p className="text-dark/40 dark:text-white/40 text-xs mt-1">{member.previous_description}</p>
+                        )}
+                      </div>
                     )}
                     <div className="flex items-center gap-3">
                       {member.instagram_url && (

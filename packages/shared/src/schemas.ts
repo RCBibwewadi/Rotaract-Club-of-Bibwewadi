@@ -107,6 +107,10 @@ export const CreateBodSchema = z.object({
                    .regex(/^\d{4}-\d{2}$/, 'Format must be YYYY-YY e.g. 2024-25'),
   is_current:    z.boolean().default(false),
   sort_order:    z.number().int().default(0),
+  was_previous_bod: z.boolean().default(false),
+  previous_designation: z.string().optional().or(z.literal('')),
+  previous_description: z.string().optional().or(z.literal('')),
+  previous_riy_year: z.string().regex(/^\d{4}-\d{2}$/, 'Format must be YYYY-YY').optional().or(z.literal('')),
 });
 
 export const UpdateBodSchema = CreateBodSchema.partial();
