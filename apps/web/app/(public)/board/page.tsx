@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Camera, Briefcase } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
+import { FaInstagram, FaLinkedinIn } from 'react-icons/fa';
+import { HiOutlineMail } from 'react-icons/hi';
 
 
 
@@ -83,9 +84,9 @@ export default function BoardPage() {
             {members.map((member, i) => (
               <AnimatedSection key={member.bod_id} delay={i * 80}>
                 <div className="group rounded-2xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:border-accent/30 transition-all duration-300">
-                  <div className="h-48 bg-gradient-to-br from-accent to-accent-light relative flex items-center justify-center">
+                  <div className="h-72 bg-gradient-to-br from-accent to-accent-light relative flex items-center justify-center">
                     {member.avatar_url ? (
-                      <img src={member.avatar_url} alt={member.full_name} className="w-full h-full object-cover" />
+                      <img src={member.avatar_url} alt={member.full_name} className="w-full h-full object-cover object-top" />
                     ) : (
                       <span className="text-white/30 font-display text-6xl">
                         {member.full_name.charAt(0)}
@@ -102,19 +103,19 @@ export default function BoardPage() {
                       {member.instagram_url && (
                         <a href={member.instagram_url} target="_blank" rel="noreferrer"
                           className="text-dark/30 dark:text-white/30 hover:text-accent transition-colors" title="Instagram">
-                          <Camera size={16} />
+                          <FaInstagram size={16} />
                         </a>
                       )}
                       {member.linkedin_url && (
                         <a href={member.linkedin_url} target="_blank" rel="noreferrer"
                           className="text-dark/30 dark:text-white/30 hover:text-accent transition-colors" title="LinkedIn">
-                          <Briefcase size={16} />
+                          <FaLinkedinIn size={16} />
                         </a>
                       )}
                       {member.gmail && (
                         <a href={`mailto:${member.gmail}`}
                           className="text-dark/30 dark:text-white/30 hover:text-accent transition-colors" title="Email">
-                          <Mail size={16} />
+                          <HiOutlineMail size={16} />
                         </a>
                       )}
                     </div>
