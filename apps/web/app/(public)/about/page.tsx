@@ -44,7 +44,7 @@ export default function AboutPage() {
             <div>
               <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-3">Who We Are</p>
               <h2 className="font-display text-3xl md:text-5xl text-dark dark:text-white mb-6">
-                Building Leaders,<br />Serving Communities
+                Rotary International
               </h2>
               <p className="text-dark/60 dark:text-white/60 leading-relaxed text-lg">
                 {content.aboutText}
@@ -53,7 +53,7 @@ export default function AboutPage() {
           </AnimatedSection>
           <AnimatedSection>
             <div className="relative">
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-accent to-accent-light/60 p-1 overflow-hidden">
+              <div className="aspect-square rounded-3xl bg-white p-1 overflow-hidden">
                 {content.aboutImage ? (
                   <img src={content.aboutImage} alt="About RCB" className="w-full h-full rounded-3xl object-cover" />
                 ) : (
@@ -63,7 +63,7 @@ export default function AboutPage() {
                   
                 )}
                 <div className="absolute -bottom-6 -right-6 w-32 h-32 rounded-2xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white">
-                  <div className="text-center"><span className="text-3xl font-bold">10+</span><span className="block text-xs mt-1">Years of<br />Service</span></div>
+                  <div className="text-center"><span className="text-3xl font-bold">100+</span><span className="block text-xs mt-1">Years of<br />Service</span></div>
                 </div>
               </div>
             </div>
