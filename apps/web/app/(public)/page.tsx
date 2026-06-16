@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown, Handshake, HeartHandshake, Globe, Brain, Heart } from 'lucide-react';
+
+const pillarIconMap: Record<string, React.ElementType> = {
+  Handshake, HeartHandshake, Globe, Brain,
+};
 import { useStore } from '@/lib/store';
 import { useScrollY } from '@/hooks/useScrollY';
 import AnimatedSection from '@/components/AnimatedSection';
@@ -142,7 +146,7 @@ export default function HomePage() {
             {(content.pillars || []).map((pillar, i) => (
               <AnimatedSection key={i} delay={i * 80}>
                 <div className={`p-8 md:p-10 group transition-colors duration-500 ${isDark ? 'bg-dark-surface hover:bg-[#1f1f24]' : 'bg-light-card hover:bg-[#eeeee8]'}`}>
-                  <span className="text-2xl block mb-4">{pillar.icon}</span>
+                  {(() => { const PIcon = pillarIconMap[pillar.icon] || Heart; return <PIcon size={28} className="text-accent block mb-4" />; })()}
                   <h3 className="text-lg font-semibold mb-2 tracking-tight">{pillar.title}</h3>
                   <p className={`text-sm leading-relaxed ${muted}`}>{pillar.description}</p>
                 </div>

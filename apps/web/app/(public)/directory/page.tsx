@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import AnimatedSection from '@/components/AnimatedSection';
 import { useAuthStore } from '@/lib/auth-store';
 import {
   Lock, Users, Briefcase, GraduationCap, Search, MapPin, Globe,
-  X, Mail, Phone, MessageCircle, EyeOff, ArrowRight,
+  X, Mail, Phone, MessageCircle, EyeOff, ArrowRight, Handshake,
 } from 'lucide-react';
 
 
@@ -16,12 +16,20 @@ type Tab = 'members' | 'business' | 'professions';
 interface DirectoryMember {
   member_id: string;
   full_name: string;
+  email?: string;
+  phone?: string;
   avatar_url?: string;
   member_type: string;
   years_in_rcb?: number;
   businesses?: DirectoryBusiness[];
   professions?: DirectoryProfession[];
-  member_visibility?: DirectoryVisibility[];
+  member_visibility?: DirectoryVisibility | DirectoryVisibility[];
+}
+
+/** Supabase returns object for 1-to-1, array for 1-to-many — normalize */
+function getVis(v?: DirectoryVisibility | DirectoryVisibility[]): DirectoryVisibility | undefined {
+  if (!v) return undefined;
+  return Array.isArray(v) ? v[0] : v;
 }
 
 interface DirectoryBusiness {
@@ -32,7 +40,7 @@ interface DirectoryBusiness {
   description?: string;
   website_url?: string;
   business_city?: string;
-  members?: { member_id: string; full_name: string; avatar_url?: string };
+  members?: { member_id: string; full_name: string; email?: string; phone?: string; avatar_url?: string; member_visibility?: DirectoryVisibility | DirectoryVisibility[] };
 }
 
 interface DirectoryProfession {
@@ -42,7 +50,7 @@ interface DirectoryProfession {
   years_experience?: string;
   employer?: string;
   is_primary: boolean;
-  members?: { member_id: string; full_name: string; avatar_url?: string };
+  members?: { member_id: string; full_name: string; email?: string; phone?: string; avatar_url?: string; member_visibility?: DirectoryVisibility | DirectoryVisibility[] };
 }
 
 interface DirectoryVisibility {
@@ -72,6 +80,20 @@ export default function DirectoryPage() {
   const [professions, setProfessions] = useState<DirectoryProfession[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectModal, setConnectModal] = useState<ConnectTarget | null>(null);
+  const [expandedDesc, setExpandedDesc] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(6);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  
+  // Infinite scroll — load 6 more when sentinel enters viewport
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setVisibleCount(prev => prev + 6);
+    }, { threshold: 0.1 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [tab, search, activeChip, loading]);
 
   useEffect(() => {
     if (!token) return;
@@ -93,8 +115,7 @@ export default function DirectoryPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Reset chip on tab change
-  useEffect(() => { setActiveChip('All'); setSearch(''); }, [tab]);
+  const changeTab = (t: Tab) => { setTab(t); setActiveChip('All'); setSearch(''); setVisibleCount(6); };
 
   // Filter chips
   const businessChips = useMemo(() => {
@@ -194,7 +215,7 @@ export default function DirectoryPage() {
               Member <span className="gradient-text italic">Directory</span>
             </h1>
             <p className="text-dark/50 dark:text-white/50 text-lg max-w-2xl mb-6">
-              Connect with fellow Rotaractors — explore businesses, professions, and grow together.
+              with fellow Rotaractors — explore businesses, professions, and grow together.
             </p>
             <div className="flex items-center gap-3">
               {member?.avatar_url ? (
@@ -218,7 +239,7 @@ export default function DirectoryPage() {
           {/* Tab Bar */}
           <div className="flex gap-1 p-1.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 mb-6 overflow-x-auto">
             {tabs.map(t => (
-              <button key={t.key} onClick={() => setTab(t.key)}
+              <button key={t.key} onClick={() => changeTab(t.key)}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all flex-1 justify-center whitespace-nowrap ${
                   tab === t.key
                     ? 'bg-accent text-white shadow-md'
@@ -241,7 +262,7 @@ export default function DirectoryPage() {
             <input
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setVisibleCount(6); }}
               placeholder="Search members, businesses, professions..."
               className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors"
             />
@@ -251,7 +272,7 @@ export default function DirectoryPage() {
           {tab === 'business' && businessChips.length > 1 && (
             <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
               {businessChips.map(chip => (
-                <button key={chip} onClick={() => setActiveChip(chip)}
+                <button key={chip} onClick={() => { setActiveChip(chip); setVisibleCount(6); }}
                   className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all ${
                     activeChip === chip
                       ? 'bg-accent text-white'
@@ -265,7 +286,7 @@ export default function DirectoryPage() {
           {tab === 'professions' && professionChips.length > 1 && (
             <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
               {professionChips.map(chip => (
-                <button key={chip} onClick={() => setActiveChip(chip)}
+                <button key={chip} onClick={() => { setActiveChip(chip); setVisibleCount(6); }}
                   className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all ${
                     activeChip === chip
                       ? 'bg-accent text-white'
@@ -288,9 +309,9 @@ export default function DirectoryPage() {
           {!loading && tab === 'members' && (
             filteredMembers.length === 0 ? <EmptyState /> : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredMembers.map((m, i) => {
+                {filteredMembers.slice(0, visibleCount).map((m, i) => {
                   const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                  const vis = m.member_visibility?.[0];
+                  const vis = getVis(m.member_visibility);
                   const primaryProf = m.professions?.find(p => p.is_primary) || m.professions?.[0];
                   const primaryBiz = m.businesses?.[0];
 
@@ -320,14 +341,24 @@ export default function DirectoryPage() {
                         {vis?.show_business_name && primaryBiz && (
                           <p className="text-dark/40 dark:text-white/40 text-xs mb-2">{primaryBiz.business_name}</p>
                         )}
+                        {vis?.open_to_collab && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-accent/10 text-accent font-medium mb-2">
+                            <Handshake size={12} /> Open to Collab
+                          </span>
+                        )}
                         <div className="mt-auto pt-3">
-                          <button onClick={() => setConnectModal({
-                            full_name: m.full_name,
-                            avatar_url: m.avatar_url,
-                            profession_type: primaryProf?.profession_type,
-                            employer: primaryProf?.employer,
-                            show_contact: vis?.show_contact,
-                          })}
+                          <button onClick={() => {
+                            const canShowContact = vis?.show_contact || vis?.open_to_collab;
+                            setConnectModal({
+                              full_name: m.full_name,
+                              avatar_url: m.avatar_url,
+                              profession_type: primaryProf?.profession_type,
+                              employer: primaryProf?.employer,
+                              show_contact: canShowContact,
+                              email: canShowContact ? m.email : undefined,
+                              phone: canShowContact ? m.phone : undefined,
+                            });
+                          }}
                             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/10 text-accent font-medium text-sm hover:bg-accent/20 transition-colors">
                             Connect <ArrowRight size={14} />
                           </button>
@@ -343,17 +374,19 @@ export default function DirectoryPage() {
           {/* Business Tab */}
           {!loading && tab === 'business' && (
             filteredBusinesses.length === 0 ? <EmptyState /> : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {filteredBusinesses.map((b, i) => {
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                {filteredBusinesses.slice(0, visibleCount).map((b, i) => {
                   const ownerName = b.members?.full_name || 'Unknown';
                   const ownerAvatar = b.members?.avatar_url;
                   const ownerInitials = ownerName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  const isExpanded = expandedDesc === b.business_id;
+                  const isLongDesc = (b.description || '').length > 100;
 
                   return (
                     <AnimatedSection key={b.business_id} delay={i * 80} from={i % 2 === 0 ? 'left' : 'right'}>
-                      <div className="rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5 overflow-hidden hover:shadow-lg hover:shadow-accent/5 transition-all duration-300">
+                      <div className="rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5 overflow-hidden hover:shadow-lg hover:shadow-accent/5 transition-all duration-300 flex flex-col">
                         {/* Gradient header */}
-                        <div className="h-24 bg-gradient-to-r from-accent to-accent-light relative">
+                        <div className="h-24 bg-gradient-to-r from-accent to-accent-light relative flex-shrink-0">
                           <div className="absolute inset-0 bg-black/20" />
                           {b.industry && (
                             <span className="absolute bottom-3 left-4 px-3 py-1 text-xs bg-black/30 backdrop-blur-sm text-white rounded-full">
@@ -361,7 +394,7 @@ export default function DirectoryPage() {
                             </span>
                           )}
                         </div>
-                        <div className="p-5">
+                        <div className="p-5 flex flex-col flex-1">
                           <div className="flex items-start gap-3 mb-3">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-display text-dark dark:text-white text-xl">{b.business_name}</h3>
@@ -376,7 +409,17 @@ export default function DirectoryPage() {
                             )}
                           </div>
                           {b.description && (
-                            <p className="text-dark/50 dark:text-white/50 text-sm line-clamp-2 mb-3">{b.description}</p>
+                            <div className="mb-3">
+                              <p className={`text-dark/50 dark:text-white/50 text-sm ${!isExpanded && isLongDesc ? 'line-clamp-2' : ''}`}>
+                                {b.description}
+                              </p>
+                              {isLongDesc && (
+                                <button onClick={() => setExpandedDesc(isExpanded ? null : b.business_id)}
+                                  className="text-accent text-xs font-medium mt-1 hover:underline">
+                                  {isExpanded ? 'Show less' : 'Read more'}
+                                </button>
+                              )}
+                            </div>
                           )}
                           <div className="flex flex-wrap gap-2 mb-4">
                             {b.business_city && (
@@ -391,15 +434,24 @@ export default function DirectoryPage() {
                               </a>
                             )}
                           </div>
-                          <button onClick={() => setConnectModal({
-                            full_name: ownerName,
-                            avatar_url: ownerAvatar,
-                            profession_type: b.designation,
-                            employer: b.business_name,
-                          })}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-light transition-colors">
-                            Connect <ArrowRight size={14} />
-                          </button>
+                          <div className="mt-auto">
+                            <button onClick={() => {
+                              const vis = getVis(b.members?.member_visibility);
+                              const canShow = vis?.show_contact || vis?.open_to_collab;
+                              setConnectModal({
+                                full_name: ownerName,
+                                avatar_url: ownerAvatar,
+                                profession_type: b.designation,
+                                employer: b.business_name,
+                                show_contact: canShow,
+                                email: canShow ? b.members?.email : undefined,
+                                phone: canShow ? b.members?.phone : undefined,
+                              });
+                            }}
+                              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-light transition-colors">
+                              Connect <ArrowRight size={14} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </AnimatedSection>
@@ -413,7 +465,7 @@ export default function DirectoryPage() {
           {!loading && tab === 'professions' && (
             filteredProfessions.length === 0 ? <EmptyState /> : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProfessions.map((p, i) => {
+                {filteredProfessions.slice(0, visibleCount).map((p, i) => {
                   const ownerName = p.members?.full_name || 'Unknown';
                   const ownerAvatar = p.members?.avatar_url;
                   const ownerInitials = ownerName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -456,12 +508,19 @@ export default function DirectoryPage() {
                           </div>
                         )}
                         <div className="mt-auto pt-3">
-                          <button onClick={() => setConnectModal({
-                            full_name: ownerName,
-                            avatar_url: ownerAvatar,
-                            profession_type: p.profession_type,
-                            employer: p.employer,
-                          })}
+                          <button onClick={() => {
+                            const vis = getVis(p.members?.member_visibility);
+                            const canShow = vis?.show_contact || vis?.open_to_collab;
+                            setConnectModal({
+                              full_name: ownerName,
+                              avatar_url: ownerAvatar,
+                              profession_type: p.profession_type,
+                              employer: p.employer,
+                              show_contact: canShow,
+                              email: canShow ? p.members?.email : undefined,
+                              phone: canShow ? p.members?.phone : undefined,
+                            });
+                          }}
                             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/10 text-accent font-medium text-sm hover:bg-accent/20 transition-colors">
                             Connect <ArrowRight size={14} />
                           </button>
@@ -472,6 +531,16 @@ export default function DirectoryPage() {
                 })}
               </div>
             )
+          )}
+          {/* Load more sentinel */}
+          {!loading && (
+            (tab === 'members' && visibleCount < filteredMembers.length) ||
+            (tab === 'business' && visibleCount < filteredBusinesses.length) ||
+            (tab === 'professions' && visibleCount < filteredProfessions.length)
+          ) && (
+            <div ref={loadMoreRef} className="flex justify-center py-8">
+              <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+            </div>
           )}
         </div>
       </section>

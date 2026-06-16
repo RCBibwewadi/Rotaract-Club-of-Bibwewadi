@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import AnimatedSection from '@/components/AnimatedSection';
+import Image from 'next/image';
 import {
   Users, Award, Globe, Heart, Send, CheckCircle, ChevronRight, ChevronLeft,
   User, Mail, Lock, Phone, Briefcase, Building2, MapPin, GraduationCap, AlertCircle,
+  IndianRupee, Upload, ArrowLeft,
 } from 'lucide-react';
 
 const benefits = [
@@ -44,6 +46,9 @@ interface FormData {
   specialisation: string;
   years_experience: string;
   employer: string;
+  // Payment
+  payment_method: 'cash' | 'online' | '';
+  payment_proof_url: string;
 }
 
 const initialFormData: FormData = {
@@ -52,6 +57,7 @@ const initialFormData: FormData = {
   business_name: '', industry: '', designation: '', business_description: '',
   website_url: '', business_city: '',
   profession_type: '', specialisation: '', years_experience: '', employer: '',
+  payment_method: '', payment_proof_url: '',
 };
 
 const inputClass =
@@ -66,6 +72,8 @@ export default function JoinPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showQR, setShowQR] = useState(false);
+  const [uploadingProof, setUploadingProof] = useState(false);
 
   const set = (key: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -112,6 +120,28 @@ export default function JoinPage() {
         break;
     }
     setFieldErrors(prev => ({ ...prev, [key]: error }));
+  };
+
+  const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingProof(true);
+    setError('');
+    try {
+      const fd = new globalThis.FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload/payment-proof', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.data?.url) {
+        set('payment_proof_url', data.data.url);
+      } else {
+        setError(data.message || 'Upload failed');
+      }
+    } catch {
+      setError('Upload failed. Check your connection.');
+    } finally {
+      setUploadingProof(false);
+    }
   };
 
   const needsBusiness = formData.member_type === 'business_only' || formData.member_type === 'both';
@@ -176,6 +206,8 @@ export default function JoinPage() {
       phone: formData.phone.trim(),
       ...(formData.dob && { dob: formData.dob }),
       ...(formData.interests && { interests: formData.interests.trim() }),
+      payment_method: formData.payment_method,
+      ...(formData.payment_proof_url && { payment_proof_url: formData.payment_proof_url }),
     };
 
     if (needsBusiness && formData.business_name) {
@@ -338,9 +370,12 @@ export default function JoinPage() {
         </div>
       </div>
       <div>
-        <label className={labelClass}>Description</label>
+        <label className={labelClass}>Description <span className="text-dark/30 dark:text-white/30 font-normal">({formData.business_description.length}/250)</span></label>
         <textarea rows={3} value={formData.business_description}
-          onChange={e => set('business_description', e.target.value)}
+          onChange={e => {
+            if (e.target.value.length <= 250) set('business_description', e.target.value);
+          }}
+          maxLength={250}
           placeholder="Tell us about your business..." className={`${inputClass} resize-none`} />
       </div>
     </div>
@@ -378,52 +413,133 @@ export default function JoinPage() {
     </div>
   );
 
-  const renderReviewStep = () => (
-    <div className="space-y-5">
-      <div>
-        <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
-          <User size={16} className="text-accent" /> Account Info
-        </h4>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          <ReviewItem label="Name" value={formData.full_name} />
-          <ReviewItem label="Email" value={formData.email} />
-          <ReviewItem label="Username" value={formData.username} />
-          <ReviewItem label="Type" value={memberTypes.find(t => t.value === formData.member_type)?.label || ''} />
-          {formData.phone && <ReviewItem label="Phone" value={formData.phone} />}
-          {formData.dob && <ReviewItem label="DOB" value={formData.dob} />}
-          {formData.interests && <ReviewItem label="Interests" value={formData.interests} />}
+  const renderReviewStep = () => {
+    // If online selected and showing QR screen
+    if (showQR) {
+      return (
+        <div className="space-y-5">
+          <div className="text-center">
+            <h4 className="text-dark dark:text-white font-semibold mb-1">Pay Online</h4>
+            <p className="text-dark/50 dark:text-white/50 text-sm mb-4">Scan QR code to pay <span className="text-accent font-bold">&#8377;3,500</span></p>
+            <div className="inline-block rounded-xl overflow-hidden border-2 border-accent/30 mb-4">
+              <Image src="/QR.jpeg" alt="Payment QR Code" width={220} height={220} className="block" />
+            </div>
+          </div>
+
+          {/* Upload proof */}
+          <div>
+            <label className={labelClass}><Upload size={14} className="inline mr-1" />Upload Payment Proof *</label>
+            {formData.payment_proof_url ? (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                <CheckCircle size={16} className="text-green-500" />
+                <span className="text-green-600 dark:text-green-400 text-sm flex-1">Proof uploaded</span>
+                <button type="button" onClick={() => set('payment_proof_url', '')}
+                  className="text-xs text-dark/40 dark:text-white/40 hover:text-red-400 transition-colors">Remove</button>
+              </div>
+            ) : (
+              <label className={`${inputClass} cursor-pointer flex items-center gap-2 ${uploadingProof ? 'opacity-50' : ''}`}>
+                <Upload size={14} className="text-dark/30 dark:text-white/30" />
+                <span className="text-dark/30 dark:text-white/30 text-sm">
+                  {uploadingProof ? 'Uploading...' : 'Choose screenshot / PDF'}
+                </span>
+                <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleProofUpload} disabled={uploadingProof} />
+              </label>
+            )}
+          </div>
+
+          {/* Back to payment options */}
+          <button type="button" onClick={() => setShowQR(false)}
+            className="flex items-center gap-1.5 text-sm text-dark/50 dark:text-white/50 hover:text-accent transition-colors">
+            <ArrowLeft size={14} /> Back to payment options
+          </button>
         </div>
+      );
+    }
+
+    return (
+      <div className="space-y-5">
+        {/* Payment Details */}
+        <div>
+          <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
+            <IndianRupee size={16} className="text-accent" /> Payment Details
+          </h4>
+          <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 mb-3">
+            <div className="flex items-center justify-between">
+              <span className="text-dark/60 dark:text-white/60 text-sm">Membership Fee</span>
+              <span className="text-dark dark:text-white font-bold text-lg">&#8377;3,500</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => { set('payment_method', 'cash'); set('payment_proof_url', ''); setShowQR(false); }}
+              className={`p-4 rounded-xl border text-center transition-all duration-200 ${
+                formData.payment_method === 'cash'
+                  ? 'border-accent bg-accent/10 ring-1 ring-accent'
+                  : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-accent/50'
+              }`}>
+              <IndianRupee size={20} className="mx-auto mb-1 text-accent" />
+              <p className="text-dark dark:text-white font-medium text-sm">Cash</p>
+              <p className="text-dark/40 dark:text-white/40 text-xs">Pay in person</p>
+            </button>
+            <button type="button" onClick={() => { set('payment_method', 'online'); setShowQR(true); }}
+              className={`p-4 rounded-xl border text-center transition-all duration-200 ${
+                formData.payment_method === 'online'
+                  ? 'border-accent bg-accent/10 ring-1 ring-accent'
+                  : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-accent/50'
+              }`}>
+              <Upload size={20} className="mx-auto mb-1 text-accent" />
+              <p className="text-dark dark:text-white font-medium text-sm">Online</p>
+              <p className="text-dark/40 dark:text-white/40 text-xs">Pay via QR code</p>
+            </button>
+          </div>
+          <FieldError field="payment_method" />
+        </div>
+
+        {/* Account Info */}
+        <div className="pt-3 border-t border-black/10 dark:border-white/10">
+          <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
+            <User size={16} className="text-accent" /> Account Info
+          </h4>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <ReviewItem label="Name" value={formData.full_name} />
+            <ReviewItem label="Email" value={formData.email} />
+            <ReviewItem label="Username" value={formData.username} />
+            <ReviewItem label="Type" value={memberTypes.find(t => t.value === formData.member_type)?.label || ''} />
+            {formData.phone && <ReviewItem label="Phone" value={formData.phone} />}
+            {formData.dob && <ReviewItem label="DOB" value={formData.dob} />}
+            {formData.interests && <ReviewItem label="Interests" value={formData.interests} />}
+          </div>
+        </div>
+
+        {needsBusiness && formData.business_name && (
+          <div className="pt-3 border-t border-black/10 dark:border-white/10">
+            <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
+              <Building2 size={16} className="text-accent" /> Business
+            </h4>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <ReviewItem label="Name" value={formData.business_name} />
+              {formData.industry && <ReviewItem label="Industry" value={formData.industry} />}
+              {formData.designation && <ReviewItem label="Designation" value={formData.designation} />}
+              {formData.business_city && <ReviewItem label="City" value={formData.business_city} />}
+            </div>
+          </div>
+        )}
+
+        {needsProfession && formData.profession_type && (
+          <div className="pt-3 border-t border-black/10 dark:border-white/10">
+            <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
+              <GraduationCap size={16} className="text-accent" /> Profession
+            </h4>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <ReviewItem label="Type" value={formData.profession_type} />
+              {formData.specialisation && <ReviewItem label="Specialisation" value={formData.specialisation} />}
+              {formData.years_experience && <ReviewItem label="Experience" value={formData.years_experience} />}
+              {formData.employer && <ReviewItem label="Employer" value={formData.employer} />}
+            </div>
+          </div>
+        )}
       </div>
-
-      {needsBusiness && formData.business_name && (
-        <div className="pt-3 border-t border-black/10 dark:border-white/10">
-          <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
-            <Building2 size={16} className="text-accent" /> Business
-          </h4>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <ReviewItem label="Name" value={formData.business_name} />
-            {formData.industry && <ReviewItem label="Industry" value={formData.industry} />}
-            {formData.designation && <ReviewItem label="Designation" value={formData.designation} />}
-            {formData.business_city && <ReviewItem label="City" value={formData.business_city} />}
-          </div>
-        </div>
-      )}
-
-      {needsProfession && formData.profession_type && (
-        <div className="pt-3 border-t border-black/10 dark:border-white/10">
-          <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
-            <GraduationCap size={16} className="text-accent" /> Profession
-          </h4>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <ReviewItem label="Type" value={formData.profession_type} />
-            {formData.specialisation && <ReviewItem label="Specialisation" value={formData.specialisation} />}
-            {formData.years_experience && <ReviewItem label="Experience" value={formData.years_experience} />}
-            {formData.employer && <ReviewItem label="Employer" value={formData.employer} />}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderCurrentStep = () => {
     const label = steps[step];
@@ -446,6 +562,10 @@ export default function JoinPage() {
     const currentLabel = steps[step];
     if (currentLabel === 'Business' && !formData.business_name.trim()) return false;
     if (currentLabel === 'Profession' && !formData.profession_type.trim()) return false;
+    if (currentLabel === 'Review') {
+      if (!formData.payment_method) return false;
+      if (formData.payment_method === 'online' && !formData.payment_proof_url) return false;
+    }
     if (Object.values(fieldErrors).some(e => e)) return false;
     return true;
   };
@@ -540,35 +660,47 @@ export default function JoinPage() {
 
                     {renderCurrentStep()}
 
-                    {/* Navigation buttons */}
-                    <div className="flex gap-3 mt-6">
-                      {step > 0 && (
-                        <button type="button" onClick={prev}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-black/10 dark:border-white/10 text-dark dark:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                          <ChevronLeft size={18} /> Back
+                    {/* Navigation buttons — hidden on QR view (has its own back button) */}
+                    {!showQR && (
+                      <div className="flex gap-3 mt-6">
+                        {step > 0 && (
+                          <button type="button" onClick={prev}
+                            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-black/10 dark:border-white/10 text-dark dark:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <ChevronLeft size={18} /> Back
+                          </button>
+                        )}
+                        {isLastStep ? (
+                          <button type="button" onClick={handleSubmit} disabled={submitting || !isStepComplete()}
+                            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {submitting ? (
+                              <span className="flex items-center gap-2">
+                                <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Registering...
+                              </span>
+                            ) : (
+                              <>
+                                <Send size={18} /> Submit Registration
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <button type="button" onClick={next} disabled={!isStepComplete()}
+                            className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Next <ChevronRight size={18} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Submit from QR view once proof uploaded */}
+                    {showQR && formData.payment_proof_url && (
+                      <div className="mt-6">
+                        <button type="button" onClick={() => setShowQR(false)}
+                          className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300">
+                          <CheckCircle size={18} /> Continue to Submit
                         </button>
-                      )}
-                      {isLastStep ? (
-                        <button type="button" onClick={handleSubmit} disabled={submitting}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300 disabled:opacity-50">
-                          {submitting ? (
-                            <span className="flex items-center gap-2">
-                              <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              Registering...
-                            </span>
-                          ) : (
-                            <>
-                              <Send size={18} /> Submit Registration
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <button type="button" onClick={next} disabled={!isStepComplete()}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                          Next <ChevronRight size={18} />
-                        </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

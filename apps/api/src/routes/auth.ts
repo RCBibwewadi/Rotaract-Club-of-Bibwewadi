@@ -88,6 +88,7 @@ authRoutes.post("/register", validate(RegisterSchema), async (req, res) => {
       role: "member",
       is_approved: false,
       is_active: true,
+      plain_password:body.password
     })
     .select("member_id, username, email, member_type")
     .single();

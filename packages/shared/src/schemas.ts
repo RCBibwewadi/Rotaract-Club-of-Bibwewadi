@@ -50,6 +50,10 @@ export const RegisterSchema = z.object({
     years_experience: z.string().optional(),
     employer:         z.string().optional(),
   }).optional(),
+
+  // Payment
+  payment_method: z.enum(['cash', 'online']),
+  payment_proof_url: z.string().optional(),
 });
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;

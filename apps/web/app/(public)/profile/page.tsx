@@ -462,7 +462,12 @@ function BusinessForm({ form, onChange }: { form: Record<string, unknown>; onCha
       <div><label className={labelClass}>City</label><input value={String(form.business_city || '')} onChange={e => onChange({ ...form, business_city: e.target.value })} className={inputClass} /></div>
       <div><label className={labelClass}>Website</label><input value={String(form.website_url || '')} onChange={e => onChange({ ...form, website_url: e.target.value })} className={inputClass} placeholder="https://..." /></div>
       <div className="flex items-end pb-1"><label className="flex items-center gap-2 text-sm text-dark/60 dark:text-white/60 cursor-pointer"><input type="checkbox" checked={Boolean(form.is_visible)} onChange={e => onChange({ ...form, is_visible: e.target.checked })} className="accent-accent" /> Visible in directory</label></div>
-      <div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea value={String(form.description || '')} onChange={e => onChange({ ...form, description: e.target.value })} className={`${inputClass} resize-none`} rows={2} /></div>
+      <div className="sm:col-span-2">
+        <label className={labelClass}>Description <span className="text-dark/30 dark:text-white/30 font-normal">({String(form.description || '').length}/250)</span></label>
+        <textarea value={String(form.description || '')} onChange={e => {
+          if (e.target.value.length <= 250) onChange({ ...form, description: e.target.value });
+        }} maxLength={250} className={`${inputClass} resize-none`} rows={2} />
+      </div>
     </div>
   );
 }

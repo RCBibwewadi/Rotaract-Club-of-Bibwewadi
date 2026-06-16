@@ -30,14 +30,20 @@ export async function GET(request: NextRequest) {
         description,
         website_url,
         business_city,
-        members (
+        members!inner (
           member_id,
           full_name,
-          avatar_url
+          email,
+          phone,
+          avatar_url,
+          member_visibility (show_contact, open_to_collab)
         )
       `)
       .eq('is_visible', true)
-      .order('business_name');
+      .neq('member_id', user.member_id)
+      .eq('members.is_approved', true)
+      .eq('members.is_active', true)
+      .order('created_at', { ascending: true });
 
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);

@@ -3,10 +3,10 @@
 import { useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import AnimatedSection from '@/components/AnimatedSection';
-import { Sprout, Handshake, Rocket, Heart, Users, Award, Calendar, Globe } from 'lucide-react';
+import { Sprout, Handshake, HeartHandshake, Rocket, Heart, Users, Award, Calendar, Globe, Brain } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
-  Sprout, Handshake, Rocket, Heart, Users, Award, Calendar, Globe,
+  Sprout, Handshake, HeartHandshake, Rocket, Heart, Users, Award, Calendar, Globe, Brain,
 };
 
 const statIcons = [Users, Award, Calendar, Globe];

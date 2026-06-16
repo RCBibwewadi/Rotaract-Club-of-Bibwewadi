@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
       .select(`
         member_id,
         full_name,
+        email,
+        phone,
         avatar_url,
         member_type,
         years_in_rcb,
@@ -27,7 +29,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('is_active', true)
       .eq('is_approved', true)
-      .order('full_name');
+      .neq('member_id', user.member_id)
+      .order('created_at', { ascending: true });
 
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);

@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
         role: 'member',
         is_approved: false,
         is_active: true,
+        payment_method: body.payment_method,
+        payment_proof_url: body.payment_proof_url || null,
       })
       .select('member_id, username, email, member_type')
       .single();

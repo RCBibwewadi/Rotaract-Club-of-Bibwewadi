@@ -6,10 +6,23 @@ import {
   LogOut, Save, Plus, Trash2, Edit3, Eye, Settings, Users, FolderOpen,
   CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History,
-  Mail, ExternalLink, Upload,
+  Mail, ExternalLink, Upload, IndianRupee, X,
+  Handshake, HeartHandshake, Globe, Brain,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
+
+// ── Pillar Icon Options ──────────────────────────────────────
+const PILLAR_ICON_OPTIONS = [
+  { value: 'Handshake', label: 'Club Service', Icon: Handshake },
+  { value: 'HeartHandshake', label: 'Community Service', Icon: HeartHandshake },
+  { value: 'Globe', label: 'International Service', Icon: Globe },
+  { value: 'Brain', label: 'Personality Development', Icon: Brain },
+] as const;
+
+const pillarIconMap: Record<string, React.ElementType> = {
+  Handshake, HeartHandshake, Globe, Brain,
+};
 
 // ── Admin Auth State (password-based, persisted in sessionStorage) ──
 const ADMIN_AUTH_KEY = 'rcb-admin-auth';
@@ -124,6 +137,8 @@ interface AdminMember {
   is_active: boolean;
   member_type: string;
   created_at: string;
+  payment_method?: string | null;
+  payment_proof_url?: string | null;
 }
 
 // ── Login Form ───────────────────────────────────────────────
@@ -186,6 +201,7 @@ function MembersTab() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [paymentModal, setPaymentModal] = useState<AdminMember | null>(null);
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -237,6 +253,27 @@ function MembersTab() {
         fetchMembers();
       } else {
         showMessage(data.message || `${label} failed`, 'error');
+      }
+    } catch {
+      showMessage('Network error', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const doDelete = async (memberId: string, name: string) => {
+    setActionLoading(memberId);
+    try {
+      const res = await fetch(`/api/admin/members/${memberId}/delete`, {
+        method: 'DELETE',
+        headers: adminHeaders(),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMessage(data.message || `${name} deleted`, 'success');
+        fetchMembers();
+      } else {
+        showMessage(data.message || 'Delete failed', 'error');
       }
     } catch {
       showMessage('Network error', 'error');
@@ -384,6 +421,15 @@ function MembersTab() {
                     <div className="h-5 w-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                   ) : (
                     <>
+                      {/* Payment info */}
+                      {m.payment_method && (
+                        <button onClick={() => setPaymentModal(m)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors text-xs font-medium"
+                          title="Payment info">
+                          <IndianRupee size={13} />
+                        </button>
+                      )}
+
                       {/* Approve — show if pending (active but not approved) */}
                       {m.is_active && !m.is_approved && m.role !== 'admin' && (
                         <button onClick={() => doAction(m.member_id, 'approve', 'Approve')}
@@ -419,12 +465,61 @@ function MembersTab() {
                           <RefreshCw size={13} /> Unblock
                         </button>
                       )}
+
+                      {/* Delete — always available for non-admin */}
+                      {m.role !== 'admin' && (
+                        <button onClick={() => {
+                          if (confirm(`Permanently delete "${m.full_name}" and all their data? This cannot be undone.`)) {
+                            doDelete(m.member_id, m.full_name);
+                          }
+                        }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
+                          title="Permanently delete member">
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Payment Info Modal */}
+      {paymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setPaymentModal(null)}>
+          <div className="bg-dark-card rounded-2xl border border-white/10 p-6 max-w-md w-full relative" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setPaymentModal(null)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors">
+              <X size={18} />
+            </button>
+            <h3 className="text-white font-semibold text-lg mb-1">Payment Details</h3>
+            <p className="text-white/40 text-sm mb-4">{paymentModal.full_name}</p>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-dark-surface border border-white/5">
+                <span className="text-white/50 text-sm">Method</span>
+                <span className={`font-medium text-sm ${paymentModal.payment_method === 'online' ? 'text-accent' : 'text-amber-400'}`}>
+                  {paymentModal.payment_method === 'online' ? 'Online' : 'Cash'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-dark-surface border border-white/5">
+                <span className="text-white/50 text-sm">Amount</span>
+                <span className="text-white font-bold">&#8377;3,500</span>
+              </div>
+              {paymentModal.payment_method === 'online' && paymentModal.payment_proof_url && (
+                <div>
+                  <p className="text-white/50 text-sm mb-2">Payment Proof</p>
+                  <a href={paymentModal.payment_proof_url} target="_blank" rel="noreferrer">
+                    <img src={paymentModal.payment_proof_url} alt="Payment proof"
+                      className="w-full rounded-xl border border-white/10 max-h-80 object-contain bg-black" />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -550,7 +645,18 @@ function ContentTab() {
         <div className="space-y-4">
           {data.pillars.map((pillar, i) => (
             <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-xl bg-dark-surface">
-              <div><label className={labelClass}>Icon (component name)</label><input value={pillar.icon} onChange={e => { const p = [...data.pillars]; p[i] = { ...p[i], icon: e.target.value }; update({ pillars: p }); }} className={inputClass} placeholder="Sprout, Handshake, Rocket, Heart" /></div>
+              <div>
+                <label className={labelClass}>Icon</label>
+                <div className="flex items-center gap-2">
+                  {(() => { const PIcon = pillarIconMap[pillar.icon]; return PIcon ? <PIcon size={18} className="text-accent flex-shrink-0" /> : null; })()}
+                  <select value={pillar.icon} onChange={e => { const p = [...data.pillars]; p[i] = { ...p[i], icon: e.target.value }; update({ pillars: p }); }} className={inputClass}>
+                    <option value="">Select icon</option>
+                    {PILLAR_ICON_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label} ({opt.value})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <div><label className={labelClass}>Title</label><input value={pillar.title} onChange={e => { const p = [...data.pillars]; p[i] = { ...p[i], title: e.target.value }; update({ pillars: p }); }} className={inputClass} /></div>
               <div><label className={labelClass}>Description</label><input value={pillar.description} onChange={e => { const p = [...data.pillars]; p[i] = { ...p[i], description: e.target.value }; update({ pillars: p }); }} className={inputClass} /></div>
             </div>
