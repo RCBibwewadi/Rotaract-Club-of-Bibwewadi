@@ -73,6 +73,47 @@ export default function JoinPage() {
     setError('');
   };
 
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const blur = (key: keyof FormData) => {
+    setTouched(prev => ({ ...prev, [key]: true }));
+    validateField(key);
+  };
+
+  const validateField = (key: keyof FormData) => {
+    let error = '';
+    const v = formData[key];
+    switch (key) {
+      case 'full_name':
+        if (!v.trim()) error = 'Name is required';
+        else if (v.trim().length < 2) error = 'At least 2 characters';
+        break;
+      case 'email':
+        if (!v.trim()) error = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) error = 'Invalid email';
+        break;
+      case 'username':
+        if (!v.trim()) error = 'Username is required';
+        else if (v.length < 3) error = 'At least 3 characters';
+        else if (!/^[a-z0-9_]+$/.test(v)) error = 'Only lowercase, numbers, underscores';
+        break;
+      case 'password':
+        if (!v) error = 'Password is required';
+        else if (v.length < 8) error = 'At least 8 characters';
+        break;
+      case 'phone':
+        if (!v.trim()) error = 'Phone is required';
+        break;
+      case 'business_name':
+        if (!v.trim()) error = 'Business name is required';
+        break;
+      case 'profession_type':
+        if (!v.trim()) error = 'Profession type is required';
+        break;
+    }
+    setFieldErrors(prev => ({ ...prev, [key]: error }));
+  };
+
   const needsBusiness = formData.member_type === 'business_only' || formData.member_type === 'both';
   const needsProfession = formData.member_type === 'profession_only' || formData.member_type === 'both';
 
@@ -100,6 +141,7 @@ export default function JoinPage() {
       else if (!/^[a-z0-9_]+$/.test(formData.username)) errors.username = 'Only lowercase, numbers, underscores';
       if (!formData.password) errors.password = 'Password is required';
       else if (formData.password.length < 8) errors.password = 'At least 8 characters';
+      if (!formData.phone.trim()) errors.phone = 'Phone is required';
       if (!formData.member_type) errors.member_type = 'Please select a type';
     }
 
@@ -131,7 +173,7 @@ export default function JoinPage() {
       username: formData.username.trim(),
       password: formData.password,
       member_type: formData.member_type,
-      ...(formData.phone && { phone: formData.phone.trim() }),
+      phone: formData.phone.trim(),
       ...(formData.dob && { dob: formData.dob }),
       ...(formData.interests && { interests: formData.interests.trim() }),
     };
@@ -192,13 +234,13 @@ export default function JoinPage() {
         <div>
           <label className={labelClass}><User size={14} className="inline mr-1" />Full Name *</label>
           <input type="text" value={formData.full_name} onChange={e => set('full_name', e.target.value)}
-            placeholder="John Doe" className={inputClass} />
+            onBlur={() => blur('full_name')} placeholder="John Doe" className={inputClass} />
           <FieldError field="full_name" />
         </div>
         <div>
           <label className={labelClass}><Mail size={14} className="inline mr-1" />Email *</label>
           <input type="email" value={formData.email} onChange={e => set('email', e.target.value)}
-            placeholder="john@example.com" className={inputClass} />
+            onBlur={() => blur('email')} placeholder="john@example.com" className={inputClass} />
           <FieldError field="email" />
         </div>
       </div>
@@ -207,22 +249,23 @@ export default function JoinPage() {
         <div>
           <label className={labelClass}><User size={14} className="inline mr-1" />Username *</label>
           <input type="text" value={formData.username} onChange={e => set('username', e.target.value.toLowerCase())}
-            placeholder="john_doe" className={inputClass} />
+            onBlur={() => blur('username')} placeholder="john_doe" className={inputClass} />
           <FieldError field="username" />
         </div>
         <div>
           <label className={labelClass}><Lock size={14} className="inline mr-1" />Password *</label>
           <input type="password" value={formData.password} onChange={e => set('password', e.target.value)}
-            placeholder="Min 8 characters" className={inputClass} />
+            onBlur={() => blur('password')} placeholder="Min 8 characters" className={inputClass} />
           <FieldError field="password" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}><Phone size={14} className="inline mr-1" />Phone</label>
+          <label className={labelClass}><Phone size={14} className="inline mr-1" />Phone *</label>
           <input type="tel" value={formData.phone} onChange={e => set('phone', e.target.value)}
-            placeholder="+91 98765 43210" className={inputClass} />
+            onBlur={() => blur('phone')} placeholder="+91 98765 43210" className={inputClass} />
+          <FieldError field="phone" />
         </div>
         <div>
           <label className={labelClass}>Date of Birth</label>
@@ -267,7 +310,7 @@ export default function JoinPage() {
       <div>
         <label className={labelClass}>Business Name *</label>
         <input type="text" value={formData.business_name} onChange={e => set('business_name', e.target.value)}
-          placeholder="Acme Corp" className={inputClass} />
+          onBlur={() => blur('business_name')} placeholder="Acme Corp" className={inputClass} />
         <FieldError field="business_name" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -312,7 +355,7 @@ export default function JoinPage() {
       <div>
         <label className={labelClass}>Profession Type *</label>
         <input type="text" value={formData.profession_type} onChange={e => set('profession_type', e.target.value)}
-          placeholder="Software Engineer, Doctor, etc." className={inputClass} />
+          onBlur={() => blur('profession_type')} placeholder="Software Engineer, Doctor, etc." className={inputClass} />
         <FieldError field="profession_type" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -389,6 +432,22 @@ export default function JoinPage() {
     if (label === 'Profession') return renderProfessionStep();
     if (label === 'Review') return renderReviewStep();
     return null;
+  };
+
+  const isStepComplete = (): boolean => {
+    if (step === 0) {
+      if (!formData.full_name.trim()) return false;
+      if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return false;
+      if (!formData.username.trim() || formData.username.length < 3 || !/^[a-z0-9_]+$/.test(formData.username)) return false;
+      if (!formData.password || formData.password.length < 8) return false;
+      if (!formData.phone.trim()) return false;
+      if (!formData.member_type) return false;
+    }
+    const currentLabel = steps[step];
+    if (currentLabel === 'Business' && !formData.business_name.trim()) return false;
+    if (currentLabel === 'Profession' && !formData.profession_type.trim()) return false;
+    if (Object.values(fieldErrors).some(e => e)) return false;
+    return true;
   };
 
   const isLastStep = step === totalSteps - 1;
@@ -504,8 +563,8 @@ export default function JoinPage() {
                           )}
                         </button>
                       ) : (
-                        <button type="button" onClick={next}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300">
+                        <button type="button" onClick={next} disabled={!isStepComplete()}
+                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                           Next <ChevronRight size={18} />
                         </button>
                       )}
