@@ -5,7 +5,7 @@
 
 // ── Enums / Literals ─────────────────────────────────────────
 
-export type MemberType = 'business_only' | 'profession_only' | 'both' | 'student';
+export type MemberType = string; // comma-separated: 'business', 'professional', 'student'
 
 // ── MEMBERS ──────────────────────────────────────────────────
 

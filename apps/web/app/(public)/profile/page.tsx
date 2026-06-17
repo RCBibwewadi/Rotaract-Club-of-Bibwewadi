@@ -29,7 +29,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const headers = useAuthHeaders();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ full_name: '', phone: '', dob: '', interests: '', years_in_rcb: 0 });
+  const [form, setForm] = useState({ full_name: '', phone: '', dob: '', interests: '', years_in_rcb: 0, college_name: '', course: '', aspiration: '' });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -77,7 +77,7 @@ export default function ProfilePage() {
   // ── Profile edit ──
   const startEdit = () => {
     if (!member) return;
-    setForm({ full_name: member.full_name, phone: member.phone || '', dob: member.dob || '', interests: member.interests || '', years_in_rcb: member.years_in_rcb || 0 });
+    setForm({ full_name: member.full_name, phone: member.phone || '', dob: member.dob || '', interests: member.interests || '', years_in_rcb: member.years_in_rcb || 0, college_name: member.college_name || '', course: member.course || '', aspiration: member.aspiration || '' });
     setEditing(true);
   };
 
@@ -224,7 +224,9 @@ export default function ProfilePage() {
                 <h1 className="font-display text-4xl md:text-5xl text-dark dark:text-white mb-1">{member.full_name}</h1>
                 <p className="text-dark/50 dark:text-white/50">@{member.username}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <span className="px-3 py-1 text-xs rounded-full bg-accent/10 text-accent font-medium">{member.member_type.replace('_', ' ')}</span>
+                  {member.member_type.split(',').map(t => (
+                    <span key={t} className="px-3 py-1 text-xs rounded-full bg-accent/10 text-accent font-medium capitalize">{t.trim()}</span>
+                  ))}
                   {(member.years_in_rcb || 0) > 0 && <span className="px-3 py-1 text-xs rounded-full bg-black/5 dark:bg-white/5 text-dark/60 dark:text-white/60">{member.years_in_rcb} year{(member.years_in_rcb || 0) > 1 ? 's' : ''} in RCB</span>}
                 </div>
               </div>
@@ -256,6 +258,13 @@ export default function ProfilePage() {
                   <div><label className={labelClass}>Date of Birth</label><input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} className={inputClass} /></div>
                   <div><label className={labelClass}>Years in RCB</label><input type="number" min={0} value={form.years_in_rcb} onChange={e => setForm(f => ({ ...f, years_in_rcb: Number(e.target.value) }))} className={inputClass} /></div>
                   <div className="sm:col-span-2"><label className={labelClass}>Interests</label><input value={form.interests} onChange={e => setForm(f => ({ ...f, interests: e.target.value }))} className={inputClass} placeholder="e.g. Photography, Trekking" /></div>
+                  {member.member_type.includes('student') && (
+                    <>
+                      <div><label className={labelClass}>College Name</label><input value={form.college_name} onChange={e => setForm(f => ({ ...f, college_name: e.target.value }))} className={inputClass} placeholder="e.g. MIT Pune" /></div>
+                      <div><label className={labelClass}>Course</label><input value={form.course} onChange={e => setForm(f => ({ ...f, course: e.target.value }))} className={inputClass} placeholder="e.g. B.Tech CS" /></div>
+                      <div className="sm:col-span-2"><label className={labelClass}>Aspiration</label><input value={form.aspiration} onChange={e => setForm(f => ({ ...f, aspiration: e.target.value }))} className={inputClass} placeholder="What do you aspire to be?" /></div>
+                    </>
+                  )}
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 bg-accent text-white rounded-xl text-sm font-medium disabled:opacity-50"><Save size={14} /> {saving ? 'Saving...' : 'Save'}</button>
@@ -275,6 +284,9 @@ export default function ProfilePage() {
                 {member.dob && <InfoRow icon={Calendar} label="DOB" value={member.dob} />}
                 {member.interests && <InfoRow icon={Star} label="Interests" value={member.interests} />}
                 {member.rid && <InfoRow icon={User} label="Rotary ID" value={member.rid} />}
+                {member.college_name && <InfoRow icon={GraduationCap} label="College" value={member.college_name} />}
+                {member.course && <InfoRow icon={GraduationCap} label="Course" value={member.course} />}
+                {member.aspiration && <InfoRow icon={Star} label="Aspiration" value={member.aspiration} />}
               </div>
             </div>
           </AnimatedSection>

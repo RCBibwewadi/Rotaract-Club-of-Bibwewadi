@@ -410,7 +410,7 @@ function MembersTab() {
                       @{m.username} &middot; {m.email}
                     </p>
                     <p className="text-white/20 text-[10px]">
-                      {m.member_type.replace('_', ' ')} &middot; Joined {joinDate}
+                      {m.member_type.split(',').join(', ')} &middot; Joined {joinDate}
                     </p>
                   </div>
                 </div>

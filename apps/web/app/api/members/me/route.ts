@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
         interests,
         rid,
         dob,
+        college_name,
+        course,
+        aspiration,
         businesses (*),
         professions (*),
         member_visibility (*)
@@ -79,7 +82,10 @@ export async function PATCH(request: NextRequest) {
         avatar_url,
         member_type,
         years_in_rcb,
-        interests
+        interests,
+        college_name,
+        course,
+        aspiration
       `)
       .single();
 

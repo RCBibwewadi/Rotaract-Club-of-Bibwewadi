@@ -15,6 +15,9 @@ export interface MemberProfile {
   interests?: string;
   dob?: string;
   rid?: string;
+  college_name?: string;
+  course?: string;
+  aspiration?: string;
   businesses?: Business[];
   professions?: Profession[];
   member_visibility?: MemberVisibility[];

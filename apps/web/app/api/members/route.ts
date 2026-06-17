@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
         avatar_url,
         member_type,
         years_in_rcb,
+        college_name,
+        course,
         businesses (*),
         professions (*),
         member_visibility (*)

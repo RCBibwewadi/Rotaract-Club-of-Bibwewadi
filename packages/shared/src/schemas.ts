@@ -10,7 +10,7 @@ export const SignupSchema = z.object({
                  .max(30)
                  .regex(/^[a-z0-9_]+$/, 'Only lowercase, numbers and underscores'),
   password:    z.string().min(8, 'Password must be at least 8 characters'),
-  member_type: z.enum(['business_only', 'profession_only', 'both']),
+  member_type: z.string().min(1, 'Member type is required'),
 });
 
 export const LoginSchema = z.object({
@@ -28,10 +28,15 @@ export const RegisterSchema = z.object({
                  .max(30)
                  .regex(/^[a-z0-9_]+$/, 'Only lowercase, numbers and underscores'),
   password:    z.string().min(8, 'Password must be at least 8 characters'),
-  member_type: z.enum(['business_only', 'profession_only', 'both']),
+  member_type: z.string().min(1, 'Member type is required'),
   phone:       z.string().optional(),
   dob:         z.string().optional(),
   interests:   z.string().optional(),
+
+  // Student (optional, required if member_type is student)
+  college_name: z.string().optional(),
+  course:       z.string().optional(),
+  aspiration:   z.string().optional(),
 
   // Business (optional, required if member_type is business_only or both)
   business: z.object({
@@ -67,6 +72,9 @@ export const UpdateMemberSchema = z.object({
   interests:    z.string().optional(),
   avatar_url:   z.string().url().optional(),
   years_in_rcb: z.number().min(0).optional(),
+  college_name: z.string().optional(),
+  course:       z.string().optional(),
+  aspiration:   z.string().optional(),
 });
 
 // ── Businesses ────────────────────────────────────────────────

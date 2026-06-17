@@ -16,11 +16,13 @@ const benefits = [
   { icon: Heart, title: 'Impact', desc: 'Make tangible difference in your community every day.' },
 ];
 
-const memberTypes = [
-  { value: 'business_only', label: 'Business Owner', desc: 'I run my own business' },
-  { value: 'profession_only', label: 'Professional', desc: 'I work in a profession' },
-  { value: 'both', label: 'Both', desc: 'I have a business and a profession' },
+const memberTypeOptions = [
+  { value: 'business', label: 'Business Owner', desc: 'I run my own business', icon: Building2 },
+  { value: 'professional', label: 'Professional', desc: 'I work in a profession', icon: Briefcase },
+  { value: 'student', label: 'Student', desc: 'I am currently studying', icon: GraduationCap },
 ] as const;
+
+type MemberTypeOption = typeof memberTypeOptions[number]['value'];
 
 
 
@@ -32,7 +34,6 @@ interface FormData {
   password: string;
   phone: string;
   dob: string;
-  member_type: 'business_only' | 'profession_only' | 'both' | '';
   interests: string;
   // Step 2: Business
   business_name: string;
@@ -46,6 +47,10 @@ interface FormData {
   specialisation: string;
   years_experience: string;
   employer: string;
+  // Step: Student
+  college_name: string;
+  course: string;
+  aspiration: string;
   // Payment
   payment_method: 'cash' | 'online' | '';
   payment_proof_url: string;
@@ -53,10 +58,11 @@ interface FormData {
 
 const initialFormData: FormData = {
   full_name: '', email: '', username: '', password: '', phone: '', dob: '',
-  member_type: '', interests: '',
+  interests: '',
   business_name: '', industry: '', designation: '', business_description: '',
   website_url: '', business_city: '',
   profession_type: '', specialisation: '', years_experience: '', employer: '',
+  college_name: '', course: '', aspiration: '',
   payment_method: '', payment_proof_url: '',
 };
 
@@ -68,6 +74,7 @@ const labelClass = 'block text-dark/60 dark:text-white/60 text-sm mb-1.5';
 export default function JoinPage() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [selectedTypes, setSelectedTypes] = useState<Set<MemberTypeOption>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -78,6 +85,17 @@ export default function JoinPage() {
   const set = (key: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
     setFieldErrors(prev => ({ ...prev, [key]: '' }));
+    setError('');
+  };
+
+  const toggleType = (type: MemberTypeOption) => {
+    setSelectedTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+    setFieldErrors(prev => ({ ...prev, member_type: '' }));
     setError('');
   };
 
@@ -118,6 +136,12 @@ export default function JoinPage() {
       case 'profession_type':
         if (!v.trim()) error = 'Profession type is required';
         break;
+      case 'college_name':
+        if (!v.trim()) error = 'College name is required';
+        break;
+      case 'course':
+        if (!v.trim()) error = 'Course is required';
+        break;
     }
     setFieldErrors(prev => ({ ...prev, [key]: error }));
   };
@@ -144,13 +168,15 @@ export default function JoinPage() {
     }
   };
 
-  const needsBusiness = formData.member_type === 'business_only' || formData.member_type === 'both';
-  const needsProfession = formData.member_type === 'profession_only' || formData.member_type === 'both';
+  const needsBusiness = selectedTypes.has('business');
+  const needsProfession = selectedTypes.has('professional');
+  const needsStudent = selectedTypes.has('student');
 
   const getSteps = () => {
     const steps = ['Account'];
     if (needsBusiness) steps.push('Business');
     if (needsProfession) steps.push('Profession');
+    if (needsStudent) steps.push('Student');
     steps.push('Review');
     return steps;
   };
@@ -172,7 +198,7 @@ export default function JoinPage() {
       if (!formData.password) errors.password = 'Password is required';
       else if (formData.password.length < 8) errors.password = 'At least 8 characters';
       if (!formData.phone.trim()) errors.phone = 'Phone is required';
-      if (!formData.member_type) errors.member_type = 'Please select a type';
+      if (selectedTypes.size === 0) errors.member_type = 'Please select at least one type';
     }
 
     const currentLabel = steps[step];
@@ -181,6 +207,10 @@ export default function JoinPage() {
     }
     if (currentLabel === 'Profession') {
       if (!formData.profession_type.trim()) errors.profession_type = 'Profession type is required';
+    }
+    if (currentLabel === 'Student') {
+      if (!formData.college_name.trim()) errors.college_name = 'College name is required';
+      if (!formData.course.trim()) errors.course = 'Course is required';
     }
 
     setFieldErrors(errors);
@@ -202,12 +232,15 @@ export default function JoinPage() {
       email: formData.email.trim(),
       username: formData.username.trim(),
       password: formData.password,
-      member_type: formData.member_type,
+      member_type: Array.from(selectedTypes).join(','),
       phone: formData.phone.trim(),
       ...(formData.dob && { dob: formData.dob }),
       ...(formData.interests && { interests: formData.interests.trim() }),
       payment_method: formData.payment_method,
       ...(formData.payment_proof_url && { payment_proof_url: formData.payment_proof_url }),
+      ...(needsStudent && formData.college_name && { college_name: formData.college_name.trim() }),
+      ...(needsStudent && formData.course && { course: formData.course.trim() }),
+      ...(needsStudent && formData.aspiration && { aspiration: formData.aspiration.trim() }),
     };
 
     if (needsBusiness && formData.business_name) {
@@ -313,20 +346,24 @@ export default function JoinPage() {
       </div>
 
       <div>
-        <label className={labelClass}>Member Type *</label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
-          {memberTypes.map(t => (
-            <button key={t.value} type="button"
-              onClick={() => set('member_type', t.value)}
-              className={`p-4 rounded-xl border text-left transition-all duration-200 ${
-                formData.member_type === t.value
-                  ? 'border-accent bg-accent/10 ring-1 ring-accent'
-                  : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-accent/50'
-              }`}>
-              <p className="text-dark dark:text-white font-medium text-sm">{t.label}</p>
-              <p className="text-dark/40 dark:text-white/40 text-xs mt-0.5">{t.desc}</p>
-            </button>
-          ))}
+        <label className={labelClass}>I am a... * <span className="text-dark/30 dark:text-white/30 font-normal">(select all that apply)</span></label>
+        <div className="grid grid-cols-3 gap-3 mt-1">
+          {memberTypeOptions.map(t => {
+            const active = selectedTypes.has(t.value);
+            return (
+              <button key={t.value} type="button"
+                onClick={() => toggleType(t.value)}
+                className={`p-4 rounded-xl border text-center transition-all duration-200 ${
+                  active
+                    ? 'border-accent bg-accent/10 ring-1 ring-accent'
+                    : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-accent/50'
+                }`}>
+                <t.icon size={20} className={`mx-auto mb-1.5 ${active ? 'text-accent' : 'text-dark/40 dark:text-white/40'}`} />
+                <p className="text-dark dark:text-white font-medium text-sm">{t.label}</p>
+                <p className="text-dark/40 dark:text-white/40 text-xs mt-0.5">{t.desc}</p>
+              </button>
+            );
+          })}
         </div>
         <FieldError field="member_type" />
       </div>
@@ -409,6 +446,32 @@ export default function JoinPage() {
         <label className={labelClass}><Briefcase size={14} className="inline mr-1" />Employer / Company</label>
         <input type="text" value={formData.employer} onChange={e => set('employer', e.target.value)}
           placeholder="Company name" className={inputClass} />
+      </div>
+    </div>
+  );
+
+  const renderStudentStep = () => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <GraduationCap size={20} className="text-accent" />
+        <h4 className="text-dark dark:text-white font-semibold">Student Details</h4>
+      </div>
+      <div>
+        <label className={labelClass}>College / University Name *</label>
+        <input type="text" value={formData.college_name} onChange={e => set('college_name', e.target.value)}
+          onBlur={() => blur('college_name')} placeholder="e.g. MIT Pune" className={inputClass} />
+        <FieldError field="college_name" />
+      </div>
+      <div>
+        <label className={labelClass}>Course *</label>
+        <input type="text" value={formData.course} onChange={e => set('course', e.target.value)}
+          onBlur={() => blur('course')} placeholder="e.g. B.Tech Computer Science" className={inputClass} />
+        <FieldError field="course" />
+      </div>
+      <div>
+        <label className={labelClass}>What do you aspire to be?</label>
+        <input type="text" value={formData.aspiration} onChange={e => set('aspiration', e.target.value)}
+          placeholder="e.g. Software Architect, Entrepreneur..." className={inputClass} />
       </div>
     </div>
   );
@@ -503,7 +566,7 @@ export default function JoinPage() {
             <ReviewItem label="Name" value={formData.full_name} />
             <ReviewItem label="Email" value={formData.email} />
             <ReviewItem label="Username" value={formData.username} />
-            <ReviewItem label="Type" value={memberTypes.find(t => t.value === formData.member_type)?.label || ''} />
+            <ReviewItem label="Type" value={Array.from(selectedTypes).map(t => memberTypeOptions.find(o => o.value === t)?.label).filter(Boolean).join(', ')} />
             {formData.phone && <ReviewItem label="Phone" value={formData.phone} />}
             {formData.dob && <ReviewItem label="DOB" value={formData.dob} />}
             {formData.interests && <ReviewItem label="Interests" value={formData.interests} />}
@@ -520,6 +583,19 @@ export default function JoinPage() {
               {formData.industry && <ReviewItem label="Industry" value={formData.industry} />}
               {formData.designation && <ReviewItem label="Designation" value={formData.designation} />}
               {formData.business_city && <ReviewItem label="City" value={formData.business_city} />}
+            </div>
+          </div>
+        )}
+
+        {needsStudent && formData.college_name && (
+          <div className="pt-3 border-t border-black/10 dark:border-white/10">
+            <h4 className="text-dark dark:text-white font-semibold mb-3 flex items-center gap-2">
+              <GraduationCap size={16} className="text-accent" /> Student
+            </h4>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <ReviewItem label="College" value={formData.college_name} />
+              <ReviewItem label="Course" value={formData.course} />
+              {formData.aspiration && <ReviewItem label="Aspiration" value={formData.aspiration} />}
             </div>
           </div>
         )}
@@ -546,6 +622,7 @@ export default function JoinPage() {
     if (label === 'Account') return renderAccountStep();
     if (label === 'Business') return renderBusinessStep();
     if (label === 'Profession') return renderProfessionStep();
+    if (label === 'Student') return renderStudentStep();
     if (label === 'Review') return renderReviewStep();
     return null;
   };
@@ -557,11 +634,12 @@ export default function JoinPage() {
       if (!formData.username.trim() || formData.username.length < 3 || !/^[a-z0-9_]+$/.test(formData.username)) return false;
       if (!formData.password || formData.password.length < 8) return false;
       if (!formData.phone.trim()) return false;
-      if (!formData.member_type) return false;
+      if (selectedTypes.size === 0) return false;
     }
     const currentLabel = steps[step];
     if (currentLabel === 'Business' && !formData.business_name.trim()) return false;
     if (currentLabel === 'Profession' && !formData.profession_type.trim()) return false;
+    if (currentLabel === 'Student' && (!formData.college_name.trim() || !formData.course.trim())) return false;
     if (currentLabel === 'Review') {
       if (!formData.payment_method) return false;
       if (formData.payment_method === 'online' && !formData.payment_proof_url) return false;

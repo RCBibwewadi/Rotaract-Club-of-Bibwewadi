@@ -38,6 +38,9 @@ export async function POST(request: NextRequest) {
         phone: body.phone || null,
         dob: body.dob || null,
         interests: body.interests || null,
+        college_name: body.college_name || null,
+        course: body.course || null,
+        aspiration: body.aspiration || null,
         role: 'member',
         is_approved: false,
         is_active: true,
@@ -60,10 +63,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      body.business &&
-      (body.member_type === 'business_only' || body.member_type === 'both')
-    ) {
+    const types = body.member_type.split(',');
+
+    if (body.business && types.includes('business')) {
       await supabase.from('businesses').insert({
         member_id: member.member_id,
         business_name: body.business.business_name,
@@ -76,10 +78,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (
-      body.profession &&
-      (body.member_type === 'profession_only' || body.member_type === 'both')
-    ) {
+    if (body.profession && types.includes('professional')) {
       await supabase.from('professions').insert({
         member_id: member.member_id,
         profession_type: body.profession.profession_type,

@@ -21,6 +21,8 @@ interface DirectoryMember {
   avatar_url?: string;
   member_type: string;
   years_in_rcb?: number;
+  college_name?: string;
+  course?: string;
   businesses?: DirectoryBusiness[];
   professions?: DirectoryProfession[];
   member_visibility?: DirectoryVisibility | DirectoryVisibility[];
@@ -314,7 +316,7 @@ export default function DirectoryPage() {
                   const vis = getVis(m.member_visibility);
                   const primaryProf = m.professions?.find(p => p.is_primary) || m.professions?.[0];
                   const primaryBiz = m.businesses?.[0];
-
+                  
                   return (
                     <AnimatedSection key={m.member_id} delay={i * 60}>
                       <div className="p-5 rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5 hover:scale-[1.02] hover:shadow-lg hover:shadow-accent/5 transition-all duration-300 flex flex-col h-full">
@@ -333,13 +335,14 @@ export default function DirectoryPage() {
                             )}
                           </div>
                         </div>
-                        {vis?.show_profession && primaryProf && (
+                        {m.member_type.includes('student') && m.college_name ? (
                           <p className="text-dark/50 dark:text-white/50 text-sm mb-1">
-                            {primaryProf.profession_type}{primaryProf.employer ? ` at ${primaryProf.employer}` : ''}
+                            {m.college_name}{m.course ? ` — ${m.course}` : ''}
                           </p>
-                        )}
-                        {vis?.show_business_name && primaryBiz && (
-                          <p className="text-dark/40 dark:text-white/40 text-xs mb-2">{primaryBiz.business_name}</p>
+                        ) : (
+                          <p className="text-dark/50 dark:text-white/50 text-sm mb-1 capitalize">
+                            {m.member_type.split(',').join(', ')}
+                          </p>
                         )}
                         {vis?.open_to_collab && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-accent/10 text-accent font-medium mb-2">
