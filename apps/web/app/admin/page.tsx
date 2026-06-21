@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   LogOut, Save, Plus, Trash2, Edit3, Eye, Settings, Users, FolderOpen,
   CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
-  Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History,
+  Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X,
   Handshake, HeartHandshake, Globe, Brain,
 } from 'lucide-react';
@@ -137,6 +137,7 @@ interface AdminMember {
   is_active: boolean;
   member_type: string;
   created_at: string;
+  phone?: string | null;
   payment_method?: string | null;
   payment_proof_url?: string | null;
 }
@@ -409,6 +410,11 @@ function MembersTab() {
                     <p className="text-white/30 text-xs truncate">
                       @{m.username} &middot; {m.email}
                     </p>
+                    {m.phone && (
+                      <p className="text-white/30 text-xs flex items-center gap-1">
+                        <Phone size={10} /> {m.phone}
+                      </p>
+                    )}
                     <p className="text-white/20 text-[10px]">
                       {m.member_type.split(',').join(', ')} &middot; Joined {joinDate}
                     </p>

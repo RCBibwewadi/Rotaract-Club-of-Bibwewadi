@@ -359,8 +359,8 @@ export default function JoinPage() {
                     : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-accent/50'
                 }`}>
                 <t.icon size={20} className={`mx-auto mb-1.5 ${active ? 'text-accent' : 'text-dark/40 dark:text-white/40'}`} />
-                <p className="text-dark dark:text-white font-medium text-sm">{t.label}</p>
-                <p className="text-dark/40 dark:text-white/40 text-xs mt-0.5">{t.desc}</p>
+                <p className="text-dark dark:text-white font-medium text-sm truncate">{t.label}</p>
+                <p className="text-dark/40 dark:text-white/40 text-xs mt-0.5 truncate">{t.desc}</p>
               </button>
             );
           })}
@@ -792,9 +792,9 @@ export default function JoinPage() {
 
 function ReviewItem({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <span className="text-dark/40 dark:text-white/40">{label}:</span>{' '}
-      <span className="text-dark dark:text-white">{value}</span>
+      <span className="text-dark dark:text-white truncate inline-block max-w-full align-bottom">{value}</span>
     </div>
   );
 }
