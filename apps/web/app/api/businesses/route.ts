@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       .neq('member_id', user.member_id)
       .eq('members.is_approved', true)
       .eq('members.is_active', true)
-      .order('created_at', { ascending: true });
+      .order('business_id', { ascending: true });
 
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);

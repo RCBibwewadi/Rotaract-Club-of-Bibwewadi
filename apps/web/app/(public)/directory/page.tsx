@@ -5,13 +5,13 @@ import Link from 'next/link';
 import AnimatedSection from '@/components/AnimatedSection';
 import { useAuthStore } from '@/lib/auth-store';
 import {
-  Lock, Users, Briefcase, GraduationCap, Search, MapPin, Globe,
+  Lock, Users, Briefcase, GraduationCap, BookOpen, Search, MapPin, Globe,
   X, Mail, Phone, MessageCircle, EyeOff, ArrowRight, Handshake,
 } from 'lucide-react';
 
 
 
-type Tab = 'members' | 'business' | 'professions';
+type Tab = 'members' | 'business' | 'professions' | 'students';
 
 interface DirectoryMember {
   member_id: string;
@@ -76,7 +76,6 @@ export default function DirectoryPage() {
   const { token, member, _hydrated } = useAuthStore();
   const [tab, setTab] = useState<Tab>('members');
   const [search, setSearch] = useState('');
-  const [activeChip, setActiveChip] = useState('All');
   const [members, setMembers] = useState<DirectoryMember[]>([]);
   const [businesses, setBusinesses] = useState<DirectoryBusiness[]>([]);
   const [professions, setProfessions] = useState<DirectoryProfession[]>([]);
@@ -95,7 +94,7 @@ export default function DirectoryPage() {
     }, { threshold: 0.1 });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [tab, search, activeChip, loading]);
+  }, [tab, search, loading]);
 
   useEffect(() => {
     if (!token) return;
@@ -117,20 +116,12 @@ export default function DirectoryPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const changeTab = (t: Tab) => { setTab(t); setActiveChip('All'); setSearch(''); setVisibleCount(6); };
+  const changeTab = (t: Tab) => { setTab(t); setSearch(''); setVisibleCount(6); };
 
-  // Filter chips
-  const businessChips = useMemo(() => {
-    const industries = businesses.map(b => b.industry).filter(Boolean) as string[];
-    return ['All', ...Array.from(new Set(industries))];
-  }, [businesses]);
-
-  const professionChips = useMemo(() => {
-    const types = professions.map(p => p.profession_type).filter(Boolean) as string[];
-    return ['All', ...Array.from(new Set(types))];
-  }, [professions]);
 
   // Filtered data
+  const students = useMemo(() => members.filter(m => m.member_type.toLowerCase().includes('student')), [members]);
+
   const filteredMembers = useMemo(() => {
     const q = search.toLowerCase();
     return members.filter(m =>
@@ -139,27 +130,32 @@ export default function DirectoryPage() {
     );
   }, [members, search]);
 
+  const filteredStudents = useMemo(() => {
+    const q = search.toLowerCase();
+    return students.filter(s =>
+      s.full_name.toLowerCase().includes(q) ||
+      (s.college_name || '').toLowerCase().includes(q) ||
+      (s.course || '').toLowerCase().includes(q)
+    );
+  }, [students, search]);
+
   const filteredBusinesses = useMemo(() => {
     const q = search.toLowerCase();
-    return businesses.filter(b => {
-      const matchSearch = b.business_name.toLowerCase().includes(q) ||
-        (b.industry || '').toLowerCase().includes(q) ||
-        (b.description || '').toLowerCase().includes(q);
-      const matchChip = activeChip === 'All' || b.industry === activeChip;
-      return matchSearch && matchChip;
-    });
-  }, [businesses, search, activeChip]);
+    return businesses.filter(b =>
+      b.business_name.toLowerCase().includes(q) ||
+      (b.industry || '').toLowerCase().includes(q) ||
+      (b.description || '').toLowerCase().includes(q)
+    );
+  }, [businesses, search]);
 
   const filteredProfessions = useMemo(() => {
     const q = search.toLowerCase();
-    return professions.filter(p => {
-      const matchSearch = p.profession_type.toLowerCase().includes(q) ||
-        (p.specialisation || '').toLowerCase().includes(q) ||
-        (p.employer || '').toLowerCase().includes(q);
-      const matchChip = activeChip === 'All' || p.profession_type === activeChip;
-      return matchSearch && matchChip;
-    });
-  }, [professions, search, activeChip]);
+    return professions.filter(p =>
+      p.profession_type.toLowerCase().includes(q) ||
+      (p.specialisation || '').toLowerCase().includes(q) ||
+      (p.employer || '').toLowerCase().includes(q)
+    );
+  }, [professions, search]);
 
   if (!_hydrated) return null;
 
@@ -202,6 +198,7 @@ export default function DirectoryPage() {
     { key: 'members', label: 'Members', icon: Users, count: members.length },
     { key: 'business', label: 'Business', icon: Briefcase, count: businesses.length },
     { key: 'professions', label: 'Professions', icon: GraduationCap, count: professions.length },
+    { key: 'students', label: 'Students', icon: BookOpen, count: students.length },
   ];
 
   return (
@@ -270,35 +267,6 @@ export default function DirectoryPage() {
             />
           </div>
 
-          {/* Filter Chips */}
-          {tab === 'business' && businessChips.length > 1 && (
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-              {businessChips.map(chip => (
-                <button key={chip} onClick={() => { setActiveChip(chip); setVisibleCount(6); }}
-                  className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all ${
-                    activeChip === chip
-                      ? 'bg-accent text-white'
-                      : 'bg-black/5 dark:bg-white/5 text-dark/50 dark:text-white/50 border border-black/10 dark:border-white/10 hover:border-accent/50'
-                  }`}>
-                  {chip}
-                </button>
-              ))}
-            </div>
-          )}
-          {tab === 'professions' && professionChips.length > 1 && (
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-              {professionChips.map(chip => (
-                <button key={chip} onClick={() => { setActiveChip(chip); setVisibleCount(6); }}
-                  className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all ${
-                    activeChip === chip
-                      ? 'bg-accent text-white'
-                      : 'bg-black/5 dark:bg-white/5 text-dark/50 dark:text-white/50 border border-black/10 dark:border-white/10 hover:border-accent/50'
-                  }`}>
-                  {chip}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Loading */}
           {loading && (
@@ -377,7 +345,7 @@ export default function DirectoryPage() {
           {/* Business Tab */}
           {!loading && tab === 'business' && (
             filteredBusinesses.length === 0 ? <EmptyState /> : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {filteredBusinesses.slice(0, visibleCount).map((b, i) => {
                   const ownerName = b.members?.full_name || 'Unknown';
                   const ownerAvatar = b.members?.avatar_url;
@@ -387,7 +355,7 @@ export default function DirectoryPage() {
 
                   return (
                     <AnimatedSection key={b.business_id} delay={i * 80} from={i % 2 === 0 ? 'left' : 'right'}>
-                      <div className="rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5 overflow-hidden hover:shadow-lg hover:shadow-accent/5 transition-all duration-300 flex flex-col">
+                      <div className="rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5 overflow-hidden hover:shadow-lg hover:shadow-accent/5 transition-all duration-300 flex flex-col h-full">
                         {/* Gradient header */}
                         <div className="h-24 bg-gradient-to-r from-accent to-accent-light relative flex-shrink-0">
                           <div className="absolute inset-0 bg-black/20" />
@@ -413,13 +381,13 @@ export default function DirectoryPage() {
                           </div>
                           {b.description && (
                             <div className="mb-3">
-                              <p className={`text-dark/50 dark:text-white/50 text-sm ${!isExpanded && isLongDesc ? 'line-clamp-2' : ''}`}>
+                              <div className={`text-dark/50 dark:text-white/50 text-sm ${isExpanded ? 'max-h-32 overflow-y-auto' : 'line-clamp-2'}`}>
                                 {b.description}
-                              </p>
+                              </div>
                               {isLongDesc && (
                                 <button onClick={() => setExpandedDesc(isExpanded ? null : b.business_id)}
                                   className="text-accent text-xs font-medium mt-1 hover:underline">
-                                  {isExpanded ? 'Show less' : 'Read more'}
+                                  {isExpanded ? 'Show less' : 'Show more'}
                                 </button>
                               )}
                             </div>
@@ -535,11 +503,76 @@ export default function DirectoryPage() {
               </div>
             )
           )}
+          {/* Students Tab */}
+          {!loading && tab === 'students' && (
+            filteredStudents.length === 0 ? <EmptyState /> : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredStudents.slice(0, visibleCount).map((s, i) => {
+                  const initials = s.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  const vis = getVis(s.member_visibility);
+
+                  return (
+                    <AnimatedSection key={s.member_id} delay={i * 60}>
+                      <div className="p-5 rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5 hover:scale-[1.02] hover:shadow-lg hover:shadow-accent/5 transition-all duration-300 flex flex-col h-full">
+                        <div className="flex items-center gap-3 mb-3">
+                          {s.avatar_url ? (
+                            <img src={s.avatar_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                              {initials}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h3 className="text-dark dark:text-white font-semibold truncate">{s.full_name}</h3>
+                            {s.years_in_rcb !== undefined && s.years_in_rcb > 0 && (
+                              <p className="text-dark/30 dark:text-white/30 text-xs">Since {new Date().getFullYear() - s.years_in_rcb}</p>
+                            )}
+                          </div>
+                        </div>
+                        {s.college_name && (
+                          <p className="text-dark/50 dark:text-white/50 text-sm flex items-center gap-1.5 mb-1">
+                            <BookOpen size={13} className="flex-shrink-0" /> {s.college_name}
+                          </p>
+                        )}
+                        {s.course && (
+                          <p className="text-dark/40 dark:text-white/40 text-xs flex items-center gap-1.5 mb-3">
+                            <GraduationCap size={13} className="flex-shrink-0" /> {s.course}
+                          </p>
+                        )}
+                        {vis?.open_to_collab && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-accent/10 text-accent font-medium mb-2 w-fit">
+                            <Handshake size={12} /> Open to Collab
+                          </span>
+                        )}
+                        <div className="mt-auto pt-3">
+                          <button onClick={() => {
+                            const canShowContact = vis?.show_contact || vis?.open_to_collab;
+                            setConnectModal({
+                              full_name: s.full_name,
+                              avatar_url: s.avatar_url,
+                              show_contact: canShowContact,
+                              email: canShowContact ? s.email : undefined,
+                              phone: canShowContact ? s.phone : undefined,
+                            });
+                          }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/10 text-accent font-medium text-sm hover:bg-accent/20 transition-colors">
+                            Connect <ArrowRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </AnimatedSection>
+                  );
+                })}
+              </div>
+            )
+          )}
+
           {/* Load more sentinel */}
           {!loading && (
             (tab === 'members' && visibleCount < filteredMembers.length) ||
             (tab === 'business' && visibleCount < filteredBusinesses.length) ||
-            (tab === 'professions' && visibleCount < filteredProfessions.length)
+            (tab === 'professions' && visibleCount < filteredProfessions.length) ||
+            (tab === 'students' && visibleCount < filteredStudents.length)
           ) && (
             <div ref={loadMoreRef} className="flex justify-center py-8">
               <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
