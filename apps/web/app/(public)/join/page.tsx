@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AnimatedSection from '@/components/AnimatedSection';
+
 import Image from 'next/image';
 import {
   Users, Award, Globe, Heart, Send, CheckCircle, ChevronRight, ChevronLeft,

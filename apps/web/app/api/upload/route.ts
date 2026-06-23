@@ -22,8 +22,8 @@ async function uploadFile(file: File, folder: string) {
 
   if (file.size > MAX_SIZE) {
     return json(
-      errorResponse('UPLOAD_ERROR', 'File too large (max 50MB)'),
-      400,
+      errorResponse('UPLOAD_ERROR', 'File too large. Maximum allowed size is 5MB.'),
+      413,
     );
   }
 

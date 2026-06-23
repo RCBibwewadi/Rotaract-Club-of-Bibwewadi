@@ -254,6 +254,7 @@ export default function HomePage() {
           </AnimatedSection>
         </div>
       </section>
+
     </div>
   );
 }

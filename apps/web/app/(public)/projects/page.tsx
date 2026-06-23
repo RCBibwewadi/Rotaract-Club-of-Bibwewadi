@@ -36,7 +36,7 @@ export default function FomoPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const categories = ['All', ...Array.from(new Set(items.map(f => f.category)))];
+  const categories = ['All', 'Good Times', 'Meaningful Moments', 'The Journey', 'Proud Moments'];
   const filtered = activeFilter === 'All' ? items : items.filter(f => f.category === activeFilter);
 
   const openLightbox = (urls: string[], idx: number) => setLightbox({ urls, idx });
@@ -131,10 +131,10 @@ export default function FomoPage() {
 
               return (
                 <AnimatedSection key={fomo.fomo_id} delay={i * 80}>
-                  <div className="group rounded-2xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:border-accent/30 transition-all duration-300">
+                  <div className="group rounded-2xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:border-accent/30 transition-all duration-300 flex flex-col h-full">
                     {/* Thumbnail */}
                     <div
-                      className="h-48 relative cursor-pointer bg-gradient-to-br from-accent/20 to-accent-light/20"
+                      className="h-52 relative cursor-pointer bg-gradient-to-br from-accent/20 to-accent-light/20 flex-shrink-0"
                       onClick={() => allMedia.length > 0 && openLightbox(allMedia, 0)}
                     >
                       {thumb ? (
@@ -164,40 +164,18 @@ export default function FomoPage() {
                     </div>
 
                     {/* Info */}
-                    <div className="p-5">
-                      <h3 className="text-dark dark:text-white font-semibold text-lg mb-1">{fomo.name}</h3>
-                      {fomo.description && (
-                        <p className="text-dark/50 dark:text-white/50 text-sm leading-relaxed mb-2">{fomo.description}</p>
-                      )}
+                    <div className="p-5 flex flex-col flex-1 min-h-0">
+                      <h3
+                        className="text-dark dark:text-white font-semibold text-lg mb-1 cursor-pointer hover:text-accent transition-colors"
+                        onClick={() => allMedia.length > 0 && openLightbox(allMedia, 0)}
+                      >
+                        {fomo.name}
+                      </h3>
                       {fomo.events?.event_name && (
-                        <p className="text-accent text-xs">{fomo.events.event_name}</p>
+                        <p className="text-accent text-xs mb-2">{fomo.events.event_name}</p>
                       )}
-
-                      {/* Mini gallery */}
-                      {allMedia.length > 1 && (
-                        <div className="flex gap-1.5 mt-3 overflow-x-auto">
-                          {allMedia.slice(0, 5).map((url, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => openLightbox(allMedia, idx)}
-                              className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-black/10 dark:border-white/10 hover:border-accent/50 transition-colors"
-                            >
-                              {isVideo(url) ? (
-                                <div className="w-full h-full bg-black/30 flex items-center justify-center"><Play size={12} className="text-white/50" /></div>
-                              ) : (
-                                <img src={url} alt="" className="w-full h-full object-cover" />
-                              )}
-                            </button>
-                          ))}
-                          {allMedia.length > 5 && (
-                            <button
-                              onClick={() => openLightbox(allMedia, 5)}
-                              className="flex-shrink-0 w-10 h-10 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center text-dark/40 dark:text-white/40 text-xs font-medium"
-                            >
-                              +{allMedia.length - 5}
-                            </button>
-                          )}
-                        </div>
+                      {fomo.description && (
+                        <p className="text-dark/50 dark:text-white/50 text-sm leading-relaxed flex-1 overflow-y-auto max-h-24">{fomo.description}</p>
                       )}
                     </div>
                   </div>

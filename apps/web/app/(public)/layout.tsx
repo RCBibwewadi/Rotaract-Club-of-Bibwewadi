@@ -7,6 +7,7 @@ import PageTransition from '@/components/PageTransition';
 import Rota from '@/components/Rota';
 import SplashScreen from '@/components/SplashScreen';
 import BackgroundAmbient from '@/components/BackgroundAmbient';
+import UpNextPill from '@/components/UpNextPill';
 import { useStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
 
@@ -28,6 +29,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <Footer />
       </PageTransition>
       <Rota />
+      <UpNextPill />
       <SplashScreen />
     </>
   );

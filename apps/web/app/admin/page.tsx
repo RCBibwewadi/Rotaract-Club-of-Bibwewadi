@@ -80,9 +80,16 @@ function FileUploadField({ label, value, folder, onUploaded }: {
   const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
   const labelClass = "block text-sm font-medium text-white/70 mb-2";
 
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 5 MB
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed size is 5MB.`);
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     setError('');
     try {
@@ -1167,8 +1174,10 @@ interface FomoItem {
   events?: { event_id: string; event_name: string; event_date?: string } | null;
 }
 
+const FOMO_CATEGORIES = ['Good Times', 'Meaningful Moments', 'The Journey', 'Proud Moments'] as const;
+
 const EMPTY_FOMO = {
-  category: '', name: '', description: '', thumbnail: '', images: [] as string[], videos: [] as string[], event_id: '',
+  category: 'Good Times' as string, name: '', description: '', thumbnail: '', images: [] as string[], videos: [] as string[], event_id: '',
 };
 
 function FomoTab() {
@@ -1267,7 +1276,7 @@ function FomoTab() {
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div><label className={labelClass}>Name *</label><input value={String(values.name || '')} onChange={e => onChange('name', e.target.value)} className={inputClass} /></div>
-        <div><label className={labelClass}>Category *</label><input value={String(values.category || '')} onChange={e => onChange('category', e.target.value)} className={inputClass} placeholder="e.g. Service, Fun, Sports" /></div>
+        <div><label className={labelClass}>Category *</label><select value={String(values.category || 'Good Times')} onChange={e => onChange('category', e.target.value)} className={inputClass}>{FOMO_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
         <div><label className={labelClass}>Event ID (optional)</label><input value={String(values.event_id || '')} onChange={e => onChange('event_id', e.target.value)} className={inputClass} placeholder="UUID of linked event" /></div>
       </div>
       <div><label className={labelClass}>Description</label><textarea value={String(values.description || '')} onChange={e => onChange('description', e.target.value)} className={`${inputClass} resize-none`} rows={2} /></div>
