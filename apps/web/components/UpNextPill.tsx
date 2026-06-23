@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 import { useStore } from '@/lib/store';
@@ -18,24 +18,21 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-const DISMISS_KEY = 'rcb-upnext-dismissed';
 const SHOW_ON = ['/', '/join'];
 
 export default function UpNextPill() {
   const [event, setEvent] = useState<UpcomingEvent | null>(null);
   const [ready, setReady] = useState(false);
   const [dismissing, setDismissing] = useState(false);
-  const [dismissed, setDismissed] = useState(() =>
-    typeof window !== 'undefined' && sessionStorage.getItem(DISMISS_KEY) === '1'
-  );
-  const dismissedRef = useRef(dismissed);
+  const [dismissedOn, setDismissedOn] = useState<string | null>(null);
   const isDark = useStore((s) => s.isDark);
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (dismissedRef.current) return;
+  // Dismissed only if dismissed on current pathname and not reset by tab switch
+  const dismissed = dismissedOn !== null && dismissedOn === pathname;
 
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
@@ -53,11 +50,22 @@ export default function UpNextPill() {
     return () => { cancelled = true; };
   }, []);
 
+  // Reset pill when user switches back to tab
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setDismissedOn(null);
+        setDismissing(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
   const handleDismiss = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     setDismissing(true);
-    sessionStorage.setItem(DISMISS_KEY, '1');
-    setTimeout(() => setDismissed(true), 300);
+    setTimeout(() => setDismissedOn(pathname), 300);
   };
 
   const handleNav = () => {
@@ -98,7 +106,7 @@ export default function UpNextPill() {
       `}
     >
       <div className={`
-        relative flex items-start gap-3 px-4 py-3.5 rounded-2xl
+        relative flex items-start gap-5 px-4 py-3.5 rounded-2xl
         border backdrop-blur-xl shadow-lg
         ${isDark
           ? 'bg-white/90 border-white/20 shadow-black/30'
@@ -106,7 +114,7 @@ export default function UpNextPill() {
         }
       `}>
         {/* Pulsing equalizer icon */}
-        <div className="relative flex-shrink-0 mt-0.5">
+        <div className="relative flex-shrink-0 self-center">
           <div className="flex items-end gap-[3px] h-4">
             <span className="w-[3px] bg-accent rounded-full motion-safe:animate-[eq1_1s_ease-in-out_infinite]" style={{ height: '60%' }} />
             <span className="w-[3px] bg-accent rounded-full motion-safe:animate-[eq2_1.2s_ease-in-out_infinite]" style={{ height: '100%' }} />
@@ -121,10 +129,11 @@ export default function UpNextPill() {
             Save the date
           </p>
           <p className={`text-sm font-medium mt-0.5 ${isDark ? 'text-dark' : 'text-white'}`}>
-            Something&apos;s being planned...
+            
+            {event?.event_date ? formatDate(event.event_date) : 'Coming soon'} 
           </p>
           <p className={`text-xs mt-1 ${isDark ? 'text-dark/50' : 'text-white/50'}`}>
-            {event?.event_date ? formatDate(event.event_date) : 'Coming soon'} &middot; find out what &rarr;
+            find out what &rarr;
           </p>
         </div>
 
