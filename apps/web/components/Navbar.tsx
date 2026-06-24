@@ -33,9 +33,7 @@ export default function Navbar() {
   const { token, member, logout } = useAuthStore();
   const isLoggedIn = token !== null;
 
-  const navLinks = isLoggedIn
-    ? [...baseNavLinks.slice(0, 5), directoryLink, ...baseNavLinks.slice(5)]
-    : baseNavLinks;
+  const navLinks = [...baseNavLinks.slice(0, 5), directoryLink, ...baseNavLinks.slice(5)];
 
   const memberInitials = member?.full_name
     ?.split(' ')

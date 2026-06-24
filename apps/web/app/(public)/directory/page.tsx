@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import Link from 'next/link';
 import AnimatedSection from '@/components/AnimatedSection';
+import MembersGate from '@/components/MembersGate';
 import { useAuthStore } from '@/lib/auth-store';
 import {
-  Lock, Users, Briefcase, GraduationCap, BookOpen, Search, MapPin, Globe,
+  Users, Briefcase, GraduationCap, BookOpen, Search, MapPin, Globe,
   X, Mail, Phone, MessageCircle, EyeOff, ArrowRight, Handshake,
 } from 'lucide-react';
 
@@ -72,6 +72,13 @@ interface ConnectTarget {
   show_contact?: boolean;
 }
 
+interface PreviewMember {
+  member_id: string;
+  full_name: string;
+  avatar_url?: string;
+  member_type: string;
+}
+
 export default function DirectoryPage() {
   const { token, member, _hydrated } = useAuthStore();
   const [tab, setTab] = useState<Tab>('members');
@@ -84,7 +91,13 @@ export default function DirectoryPage() {
   const [expandedDesc, setExpandedDesc] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(6);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  
+
+  // Preview state (for unauthenticated users)
+  const [previewMembers, setPreviewMembers] = useState<PreviewMember[]>([]);
+  const [previewCounts, setPreviewCounts] = useState({ members: 0, businesses: 0 });
+
+  const isAuthenticated = !!token;
+
   // Infinite scroll — load 6 more when sentinel enters viewport
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -96,6 +109,20 @@ export default function DirectoryPage() {
     return () => observer.disconnect();
   }, [tab, search, loading]);
 
+  // Fetch preview data for unauthenticated visitors
+  useEffect(() => {
+    if (!_hydrated || isAuthenticated) return;
+    fetch('/api/directory/preview')
+      .then(r => r.json())
+      .then(res => {
+        setPreviewMembers(res.data?.members || []);
+        setPreviewCounts(res.data?.counts || { members: 0, businesses: 0 });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [_hydrated, isAuthenticated]);
+
+  // Fetch full data for authenticated users
   useEffect(() => {
     if (!token) return;
     setLoading(true);
@@ -159,33 +186,90 @@ export default function DirectoryPage() {
 
   if (!_hydrated) return null;
 
-  // Gate: not logged in
-  if (!token) {
+  // ─── UNAUTHENTICATED: Gate view ────────────────────────────────────
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen transition-colors flex items-center justify-center px-6">
-        <div className="text-center max-w-md">
-          <Lock size={48} className="text-dark/20 dark:text-white/20 mx-auto mb-4" />
-          <h1 className="font-display text-4xl text-dark dark:text-white mb-3">
-            Members Only
-          </h1>
-          <p className="text-dark/50 dark:text-white/50 mb-6">
-            Login with your member account to access the directory, browse businesses, and connect with fellow Rotaractors.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Link href="/login"
-              className="px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors">
-              Login
-            </Link>
-            <Link href="/join"
-              className="px-6 py-3 border border-black/10 dark:border-white/10 text-dark dark:text-white rounded-xl font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-              Register
-            </Link>
+      <div className="min-h-screen transition-colors">
+        {/* Hero (simplified for visitors) */}
+        <section className="relative overflow-hidden pt-28 pb-12 px-6">
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent-light/5" />
+          <div className="absolute top-20 right-20 w-72 h-72 rounded-full bg-accent/5 blur-[100px]" />
+          <div className="relative z-10 max-w-7xl mx-auto">
+            <AnimatedSection>
+              <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-3">Our Network</p>
+              <h1 className="font-display text-5xl md:text-7xl text-dark dark:text-white mb-4">
+                Member <span className="gradient-text italic">Directory</span>
+              </h1>
+              <p className="text-dark/50 dark:text-white/50 text-lg max-w-2xl">
+                Connect with fellow Rotaractors — explore businesses, professions, and grow together.
+              </p>
+            </AnimatedSection>
           </div>
-        </div>
+        </section>
+
+        {/* Gate + blurred preview grid */}
+        <section className="px-6 pb-20">
+          <div className="max-w-7xl mx-auto relative">
+            {/* Gate overlay — desktop: absolute over grid, mobile: relative flow */}
+            <div className="
+              relative min-[761px]:absolute min-[761px]:inset-x-0 min-[761px]:top-8
+              flex justify-center
+              z-20 mb-8 min-[761px]:mb-0
+            ">
+              <MembersGate
+                memberCount={previewCounts.members}
+                businessCount={previewCounts.businesses}
+              />
+            </div>
+
+            {/* Blurred preview cards */}
+            <div
+              className="
+                min-[761px]:relative
+                max-[760px]:absolute max-[760px]:inset-x-0 max-[760px]:top-0
+              "
+              aria-hidden="true"
+              style={{
+                filter: 'blur(7px) saturate(.85) brightness(.7)',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                maskImage: 'linear-gradient(180deg,#000 0%,#000 42%,transparent 88%)',
+                WebkitMaskImage: 'linear-gradient(180deg,#000 0%,#000 42%,transparent 88%)',
+              }}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" tabIndex={-1}>
+                {previewMembers.map((m) => {
+                  const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  return (
+                    <div key={m.member_id} className="p-5 rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5">
+                      <div className="flex items-center gap-3 mb-3">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                            {initials}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="text-dark dark:text-white font-semibold truncate">{m.full_name}</h3>
+                          <p className="text-dark/50 dark:text-white/50 text-sm capitalize">{m.member_type.split(',').join(', ')}</p>
+                        </div>
+                      </div>
+                      <div className="w-full py-2.5 rounded-xl bg-accent/10 text-accent font-medium text-sm text-center">
+                        Connect
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
 
+  // ─── AUTHENTICATED: Full directory ─────────────────────────────────
   const firstName = member?.full_name?.split(' ')[0] || 'Member';
   const memberInitials = member?.full_name
     ?.split(' ')
@@ -246,7 +330,7 @@ export default function DirectoryPage() {
                 }`}>
                 <t.icon size={16} />
                 {t.label}
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                <span className={`text-xs px-1.5 py-0.5 rounded-full max-[760px]:hidden ${
                   tab === t.key ? 'bg-white/20' : 'bg-black/5 dark:bg-white/10'
                 }`}>
                   {t.count}
@@ -283,8 +367,7 @@ export default function DirectoryPage() {
                   const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
                   const vis = getVis(m.member_visibility);
                   const primaryProf = m.professions?.find(p => p.is_primary) || m.professions?.[0];
-                  const primaryBiz = m.businesses?.[0];
-                  
+
                   return (
                     <AnimatedSection key={m.member_id} delay={i * 60}>
                       <div className="p-5 rounded-2xl bg-light-card dark:bg-dark-card border border-black/5 dark:border-white/5 hover:scale-[1.02] hover:shadow-lg hover:shadow-accent/5 transition-all duration-300 flex flex-col h-full">
