@@ -171,14 +171,14 @@ export default function Navbar() {
                   <User size={22} />
                 </Link>
               )}
-
+{/*
               <Link
                 href="/admin"
                 className={`p-2 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-accent' : isDark ? 'text-white/70 hover:text-accent hover:bg-white/10' : 'text-dark/70 hover:text-accent hover:bg-dark/10'}`}
                 aria-label="Admin"
               >
                 <Shield size={22} />
-              </Link>
+              </Link>. */}
 
               {/* Hamburger */}
               <button
