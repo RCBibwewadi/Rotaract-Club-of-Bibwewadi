@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
+import jwt from 'jsonwebtoken';
 import { verifyToken, type JWTPayload } from './auth';
 import { errorResponse } from '@rcb-2.0/shared';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'rotaract@2025';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export function json(data: unknown, status = 200) {
   return Response.json(data, { status });
@@ -28,9 +29,19 @@ export function requireApproved(user: JWTPayload): void {
 }
 
 export function requireAdminPassword(request: NextRequest): void {
-  const pw = request.headers.get('x-admin-password');
-  if (pw !== ADMIN_PASSWORD) {
-    throw new AuthError(401, 'Invalid admin password');
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new AuthError(401, 'Missing admin token');
+  }
+
+  try {
+    const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET) as { role: string };
+    if (decoded.role !== 'admin') {
+      throw new AuthError(403, 'Not an admin token');
+    }
+  } catch (err) {
+    if (err instanceof AuthError) throw err;
+    throw new AuthError(401, 'Invalid or expired admin token');
   }
 }
 

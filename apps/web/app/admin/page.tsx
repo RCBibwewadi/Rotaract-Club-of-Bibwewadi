@@ -24,24 +24,23 @@ const pillarIconMap: Record<string, React.ElementType> = {
   Handshake, HeartHandshake, Globe, Brain,
 };
 
-// ── Admin Auth State (password-based, persisted in sessionStorage) ──
+// ── Admin Auth State (token-based, persisted in sessionStorage) ──
 const ADMIN_AUTH_KEY = 'rcb-admin-auth';
-const ADMIN_AUTH_PW_KEY = 'rcb-admin-pw';
-const ADMIN_PASSWORD = 'rotaract@2025';
+const ADMIN_TOKEN_KEY = 'rcb-admin-token';
 
-function setAdminAuthenticated(password: string) {
+function setAdminAuthenticated(token: string) {
   sessionStorage.setItem(ADMIN_AUTH_KEY, 'true');
-  sessionStorage.setItem(ADMIN_AUTH_PW_KEY, password);
+  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
   adminAuthListeners.forEach(fn => fn());
 }
 
-function getAdminPassword(): string {
-  return sessionStorage.getItem(ADMIN_AUTH_PW_KEY) || '';
+function getAdminToken(): string {
+  return sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
 }
 
 function clearAdminAuth() {
   sessionStorage.removeItem(ADMIN_AUTH_KEY);
-  sessionStorage.removeItem(ADMIN_AUTH_PW_KEY);
+  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
   adminAuthListeners.forEach(fn => fn());
 }
 
@@ -64,7 +63,7 @@ function getAdminAuthServerSnapshot(): boolean {
 function adminHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
-    'x-admin-password': getAdminPassword(),
+    'Authorization': `Bearer ${getAdminToken()}`,
   };
 }
 
@@ -95,10 +94,9 @@ function FileUploadField({ label, value, folder, onUploaded }: {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const pw = getAdminPassword();
       const res = await fetch(`/api/upload?folder=${folder}`, {
         method: 'POST',
-        headers: { 'x-admin-password': pw },
+        headers: { 'Authorization': `Bearer ${getAdminToken()}` },
         body: formData,
       });
       const data = await res.json();
@@ -153,14 +151,29 @@ interface AdminMember {
 function LoginForm({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!password) { setError('Enter the admin password'); return; }
-    if (password === ADMIN_PASSWORD) {
-      setAdminAuthenticated(password);
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Incorrect password');
+        return;
+      }
+      setAdminAuthenticated(data.token);
       onLogin();
-    } else {
-      setError('Incorrect password');
+    } catch {
+      setError('Login failed. Try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -191,7 +204,8 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
           />
           <button
             onClick={handleLogin}
-            className="w-full py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold transition-colors"
+            disabled={loading}
+            className="w-full py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold transition-colors disabled:opacity-50"
           >
             Login
           </button>
@@ -1123,7 +1137,7 @@ function MultiFileUpload({ label, urls, folder, onUpdated }: {
         formData.append('file', file);
         const res = await fetch(`/api/upload?folder=${folder}`, {
           method: 'POST',
-          headers: { 'x-admin-password': getAdminPassword() },
+          headers: { 'Authorization': `Bearer ${getAdminToken()}` },
           body: formData,
         });
         const data = await res.json();
