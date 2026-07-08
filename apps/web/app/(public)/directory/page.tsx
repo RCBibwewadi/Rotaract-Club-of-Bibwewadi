@@ -189,7 +189,7 @@ export default function DirectoryPage() {
   // ─── UNAUTHENTICATED: Gate view ────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen transition-colors">
+      <div className="relative z-10 min-h-screen transition-colors">
         {/* Hero (simplified for visitors) */}
         <section className="relative overflow-hidden pt-28 pb-12 px-6">
           <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent-light/5" />
@@ -286,7 +286,7 @@ export default function DirectoryPage() {
   ];
 
   return (
-    <div className="min-h-screen transition-colors">
+    <div className="relative z-10 min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="members-hero" className="relative overflow-hidden pt-28 pb-12 px-6">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent-light/5" />
@@ -320,18 +320,18 @@ export default function DirectoryPage() {
       <section data-rota="members-dir" className="px-6 pb-20">
         <div className="max-w-7xl mx-auto">
           {/* Tab Bar */}
-          <div className="flex gap-1 p-1.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 mb-6 overflow-x-auto">
+          <div className="flex gap-1 p-1.5 rounded-2xl bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 mb-6 overflow-x-auto shadow-sm">
             {tabs.map(t => (
               <button key={t.key} onClick={() => changeTab(t.key)}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all flex-1 justify-center whitespace-nowrap ${
                   tab === t.key
                     ? 'bg-accent text-white shadow-md'
-                    : 'text-dark/50 dark:text-white/50 hover:text-dark dark:hover:text-white'
+                    : 'text-dark dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/10'
                 }`}>
                 <t.icon size={16} />
                 {t.label}
                 <span className={`text-xs px-1.5 py-0.5 rounded-full max-[760px]:hidden ${
-                  tab === t.key ? 'bg-white/20' : 'bg-black/5 dark:bg-white/10'
+                  tab === t.key ? 'bg-white/20' : 'bg-black/10 dark:bg-white/10 text-dark/60 dark:text-white/60'
                 }`}>
                   {t.count}
                 </span>
