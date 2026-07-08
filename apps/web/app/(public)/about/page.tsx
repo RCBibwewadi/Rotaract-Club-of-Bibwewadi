@@ -18,6 +18,7 @@ export default function AboutPage() {
 
   const stats = content.stats || [];
   const pillars = content.pillars || [];
+  const aboutSections = content.aboutSections || [];
 
   return (
     <div className="min-h-screen transition-colors">
@@ -37,10 +38,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Story */}
+      {/* Story — Primary */}
       <section data-rota="story" className="py-20 px-6 md:px-12 lg:px-24">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                    <AnimatedSection delay={200}>
+          <AnimatedSection delay={200}>
             <div>
               <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-3">Who We Are</p>
               <h2 className="font-display text-3xl md:text-5xl text-dark dark:text-white mb-6">
@@ -60,7 +61,6 @@ export default function AboutPage() {
                   <div className="w-full h-full rounded-3xl bg-light dark:bg-dark flex items-center justify-center">
                     <span className="font-display text-8xl text-accent/20">RCB</span>
                   </div>
-                  
                 )}
                 <div className="absolute -bottom-6 -right-6 w-32 h-32 rounded-2xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white">
                   <div className="text-center"><span className="text-3xl font-bold">100+</span><span className="block text-xs mt-1">Years of<br />Service</span></div>
@@ -68,9 +68,44 @@ export default function AboutPage() {
               </div>
             </div>
           </AnimatedSection>
-
         </div>
       </section>
+
+      {/* Additional About Sections — alternating layout */}
+      {aboutSections.map((section, i) => {
+        const imageFirst = i % 2 === 1; // 0=image right, 1=image left, 2=image right...
+        return (
+          <section key={i} data-rota={`about-section-${i}`} className="py-20 px-6 md:px-12 lg:px-24">
+            <div className={`max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center`}>
+              <AnimatedSection delay={200} className={imageFirst ? 'lg:order-2' : ''}>
+                <div>
+                  {section.title && (
+                    <h2 className="font-display text-3xl md:text-5xl text-dark dark:text-white mb-6">
+                      {section.title}
+                    </h2>
+                  )}
+                  <p className="text-dark/60 dark:text-white/60 leading-relaxed text-lg">
+                    {section.description}
+                  </p>
+                </div>
+              </AnimatedSection>
+              <AnimatedSection className={imageFirst ? 'lg:order-1' : ''}>
+                <div className="relative">
+                  <div className="aspect-square rounded-3xl bg-white p-1 overflow-hidden">
+                    {section.image ? (
+                      <img src={section.image} alt={section.title || `About section ${i + 1}`} className="w-full h-full rounded-3xl object-cover" />
+                    ) : (
+                      <div className="w-full h-full rounded-3xl bg-light dark:bg-dark flex items-center justify-center">
+                        <span className="font-display text-6xl text-accent/20">{section.title?.[0] || 'R'}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </AnimatedSection>
+            </div>
+          </section>
+        );
+      })}
 
       {/* Vision */}
       <section data-rota="vision" className="py-20 px-6">

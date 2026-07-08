@@ -7,7 +7,7 @@ import {
   CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X,
-  Handshake, HeartHandshake, Globe, Brain,
+  Handshake, HeartHandshake, Globe, Brain, Award,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
@@ -556,7 +556,7 @@ function MembersTab() {
 // ── Content Management Tab ───────────────────────────────────
 interface SiteContentData {
   hero_title: string; hero_subtitle: string; hero_tagline: string;
-  about_text: string; about_image: string; vision_text: string;
+  about_text: string; about_image: string; about_sections: { title: string; description: string; image: string }[]; vision_text: string;
   pillars: { icon: string; title: string; description: string }[];
   stats: { value: string; label: string }[];
   contact_email: string; contact_phone: string; contact_address: string;
@@ -632,9 +632,78 @@ function ContentTab() {
 
       {/* About */}
       <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
-        <h3 className="text-lg font-semibold mb-4">About Section</h3>
+        <h3 className="text-lg font-semibold mb-4">About Section (Primary)</h3>
         <textarea value={data.about_text} onChange={e => update({ about_text: e.target.value })} rows={5} className={`${inputClass} resize-none mb-4`} />
         <FileUploadField label="About Image" value={data.about_image} folder="avatars" onUploaded={url => update({ about_image: url })} />
+      </div>
+
+      {/* About Sections (Multiple) */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Additional About Sections</h3>
+          <button
+            onClick={() => update({ about_sections: [...(data.about_sections || []), { title: '', description: '', image: '' }] })}
+            className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-light transition-colors"
+          >
+            + Add Section
+          </button>
+        </div>
+        <p className="text-white/40 text-xs mb-4">Images alternate: 1st right, 2nd left, 3rd right...</p>
+        <div className="space-y-4">
+          {(data.about_sections || []).map((section, i) => (
+            <div key={i} className="p-4 rounded-xl bg-dark-surface border border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-white/50">Section {i + 1} — Image {i % 2 === 0 ? 'Right' : 'Left'}</span>
+                <button
+                  onClick={() => {
+                    const sections = [...(data.about_sections || [])];
+                    sections.splice(i, 1);
+                    update({ about_sections: sections });
+                  }}
+                  className="text-red-400 hover:text-red-300 text-xs"
+                >
+                  Remove
+                </button>
+              </div>
+              <div>
+                <label className={labelClass}>Title</label>
+                <input
+                  value={section.title}
+                  onChange={e => {
+                    const sections = [...(data.about_sections || [])];
+                    sections[i] = { ...sections[i], title: e.target.value };
+                    update({ about_sections: sections });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. Rotary International"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Description</label>
+                <textarea
+                  value={section.description}
+                  onChange={e => {
+                    const sections = [...(data.about_sections || [])];
+                    sections[i] = { ...sections[i], description: e.target.value };
+                    update({ about_sections: sections });
+                  }}
+                  rows={4}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+              <FileUploadField
+                label="Section Image / Logo"
+                value={section.image}
+                folder="avatars"
+                onUploaded={url => {
+                  const sections = [...(data.about_sections || [])];
+                  sections[i] = { ...sections[i], image: url };
+                  update({ about_sections: sections });
+                }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Vision */}
@@ -1400,6 +1469,8 @@ interface EventItem {
   event_description?: string;
   event_images?: string[];
   event_videos?: string[];
+  event_best_member?: string | null;
+  best_member?: { member_id: string; full_name: string; avatar_url?: string } | null;
 }
 
 const EMPTY_EVENT = {
@@ -1416,6 +1487,9 @@ function EventsTab() {
   const [adding, setAdding] = useState(false);
   const [newForm, setNewForm] = useState(EMPTY_EVENT);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [membersList, setMembersList] = useState<{ member_id: string; full_name: string }[]>([]);
+  const [bestMemberEditing, setBestMemberEditing] = useState<string | null>(null);
+  const [bestMemberValue, setBestMemberValue] = useState('');
 
   const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
   const labelClass = "block text-sm font-medium text-white/70 mb-2";
@@ -1423,6 +1497,28 @@ function EventsTab() {
   const showMsg = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/members/all', { headers: adminHeaders() });
+        const data = await res.json();
+        setMembersList((data.data || []).map((m: { member_id: string; full_name: string }) => ({ member_id: m.member_id, full_name: m.full_name })));
+      } catch { /* silent */ }
+    })();
+  }, []);
+
+  const handleSetBestMember = async (eventId: string, memberId: string) => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/best-member`, {
+        method: 'PATCH', headers: adminHeaders(),
+        body: JSON.stringify({ member_id: memberId }),
+      });
+      const data = await res.json();
+      if (res.ok) { showMsg(data.message || 'Best member set', 'success'); setBestMemberEditing(null); fetchEvents(); }
+      else showMsg(data.error?.message || 'Failed', 'error');
+    } catch { showMsg('Network error', 'error'); }
   };
 
   const fetchEvents = useCallback(async () => {
@@ -1588,6 +1684,7 @@ function EventsTab() {
               () => setEditing(null),
             )
           ) : (
+            <>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
@@ -1609,6 +1706,54 @@ function EventsTab() {
                 <button onClick={() => handleDelete(ev.event_id)} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5"><Trash2 size={14} /></button>
               </div>
             </div>
+            {/* Best Member */}
+            <div className="mt-3 pt-3 border-t border-white/5">
+              {bestMemberEditing === ev.event_id ? (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={bestMemberValue}
+                    onChange={e => setBestMemberValue(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-lg bg-dark-surface border border-white/10 text-white text-sm outline-none focus:border-accent"
+                  >
+                    <option value="">Select member...</option>
+                    {membersList.map(m => (
+                      <option key={m.member_id} value={m.member_id}>{m.full_name}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => bestMemberValue && handleSetBestMember(ev.event_id, bestMemberValue)}
+                    disabled={!bestMemberValue}
+                    className="px-3 py-2 bg-accent text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setBestMemberEditing(null)}
+                    className="px-3 py-2 bg-dark-surface text-white/50 rounded-lg text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Award size={14} className="text-yellow-500" />
+                    {ev.best_member ? (
+                      <span className="text-yellow-400 font-medium">{ev.best_member.full_name}</span>
+                    ) : (
+                      <span className="text-white/30">No best member set</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setBestMemberEditing(ev.event_id); setBestMemberValue(ev.event_best_member || ''); }}
+                    className="text-xs text-accent hover:text-accent-light transition-colors"
+                  >
+                    {ev.best_member ? 'Change' : 'Set Best Member'}
+                  </button>
+                </div>
+              )}
+            </div>
+            </>
           )}
         </div>
       ))}

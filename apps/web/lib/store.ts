@@ -33,6 +33,7 @@ export interface SiteContent {
   heroTagline: string;
   aboutText: string;
   aboutImage: string;
+  aboutSections: { title: string; description: string; image: string }[];
   visionText: string;
   pillars: { icon: string; title: string; description: string }[];
   stats: { value: string; label: string }[];
@@ -77,6 +78,7 @@ const defaultContent: SiteContent = {
   heroTagline: 'Make it Matter',
   aboutText: 'The Rotaract Club of Bibwewadi Pune is a vibrant social organization driven by young leaders who believe in creating impact through service, fellowship, and professional growth. Rooted in the values and global spirit of Rotary International, we work at the grassroots level to uplift communities while building lifelong networks and leadership skills among our members.',
   aboutImage: '',
+  aboutSections: [],
   visionText: 'To be a dynamic force for positive change in society while nurturing responsible leaders of tomorrow — individuals who serve with empathy, act with integrity, and inspire others to do the same.',
   stats: [
     { value: '200+', label: 'Active Members' },
@@ -196,6 +198,7 @@ export const useStore = create<AppState>((set, get) => ({
               heroTagline: d.hero_tagline ?? s.content.heroTagline,
               aboutText: d.about_text ?? s.content.aboutText,
               aboutImage: d.about_image ?? s.content.aboutImage,
+              aboutSections: d.about_sections ?? s.content.aboutSections,
               visionText: d.vision_text ?? s.content.visionText,
               pillars: d.pillars ?? s.content.pillars,
               stats: d.stats ?? s.content.stats,

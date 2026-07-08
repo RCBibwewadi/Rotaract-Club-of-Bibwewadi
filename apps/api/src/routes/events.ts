@@ -30,7 +30,13 @@ eventRoutes.get('/', async (_req, res) => {
       event_description,
       event_images,
       event_videos,
+      event_best_member,
       members!event_lead_id (
+        member_id,
+        full_name,
+        avatar_url
+      ),
+      best_member:members!event_best_member (
         member_id,
         full_name,
         avatar_url
@@ -70,7 +76,13 @@ eventRoutes.get('/upcoming', async (_req, res) => {
       event_avenue,
       event_description,
       event_images,
+      event_best_member,
       members!event_lead_id (
+        member_id,
+        full_name,
+        avatar_url
+      ),
+      best_member:members!event_best_member (
         member_id,
         full_name,
         avatar_url
@@ -102,7 +114,13 @@ eventRoutes.get('/past', async (_req, res) => {
       event_strength,
       event_avenue,
       event_images,
+      event_best_member,
       members!event_lead_id (
+        member_id,
+        full_name,
+        avatar_url
+      ),
+      best_member:members!event_best_member (
         member_id,
         full_name,
         avatar_url

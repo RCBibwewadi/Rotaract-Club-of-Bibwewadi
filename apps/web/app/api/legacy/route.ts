@@ -21,16 +21,35 @@ export async function GET() {
       return json(errorResponse('DB_ERROR', error.message), 500);
     }
 
-    const years = (legacyYears || []).map((l) => l.riy_year);
+    // Also find non-current BOD members whose riy_year has no legacy record
+    const { data: prevBod } = await supabase
+      .from('bod')
+      .select('riy_year')
+      .eq('is_current', false);
+
+    const legacyYearSet = new Set((legacyYears || []).map((l) => l.riy_year));
+    const extraYears = [...new Set((prevBod || []).map((b) => b.riy_year))]
+      .filter((y) => !legacyYearSet.has(y))
+      .sort()
+      .reverse();
+
+    // Combine legacy records + auto-generated entries for previous BOD years
+    const allLegacyYears = [
+      ...(legacyYears || []),
+      ...extraYears.map((y) => ({ legacy_id: `auto-${y}`, riy_year: y, year_video_url: '' })),
+    ].sort((a, b) => b.riy_year.localeCompare(a.riy_year));
+
+    const allYears = allLegacyYears.map((l) => l.riy_year);
     let bodByYear: Record<string, unknown[]> = {};
 
-    if (years.length) {
+    if (allYears.length) {
       const { data: bodData } = await supabase
         .from('bod')
         .select(
           'bod_id, full_name, designation, linkedin_url, instagram_url, gmail, avatar_url, riy_year',
         )
-        .in('riy_year', years)
+        .in('riy_year', allYears)
+        .eq('is_current', false)
         .order('designation');
 
       if (bodData) {
@@ -41,7 +60,7 @@ export async function GET() {
       }
     }
 
-    const enriched = (legacyYears || []).map((l) => ({
+    const enriched = allLegacyYears.map((l) => ({
       ...l,
       bod_members: bodByYear[l.riy_year] || [],
     }));

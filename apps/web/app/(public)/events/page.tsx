@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, Tag, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, Tag, Users, Award } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
 
 
@@ -17,6 +17,11 @@ interface EventItem {
   event_avenue?: string;
   event_description?: string;
   event_images?: string[];
+  best_member?: {
+    member_id: string;
+    full_name: string;
+    avatar_url?: string;
+  } | null;
 }
 
 export default function EventsPage() {
@@ -190,6 +195,19 @@ export default function EventsPage() {
                           </span>
                         )}
                       </div>
+                      {event.best_member && (
+                        <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                          <Award size={16} className="text-yellow-500 flex-shrink-0" />
+                          <div className="flex items-center gap-2">
+                            {event.best_member.avatar_url && (
+                              <img src={event.best_member.avatar_url} alt={event.best_member.full_name} className="w-6 h-6 rounded-full object-cover" />
+                            )}
+                            <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                              Best Member: {event.best_member.full_name}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </AnimatedSection>

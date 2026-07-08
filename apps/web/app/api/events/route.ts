@@ -26,7 +26,13 @@ export async function GET() {
         event_description,
         event_images,
         event_videos,
+        event_best_member,
         members!event_lead_id (
+          member_id,
+          full_name,
+          avatar_url
+        ),
+        best_member:members!event_best_member (
           member_id,
           full_name,
           avatar_url

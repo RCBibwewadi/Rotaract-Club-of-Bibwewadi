@@ -112,6 +112,22 @@ export default function HomePage() {
       <Connector isDark={isDark} />
 
       {/* ═══════════════════════════════════════
+          LEARN MORE — About Rotaract
+          ═══════════════════════════════════════ */}
+      <section className="py-16 md:py-20 text-center">
+        <AnimatedSection>
+          <p className={`text-sm md:text-base ${muted} max-w-md mx-auto mb-6`}>
+            Curious about who we are and what drives us?
+          </p>
+          <Link href="/about" className="inline-flex items-center gap-2 px-7 py-3 bg-accent hover:bg-accent-light text-white rounded-full text-sm font-medium transition-all duration-300 group">
+            Learn More About Rotaract <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </AnimatedSection>
+      </section>
+
+      <Connector isDark={isDark} />
+
+      {/* ═══════════════════════════════════════
           IMPACT — Numbers that prove the motto
           ═══════════════════════════════════════ */}
       <section data-rota="home-pillars" className={`py-20 md:py-28 ${isDark ? 'bg-dark-card/80' : 'bg-white/80'} backdrop-blur-sm`}>

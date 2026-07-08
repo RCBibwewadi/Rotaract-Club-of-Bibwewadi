@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import AnimatedSection from '@/components/AnimatedSection';
-import { Mail, Phone, MapPin, Send, CheckCircle, ExternalLink } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
+import { FaInstagram, FaLinkedinIn} from "react-icons/fa";
+import { MdEmail } from "react-icons/md";
 
 export default function ContactPage() {
   const content = useStore((s) => s.content);
@@ -84,8 +86,9 @@ export default function ContactPage() {
                   <div className="pt-6 border-t border-black/10 dark:border-white/10">
                     <p className="text-dark/40 dark:text-white/40 text-sm uppercase tracking-wider mb-3">Follow Us</p>
                     <div className="flex gap-3">
-                      {content.socialLinks.map((link) => {
-                        const Icon = ExternalLink;
+                      {content.socialLinks.map((link, index) => {
+                        const icons = [FaInstagram, MdEmail, FaLinkedinIn];
+                        const Icon = icons[index] ?? Mail;
                         return (
                           <a
                             key={link.platform}
