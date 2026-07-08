@@ -143,7 +143,6 @@
 }
 .page-visible {
   opacity: 1;
-  transform: translateY(0);
 }
 
 /* Smooth scroll on html */
