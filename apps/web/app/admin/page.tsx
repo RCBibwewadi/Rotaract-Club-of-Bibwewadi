@@ -495,14 +495,14 @@ function MembersTab() {
                         </button>
                       )} */}
 
-                      {/* Unblock — show if inactive */}
+                      {/* Unblock — hidden along with Block, not needed for now. Uncomment to re-enable.
                       {!m.is_active && m.role !== 'admin' && (
                         <button onClick={() => doAction(m.member_id, 'reactivate', 'Unblock')}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors text-xs font-medium"
                           title="Unblock member">
                           <RefreshCw size={13} /> Unblock
                         </button>
-                      )}
+                      )} */}
 
                       {/* Delete — always available for non-admin */}
                       {m.role !== 'admin' && (
