@@ -304,11 +304,13 @@ function MembersTab() {
     }
   };
 
-  const filtered = members.filter(m =>
-    m.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase()) ||
-    m.username.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = members
+    .filter(m =>
+      m.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      m.email.toLowerCase().includes(search.toLowerCase()) ||
+      m.username.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   const getStatusBadge = (m: AdminMember) => {
     if (!m.is_active) return <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-500/10 text-red-400 font-medium">Blocked</span>;
@@ -466,14 +468,14 @@ function MembersTab() {
                         </button>
                       )}
 
-                      {/* Reject — show if pending */}
+                      {/* Reject — hidden for now, use Delete instead. Uncomment to re-enable.
                       {m.is_active && !m.is_approved && m.role !== 'admin' && (
                         <button onClick={() => doAction(m.member_id, 'reject', 'Reject')}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
                           title="Reject">
                           <UserX size={13} /> Reject
                         </button>
-                      )}
+                      )} */}
 
                       {/* Disapprove — show if active & approved */}
                       {m.is_active && m.is_approved && m.role !== 'admin' && (
@@ -484,14 +486,14 @@ function MembersTab() {
                         </button>
                       )}
 
-                      {/* Block — show if active & approved */}
+                      {/* Block — hidden for now, not needed. Uncomment to re-enable.
                       {m.is_active && m.is_approved && m.role !== 'admin' && (
                         <button onClick={() => doAction(m.member_id, 'deactivate', 'Block')}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
                           title="Block member">
                           <Ban size={13} /> Block
                         </button>
-                      )}
+                      )} */}
 
                       {/* Unblock — show if inactive */}
                       {!m.is_active && m.role !== 'admin' && (
