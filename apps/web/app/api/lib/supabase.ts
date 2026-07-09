@@ -5,9 +5,12 @@ let _supabaseAdmin: SupabaseClient;
 
 export function getSupabase() {
   if (!_supabase) {
+    // Server-only client: prefer the service role key so API routes keep
+    // working once RLS denies the public anon key. Falls back to the anon
+    // key if the service key is not configured.
     _supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
   }
