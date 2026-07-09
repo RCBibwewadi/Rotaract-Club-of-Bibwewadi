@@ -475,6 +475,15 @@ function MembersTab() {
                         </button>
                       )}
 
+                      {/* Disapprove — show if active & approved */}
+                      {m.is_active && m.is_approved && m.role !== 'admin' && (
+                        <button onClick={() => doAction(m.member_id, 'disapprove', 'Disapprove')}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors text-xs font-medium"
+                          title="Move back to pending">
+                          <UserX size={13} /> Disapprove
+                        </button>
+                      )}
+
                       {/* Block — show if active & approved */}
                       {m.is_active && m.is_approved && m.role !== 'admin' && (
                         <button onClick={() => doAction(m.member_id, 'deactivate', 'Block')}
