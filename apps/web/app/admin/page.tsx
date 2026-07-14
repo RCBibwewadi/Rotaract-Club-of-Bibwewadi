@@ -6,7 +6,7 @@ import {
   LogOut, Save, Plus, Trash2, Edit3, Eye, Settings, Users, FolderOpen,
   CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
-  Mail, ExternalLink, Upload, IndianRupee, X,
+  Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
   Handshake, HeartHandshake, Globe, Brain, Award,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
@@ -143,6 +143,7 @@ interface AdminMember {
   member_type: string;
   created_at: string;
   phone?: string | null;
+  dob?: string | null;
   payment_method?: string | null;
   payment_proof_url?: string | null;
 }
@@ -222,6 +223,8 @@ function MembersTab() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [sortField, setSortField] = useState<'name' | 'dob'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [paymentModal, setPaymentModal] = useState<AdminMember | null>(null);
 
@@ -310,7 +313,18 @@ function MembersTab() {
       m.email.toLowerCase().includes(search.toLowerCase()) ||
       m.username.toLowerCase().includes(search.toLowerCase())
     )
-    .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    .sort((a, b) => {
+      if (sortField === 'dob') {
+        // Members without a DOB always sort to the bottom, regardless of direction
+        if (!a.dob && !b.dob) return a.full_name.localeCompare(b.full_name);
+        if (!a.dob) return 1;
+        if (!b.dob) return -1;
+        const cmp = new Date(a.dob).getTime() - new Date(b.dob).getTime();
+        return sortDir === 'asc' ? cmp : -cmp;
+      }
+      const cmp = a.full_name.localeCompare(b.full_name);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
 
   const getStatusBadge = (m: AdminMember) => {
     if (!m.is_active) return <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-500/10 text-red-400 font-medium">Blocked</span>;
@@ -357,6 +371,41 @@ function MembersTab() {
           className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
         </button>
+      </div>
+
+      {/* Sort controls */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs text-white/40 font-medium">Sort by</span>
+        {/* Sort field */}
+        <div className="flex gap-1 p-1 rounded-xl bg-dark-surface border border-white/5">
+          <button onClick={() => setSortField('name')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              sortField === 'name' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
+            }`}>
+            Name
+          </button>
+          <button onClick={() => setSortField('dob')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              sortField === 'dob' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
+            }`}>
+            <Cake size={12} /> Date of Birth
+          </button>
+        </div>
+        {/* Sort direction */}
+        <div className="flex gap-1 p-1 rounded-xl bg-dark-surface border border-white/5">
+          <button onClick={() => setSortDir('asc')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              sortDir === 'asc' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
+            }`}>
+            <ArrowUp size={12} /> Ascending
+          </button>
+          <button onClick={() => setSortDir('desc')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              sortDir === 'desc' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
+            }`}>
+            <ArrowDown size={12} /> Descending
+          </button>
+        </div>
       </div>
 
       {/* Message */}
@@ -415,6 +464,9 @@ function MembersTab() {
             const joinDate = new Date(m.created_at).toLocaleDateString('en-IN', {
               day: 'numeric', month: 'short', year: 'numeric',
             });
+            const dobFormatted = m.dob ? new Date(m.dob).toLocaleDateString('en-IN', {
+              day: 'numeric', month: 'short', year: 'numeric',
+            }) : null;
 
             return (
               <div key={m.member_id}
@@ -436,6 +488,11 @@ function MembersTab() {
                     {m.phone && (
                       <p className="text-white/30 text-xs flex items-center gap-1">
                         <Phone size={10} /> {m.phone}
+                      </p>
+                    )}
+                    {dobFormatted && (
+                      <p className="text-white/30 text-xs flex items-center gap-1">
+                        <Cake size={10} /> {dobFormatted}
                       </p>
                     )}
                     <p className="text-white/20 text-[10px]">

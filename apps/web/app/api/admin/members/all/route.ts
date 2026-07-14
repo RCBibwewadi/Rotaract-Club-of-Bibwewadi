@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('members')
       .select(
-        'member_id, full_name, email, username, phone, role, is_approved, is_active, member_type, created_at, payment_method, payment_proof_url',
+        'member_id, full_name, email, username, phone, dob, role, is_approved, is_active, member_type, created_at, payment_method, payment_proof_url',
       )
       .order('created_at', { ascending: false });
 

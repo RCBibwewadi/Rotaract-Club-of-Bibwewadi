@@ -21,8 +21,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Column 1 — Identity */}
           <div>
-            <p className="text-sm font-medium text-white/80">Rotaract Club</p>
-            <p className="text-xs text-white/45">Bibwewadi, Pune</p>
+            <p className="text-sm font-medium text-white">Rotaract Club of Bibwewadi Pune</p>
             <p className="text-[10px] text-white/25 tracking-wider uppercase mt-3">
               ROTARY INTERNATIONAL · DISTRICT 3131
             </p>
