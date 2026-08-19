@@ -202,7 +202,7 @@ export const CreateRsvpSchema = z.object({
   club_name:     z.string().trim().min(1, 'Club name is required'),
   designation:   z.string().trim().optional(),
   phone:         z.string().trim()
-                   .regex(/^\+?[\d\s-]{7,20}$/, 'Invalid phone number'),
+                   .regex(/^\d{10}$/, 'Phone number must be exactly 10 digits'),
   email:         z.string().trim().email('Invalid email'),
 });
 

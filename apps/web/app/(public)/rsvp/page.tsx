@@ -1,64 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import AnimatedSection from '@/components/AnimatedSection';
-import AddToCalendar from '@/components/AddToCalendar';
-import type { CalendarEvent } from '@/lib/calendar';
 import {
   User, Mail, Phone, Building2, BadgeCheck, Send, CheckCircle, AlertCircle,
   CalendarDays, ArrowLeft,
 } from 'lucide-react';
-
-// The club is in Pune, and event times in the DB are stored as naive local time.
-const EVENT_TIME_ZONE = 'Asia/Kolkata';
-const EVENT_IST_OFFSET = '+05:30';
-// The events table has no end time, so assume a typical installation length.
-const EVENT_DURATION_HOURS = 3;
-
-/**
- * Fallback details for the ceremony. Overridden at runtime by the matching row
- * from /api/events/upcoming, so edits made in the admin panel flow through to
- * the calendar links without a redeploy.
- */
-const INSTALLATION_EVENT: CalendarEvent = {
-  title: 'THE VAULT - 10th Club Installation',
-  description: 'The VAULT - BOD Installation. Rotaract Club of Bibwewadi.',
-  location: 'Poona Merchant Chamber, Market Yard',
-  start: new Date(`2026-08-30T16:00:00${EVENT_IST_OFFSET}`),
-  end: new Date(`2026-08-30T19:00:00${EVENT_IST_OFFSET}`),
-  timeZone: EVENT_TIME_ZONE,
-  uid: 'installation-2026@rotaractbibwewadi.in',
-};
-
-interface UpcomingEvent {
-  event_id: string;
-  event_name: string;
-  event_date?: string | null;
-  event_time?: string | null;
-  event_place?: string | null;
-  event_description?: string | null;
-}
-
-/** Builds calendar details from a DB event row, or null if it lacks a date. */
-function toCalendarEvent(row: UpcomingEvent): CalendarEvent | null {
-  if (!row.event_date) return null;
-
-  const start = new Date(`${row.event_date}T${row.event_time || '16:00:00'}${EVENT_IST_OFFSET}`);
-  if (Number.isNaN(start.getTime())) return null;
-
-  const end = new Date(start.getTime() + EVENT_DURATION_HOURS * 60 * 60 * 1000);
-
-  return {
-    title: row.event_name || INSTALLATION_EVENT.title,
-    description: row.event_description || INSTALLATION_EVENT.description,
-    location: row.event_place || INSTALLATION_EVENT.location,
-    start,
-    end,
-    timeZone: EVENT_TIME_ZONE,
-    uid: `${row.event_id}@rotaractbibwewadi.in`,
-  };
-}
 
 interface FormData {
   full_name: string;
@@ -74,6 +22,9 @@ const initialFormData: FormData = {
 };
 
 const requiredFields = ['full_name', 'is_rotaractor', 'club_name', 'phone', 'email'] as const;
+
+const PHONE_DIGITS = 10;
+const PHONE_PATTERN = /^\d{10}$/;
 
 const inputClass =
   'w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors';
@@ -95,31 +46,23 @@ export default function RsvpPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [calendarEvent, setCalendarEvent] = useState<CalendarEvent>(INSTALLATION_EVENT);
-
-  // Refine the hardcoded fallback with the live event row, if one is published.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/events/upcoming');
-        const data = await res.json();
-        const rows: UpcomingEvent[] = data.data || [];
-        const match = rows.find(r => /vault|installation/i.test(r.event_name || ''));
-        if (cancelled || !match) return;
-        const refined = toCalendarEvent(match);
-        if (refined) setCalendarEvent(refined);
-      } catch {
-        // Keep the fallback details — the calendar buttons still work offline.
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   const set = (key: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
     setFieldErrors(prev => ({ ...prev, [key]: '' }));
     setError('');
+  };
+
+  /**
+   * Keeps the field to exactly 10 digits. Non-digits are dropped as you type,
+   * and a pasted number carrying a +91 country code or a leading 0 is unwrapped
+   * rather than silently truncated to the wrong 10 digits.
+   */
+  const setPhone = (raw: string) => {
+    let digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+    set('phone', digits.slice(0, PHONE_DIGITS));
   };
 
   const validateField = (key: keyof FormData): string => {
@@ -134,8 +77,8 @@ export default function RsvpPage() {
       case 'club_name':
         return v.trim() ? '' : 'Club name is required';
       case 'phone':
-        if (!v.trim()) return 'Phone number is required';
-        if (!/^\+?[\d\s-]{7,20}$/.test(v.trim())) return 'Invalid phone number';
+        if (!v) return 'Phone number is required';
+        if (!PHONE_PATTERN.test(v)) return 'Enter exactly 10 digits';
         return '';
       case 'email':
         if (!v.trim()) return 'Email is required';
@@ -226,17 +169,15 @@ export default function RsvpPage() {
                 <div className="flex flex-col items-center justify-center text-center py-12">
                   <CheckCircle size={48} className="text-accent mb-4" />
                   <h3 className="text-dark dark:text-white text-2xl font-semibold mb-2">
-                    You&apos;re on the list!
+                    Thank you, {formData.full_name.trim().split(' ')[0]}!
                   </h3>
                   <p className="text-dark/60 dark:text-white/60 mb-6">
-                    Thanks for your RSVP, {formData.full_name.trim().split(' ')[0]}. We can&apos;t
-                    wait to see you on 30 August.
+                    You&apos;re on the list, and we look forward to seeing you on 30 August.
+                    It wouldn&apos;t be the same without you.
                   </p>
 
-                  <AddToCalendar event={calendarEvent} filename="the-vault-installation.ics" />
-
                   <Link href="/"
-                    className="inline-flex items-center gap-2 px-6 py-3 mt-6 rounded-xl border border-black/10 dark:border-white/10 text-dark dark:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-black/10 dark:border-white/10 text-dark dark:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                     <ArrowLeft size={16} /> Back to Home
                   </Link>
                 </div>
@@ -312,10 +253,11 @@ export default function RsvpPage() {
                       <label className={labelClass}>
                         <Phone size={14} className="inline mr-1" />Phone Number *
                       </label>
-                      <input type="tel" value={formData.phone}
-                        onChange={e => set('phone', e.target.value)}
+                      <input type="tel" inputMode="numeric" maxLength={PHONE_DIGITS}
+                        value={formData.phone}
+                        onChange={e => setPhone(e.target.value)}
                         onBlur={() => blur('phone')}
-                        placeholder="+91 98765 43210" className={inputClass} />
+                        placeholder="10-digit mobile number" className={inputClass} />
                       <FieldError message={fieldErrors.phone} />
                     </div>
 
