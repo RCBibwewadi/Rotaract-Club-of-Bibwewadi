@@ -114,14 +114,14 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-dark/60 dark:text-white/60 text-sm mb-1.5">
-                  <User size={14} className="inline mr-1" />Username, email or phone
+                  <User size={14} className="inline mr-1" />Username / Phone / Email
                 </label>
                 <input
                   type="text"
                   autoComplete="username"
                   value={identifier}
                   onChange={e => setIdentifier(e.target.value)}
-                  placeholder="your_username, you@email.com or 9876543210"
+                  placeholder="your_username / 9876543210 / you@email.com"
                   required
                   className="w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors"
                 />
