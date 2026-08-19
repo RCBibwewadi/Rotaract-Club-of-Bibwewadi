@@ -23,9 +23,10 @@ function useAuthHeaders() {
 
 const inputClass = "w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder:text-dark/30 dark:placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
 const labelClass = "block text-sm font-medium text-dark/60 dark:text-white/60 mb-1";
+const SESSION_MSG = 'Your session expired — please log in again.';
 
 export default function ProfilePage() {
-  const { member, token, _hydrated, logout, fetchProfile } = useAuthStore();
+  const { member, token, _hydrated, logout, fetchProfile, handleAuthFailure } = useAuthStore();
   const router = useRouter();
   const headers = useAuthHeaders();
   const [editing, setEditing] = useState(false);
@@ -61,9 +62,10 @@ export default function ProfilePage() {
     try {
       const res = await fetch(`/api/visibility/me`, { headers: headers.json });
       if (res.ok) { const data = await res.json(); setVisibility(data.data); }
-    } catch { /* silent */ }
+      else handleAuthFailure(res.status);
+    } catch { /* network error — leave the current toggles alone */ }
     finally { setVisLoading(false); }
-  }, [token]);
+  }, [token, handleAuthFailure]);
 
   useEffect(() => { if (_hydrated && token) fetchVisibility(); }, [_hydrated, token, fetchVisibility]);
 
@@ -87,6 +89,7 @@ export default function ProfilePage() {
       const res = await fetch(`/api/members/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify(form) });
       const data = await res.json();
       if (res.ok) { showMsg(data.message || 'Profile updated', 'success'); setEditing(false); await fetchProfile(); }
+      else if (handleAuthFailure(res.status)) showMsg(SESSION_MSG, 'error');
       else showMsg(data.message || 'Update failed', 'error');
     } catch { showMsg('Network error', 'error'); }
     finally { setSaving(false); }
@@ -100,10 +103,13 @@ export default function ProfilePage() {
       const fd = new FormData(); fd.append('file', file);
       const upRes = await fetch(`/api/upload/avatar`, { method: 'POST', headers: headers.upload, body: fd });
       const upData = await upRes.json();
-      if (!upRes.ok || !upData.data?.url) { showMsg('Upload failed', 'error'); return; }
+      if (!upRes.ok || !upData.data?.url) {
+        showMsg(handleAuthFailure(upRes.status) ? SESSION_MSG : 'Upload failed', 'error');
+        return;
+      }
       const pRes = await fetch(`/api/members/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify({ avatar_url: upData.data.url }) });
       if (pRes.ok) { showMsg('Profile picture updated', 'success'); await fetchProfile(); }
-      else showMsg('Failed to save', 'error');
+      else showMsg(handleAuthFailure(pRes.status) ? SESSION_MSG : 'Failed to save', 'error');
     } catch { showMsg('Network error', 'error'); }
     finally { setUploading(false); }
   };
@@ -115,7 +121,8 @@ export default function ProfilePage() {
     try {
       const res = await fetch(`/api/visibility/me`, { method: 'PATCH', headers: headers.json, body: JSON.stringify({ [key]: !visibility[key] }) });
       if (res.ok) { const d = await res.json(); setVisibility(d.data); }
-    } catch { /* silent */ }
+      else showMsg(handleAuthFailure(res.status) ? SESSION_MSG : 'Could not save that setting', 'error');
+    } catch { showMsg('Network error', 'error'); }
     finally { setVisSaving(false); }
   };
 
@@ -132,6 +139,7 @@ export default function ProfilePage() {
       const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: headers.json, body: JSON.stringify(bizForm) });
       const data = await res.json();
       if (res.ok) { showMsg(data.message || 'Saved', 'success'); setEditingBiz(null); setAddingBiz(false); await fetchProfile(); }
+      else if (handleAuthFailure(res.status)) showMsg(SESSION_MSG, 'error');
       else showMsg(data.message || data.error || 'Failed', 'error');
     } catch { showMsg('Network error', 'error'); }
     finally { setBizSaving(false); }
@@ -141,7 +149,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch(`/api/businesses/${id}`, { method: 'DELETE', headers: headers.json });
       if (res.ok) { showMsg('Business removed', 'success'); await fetchProfile(); }
-      else showMsg('Delete failed', 'error');
+      else showMsg(handleAuthFailure(res.status) ? SESSION_MSG : 'Delete failed', 'error');
     } catch { showMsg('Network error', 'error'); }
   };
 
@@ -158,6 +166,7 @@ export default function ProfilePage() {
       const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: headers.json, body: JSON.stringify(profForm) });
       const data = await res.json();
       if (res.ok) { showMsg(data.message || 'Saved', 'success'); setEditingProf(null); setAddingProf(false); await fetchProfile(); }
+      else if (handleAuthFailure(res.status)) showMsg(SESSION_MSG, 'error');
       else showMsg(data.message || data.error || 'Failed', 'error');
     } catch { showMsg('Network error', 'error'); }
     finally { setProfSaving(false); }
@@ -167,7 +176,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch(`/api/professions/${id}`, { method: 'DELETE', headers: headers.json });
       if (res.ok) { showMsg('Profession removed', 'success'); await fetchProfile(); }
-      else showMsg('Delete failed', 'error');
+      else showMsg(handleAuthFailure(res.status) ? SESSION_MSG : 'Delete failed', 'error');
     } catch { showMsg('Network error', 'error'); }
   };
 

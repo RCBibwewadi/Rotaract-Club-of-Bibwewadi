@@ -79,14 +79,21 @@ interface PreviewMember {
   member_type: string;
 }
 
+class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
 export default function DirectoryPage() {
-  const { token, member, _hydrated } = useAuthStore();
+  const { token, member, _hydrated, handleAuthFailure } = useAuthStore();
   const [tab, setTab] = useState<Tab>('members');
   const [search, setSearch] = useState('');
   const [members, setMembers] = useState<DirectoryMember[]>([]);
   const [businesses, setBusinesses] = useState<DirectoryBusiness[]>([]);
   const [professions, setProfessions] = useState<DirectoryProfession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [connectModal, setConnectModal] = useState<ConnectTarget | null>(null);
   const [expandedDesc, setExpandedDesc] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(6);
@@ -126,22 +133,41 @@ export default function DirectoryPage() {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setLoadError(null);
 
     const headers = { Authorization: `Bearer ${token}` };
 
+    // A failed request must not look like an empty directory — surface it.
+    const load = async (path: string) => {
+      const res = await fetch(path, { headers });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || body?.success === false) {
+        throw new ApiError(res.status, body?.message || 'Request failed');
+      }
+      return body?.data || [];
+    };
+
     Promise.all([
-      fetch(`/api/members`, { headers }).then(r => r.json()),
-      fetch(`/api/businesses`, { headers }).then(r => r.json()),
-      fetch(`/api/professions`, { headers }).then(r => r.json()),
+      load(`/api/members`),
+      load(`/api/businesses`),
+      load(`/api/professions`),
     ])
       .then(([m, b, p]) => {
-        setMembers(m.data || []);
-        setBusinesses(b.data || []);
-        setProfessions(p.data || []);
+        setMembers(m);
+        setBusinesses(b);
+        setProfessions(p);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        // Expired/invalid session: drop the stale token so the gate + login CTA shows
+        if (err instanceof ApiError && handleAuthFailure(err.status)) return;
+        setLoadError(
+          err instanceof ApiError && err.status === 403
+            ? err.message
+            : 'Could not load the directory. Please refresh and try again.',
+        );
+      })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, handleAuthFailure]);
 
   const changeTab = (t: Tab) => { setTab(t); setSearch(''); setVisibleCount(6); };
 
@@ -359,8 +385,22 @@ export default function DirectoryPage() {
             </div>
           )}
 
+          {/* Load failure — distinct from an empty directory */}
+          {!loading && loadError && (
+            <div className="text-center py-20">
+              <EyeOff size={40} className="text-dark/10 dark:text-white/10 mx-auto mb-3" />
+              <p className="text-dark/40 dark:text-white/40 font-medium">{loadError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-5 py-2.5 rounded-xl bg-accent/10 text-accent font-medium text-sm hover:bg-accent/20 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Members Tab */}
-          {!loading && tab === 'members' && (
+          {!loading && !loadError && tab === 'members' && (
             filteredMembers.length === 0 ? <EmptyState /> : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredMembers.slice(0, visibleCount).map((m, i) => {
@@ -426,7 +466,7 @@ export default function DirectoryPage() {
           )}
 
           {/* Business Tab */}
-          {!loading && tab === 'business' && (
+          {!loading && !loadError && tab === 'business' && (
             filteredBusinesses.length === 0 ? <EmptyState /> : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {filteredBusinesses.slice(0, visibleCount).map((b, i) => {
@@ -516,7 +556,7 @@ export default function DirectoryPage() {
           )}
 
           {/* Professions Tab */}
-          {!loading && tab === 'professions' && (
+          {!loading && !loadError && tab === 'professions' && (
             filteredProfessions.length === 0 ? <EmptyState /> : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredProfessions.slice(0, visibleCount).map((p, i) => {
@@ -587,7 +627,7 @@ export default function DirectoryPage() {
             )
           )}
           {/* Students Tab */}
-          {!loading && tab === 'students' && (
+          {!loading && !loadError && tab === 'students' && (
             filteredStudents.length === 0 ? <EmptyState /> : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredStudents.slice(0, visibleCount).map((s, i) => {
@@ -651,7 +691,7 @@ export default function DirectoryPage() {
           )}
 
           {/* Load more sentinel */}
-          {!loading && (
+          {!loading && !loadError && (
             (tab === 'members' && visibleCount < filteredMembers.length) ||
             (tab === 'business' && visibleCount < filteredBusinesses.length) ||
             (tab === 'professions' && visibleCount < filteredProfessions.length) ||

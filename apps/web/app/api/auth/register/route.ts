@@ -31,8 +31,9 @@ export async function POST(request: NextRequest) {
       .from('members')
       .insert({
         full_name: body.full_name,
-        email: body.email,
-        username: body.username,
+        // Stored lowercase so email/username login lookups match exactly
+        email: body.email.trim().toLowerCase(),
+        username: body.username.trim().toLowerCase(),
         password_hash,
         member_type: body.member_type,
         phone: body.phone || null,

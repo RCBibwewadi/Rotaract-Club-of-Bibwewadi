@@ -8,7 +8,7 @@ import { useAuthStore } from '@/lib/auth-store';
 import { Lock, User, AlertCircle, ArrowRight, X, KeyRound, CheckCircle } from 'lucide-react';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
   const router = useRouter();
-  const { login, isLoggedIn, _hydrated } = useAuthStore();
+  const { login, isLoggedIn, _hydrated, sessionExpired, clearSessionExpired } = useAuthStore();
 
   useEffect(() => {
     if (_hydrated && isLoggedIn()) {
@@ -30,9 +30,10 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    clearSessionExpired();
     setLoading(true);
 
-    const result = await login(username, password);
+    const result = await login(identifier, password);
 
     if (result.success) {
       router.push('/directory');
@@ -98,6 +99,12 @@ export default function LoginPage() {
 
         <AnimatedSection delay={100}>
           <div className="p-8 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
+            {sessionExpired && !error && (
+              <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm flex items-center gap-2">
+                <AlertCircle size={16} /> Your session expired. Please log in again.
+              </div>
+            )}
+
             {error && (
               <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm flex items-center gap-2">
                 <AlertCircle size={16} /> {error}
@@ -107,13 +114,14 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-dark/60 dark:text-white/60 text-sm mb-1.5">
-                  <User size={14} className="inline mr-1" />Username
+                  <User size={14} className="inline mr-1" />Username, email or phone
                 </label>
                 <input
                   type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="your_username"
+                  autoComplete="username"
+                  value={identifier}
+                  onChange={e => setIdentifier(e.target.value)}
+                  placeholder="your_username, you@email.com or 9876543210"
                   required
                   className="w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors"
                 />

@@ -13,9 +13,25 @@ export const SignupSchema = z.object({
   member_type: z.string().min(1, 'Member type is required'),
 });
 
+/**
+ * Login accepts a username, email or phone number in a single field.
+ * `username` is still accepted so older clients keep working.
+ */
 export const LoginSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
-  password: z.string().min(1, 'Password is required'),
+  identifier: z.string().min(1).optional(),
+  username:   z.string().min(1).optional(),
+  password:   z.string().min(1, 'Password is required'),
+}).transform((v, ctx) => {
+  const identifier = (v.identifier || v.username || '').trim();
+  if (!identifier) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['identifier'],
+      message: 'Username, email or phone is required',
+    });
+    return z.NEVER;
+  }
+  return { identifier, password: v.password };
 });
 
 // ── Registration (signup + business + profession in one step) ─
@@ -176,6 +192,21 @@ export const CreateLegacySchema = z.object({
 });
 
 export const UpdateLegacySchema = CreateLegacySchema.partial();
+
+// ── Installation RSVP (The Vault) ──────────────────────
+
+export const CreateRsvpSchema = z.object({
+  full_name:     z.string().trim().min(2, 'Name must be at least 2 characters'),
+  is_rotaractor: z.boolean(),
+  // Free text so non-Rotaractors can put "NA"; never blank.
+  club_name:     z.string().trim().min(1, 'Club name is required'),
+  designation:   z.string().trim().optional(),
+  phone:         z.string().trim()
+                   .regex(/^\+?[\d\s-]{7,20}$/, 'Invalid phone number'),
+  email:         z.string().trim().email('Invalid email'),
+});
+
+export type CreateRsvpInput = z.infer<typeof CreateRsvpSchema>;
 
 // ── Inferred types from schemas ───────────────────────────────
 // Use these instead of writing duplicate interfaces

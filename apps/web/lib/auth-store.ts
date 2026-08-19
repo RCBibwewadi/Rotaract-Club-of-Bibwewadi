@@ -57,9 +57,15 @@ interface AuthState {
   member: MemberProfile | null;
   role: string | null;
   _hydrated: boolean;
+  /** Set when a 401 ended the session, so the login page can explain why */
+  sessionExpired: boolean;
 
   hydrateAuth: () => void;
-  login: (username: string, password: string) => Promise<{ success: boolean; message: string }>;
+  /** Ends the session on a 401. Returns true when it did. */
+  handleAuthFailure: (status: number) => boolean;
+  clearSessionExpired: () => void;
+  /** identifier = username, email or phone */
+  login: (identifier: string, password: string) => Promise<{ success: boolean; message: string }>;
   fetchProfile: () => Promise<void>;
   logout: () => void;
   isLoggedIn: () => boolean;
@@ -70,6 +76,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   member: null,
   role: null,
   _hydrated: false,
+  sessionExpired: false,
+
+  /**
+   * A 401 means the token is expired or invalid — the session is over.
+   * Drop it rather than keeping a dead token, which leaves pages looking
+   * logged in while every request silently fails.
+   */
+  handleAuthFailure: (status: number) => {
+    if (status !== 401) return false;
+    if (get().token) {
+      set({ token: null, member: null, role: null, sessionExpired: true });
+      localStorage.removeItem(AUTH_KEY);
+    }
+    return true;
+  },
+
+  clearSessionExpired: () => set({ sessionExpired: false }),
 
   hydrateAuth: () => {
     if (get()._hydrated) return;
@@ -91,12 +114,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (username: string, password: string) => {
+  login: async (identifier: string, password: string) => {
     try {
       const res = await fetch(`/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ identifier, password }),
       });
 
       const data = await res.json();
@@ -106,7 +129,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       const { token, role } = data.data;
-      set({ token, role });
+      set({ token, role, sessionExpired: false });
 
       // Persist
       localStorage.setItem(AUTH_KEY, JSON.stringify({ token, role }));
@@ -136,8 +159,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Update localStorage with member data
         const stored = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
         localStorage.setItem(AUTH_KEY, JSON.stringify({ ...stored, member }));
-      } else if (res.status === 401 || res.status === 403) {
-        // Token expired or not approved yet — keep token but no profile
+      } else {
+        // 401 ends the session; a 403 (e.g. pending approval) keeps it
+        get().handleAuthFailure(res.status);
       }
     } catch {
       // Network error — keep existing state
@@ -145,7 +169,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    set({ token: null, member: null, role: null });
+    set({ token: null, member: null, role: null, sessionExpired: false });
     localStorage.removeItem(AUTH_KEY);
   },
 
