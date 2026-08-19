@@ -69,7 +69,7 @@ export default function UpNextPill() {
   };
 
   const handleNav = () => {
-    router.push('/events');
+    router.push('/rsvp');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -97,7 +97,7 @@ export default function UpNextPill() {
       tabIndex={0}
       onClick={handleNav}
       onKeyDown={handleKeyDown}
-      aria-label="Upcoming event teaser — click to see events"
+      aria-label="10th Installation Ceremony teaser — click to fill the RSVP form"
       style={{ bottom: inset, left: inset }}
       className={`
         fixed z-[9999] max-w-xs cursor-pointer
@@ -126,14 +126,14 @@ export default function UpNextPill() {
 
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-accent">
-            Save the date
+            The Vault
           </p>
           <p className={`text-sm font-medium mt-0.5 ${isDark ? 'text-dark' : 'text-white'}`}>
             
             {event?.event_date ? formatDate(event.event_date) : 'Coming soon'} 
           </p>
           <p className={`text-xs mt-1 ${isDark ? 'text-dark/50' : 'text-white/50'}`}>
-            find out what &rarr;
+            fill the RSVP form now! &rarr;
           </p>
         </div>
 
