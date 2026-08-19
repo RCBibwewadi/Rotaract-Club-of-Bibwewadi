@@ -88,8 +88,8 @@ export default function RotaAvatar({ size = 120, className = '' }: { size?: numb
       {/* Gear teeth */}
       {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
         const rad = (angle * Math.PI) / 180;
-        const x = 100 + Math.cos(rad) * 9;
-        const y = 176 + Math.sin(rad) * 9;
+        const x = Math.round((100 + Math.cos(rad) * 9) * 1e6) / 1e6;
+        const y = Math.round((176 + Math.sin(rad) * 9) * 1e6) / 1e6;
         return <circle key={angle} cx={x} cy={y} r="2" fill="#8b1a2b" />;
       })}
 

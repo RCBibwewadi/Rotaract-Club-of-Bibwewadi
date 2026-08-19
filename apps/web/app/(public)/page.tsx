@@ -20,7 +20,7 @@ function GearMark({ className = '' }: { className?: string }) {
       <circle cx="100" cy="100" r="18" stroke="currentColor" strokeWidth="0.5" opacity="0.05" />
       {Array.from({ length: 12 }).map((_, i) => {
         const a = (i * 30 * Math.PI) / 180;
-        return <circle key={i} cx={100 + Math.cos(a) * 55} cy={100 + Math.sin(a) * 55} r="4.5" fill="currentColor" opacity="0.09" />;
+        return <circle key={i} cx={Math.round((100 + Math.cos(a) * 55) * 1e6) / 1e6} cy={Math.round((100 + Math.sin(a) * 55) * 1e6) / 1e6} r="4.5" fill="currentColor" opacity="0.09" />;
       })}
     </svg>
   );

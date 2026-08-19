@@ -461,9 +461,6 @@ function MembersTab() {
           {filtered.map(m => {
             const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
             const isProcessing = actionLoading === m.member_id;
-            const joinDate = new Date(m.created_at).toLocaleDateString('en-IN', {
-              day: 'numeric', month: 'short', year: 'numeric',
-            });
             const dobFormatted = m.dob ? new Date(m.dob).toLocaleDateString('en-IN', {
               day: 'numeric', month: 'short', year: 'numeric',
             }) : null;
@@ -496,7 +493,7 @@ function MembersTab() {
                       </p>
                     )}
                     <p className="text-white/20 text-[10px]">
-                      {m.member_type.split(',').join(', ')} &middot; Joined {joinDate}
+                      {m.member_type.split(',').join(', ')}
                     </p>
                   </div>
                 </div>

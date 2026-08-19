@@ -115,10 +115,10 @@ export default function BackgroundAmbient() {
           {/* Gear teeth — 12 spokes radiating outward (Rotaract wheel nod) */}
           {Array.from({ length: 12 }).map((_, i) => {
             const angle = (i * 30 * Math.PI) / 180;
-            const x1 = 400 + Math.cos(angle) * 130;
-            const y1 = 400 + Math.sin(angle) * 130;
-            const x2 = 400 + Math.cos(angle) * 210;
-            const y2 = 400 + Math.sin(angle) * 210;
+            const x1 = Math.round((400 + Math.cos(angle) * 130) * 1e6) / 1e6;
+            const y1 = Math.round((400 + Math.sin(angle) * 130) * 1e6) / 1e6;
+            const x2 = Math.round((400 + Math.cos(angle) * 210) * 1e6) / 1e6;
+            const y2 = Math.round((400 + Math.sin(angle) * 210) * 1e6) / 1e6;
             return (
               <line
                 key={`spoke-${i}`}
@@ -132,10 +132,10 @@ export default function BackgroundAmbient() {
           {/* Outer gear teeth — short ticks at 24 positions */}
           {Array.from({ length: 24 }).map((_, i) => {
             const angle = (i * 15 * Math.PI) / 180;
-            const x1 = 400 + Math.cos(angle) * 340;
-            const y1 = 400 + Math.sin(angle) * 340;
-            const x2 = 400 + Math.cos(angle) * 355;
-            const y2 = 400 + Math.sin(angle) * 355;
+            const x1 = Math.round((400 + Math.cos(angle) * 340) * 1e6) / 1e6;
+            const y1 = Math.round((400 + Math.sin(angle) * 340) * 1e6) / 1e6;
+            const x2 = Math.round((400 + Math.cos(angle) * 355) * 1e6) / 1e6;
+            const y2 = Math.round((400 + Math.sin(angle) * 355) * 1e6) / 1e6;
             return (
               <line
                 key={`tick-${i}`}
