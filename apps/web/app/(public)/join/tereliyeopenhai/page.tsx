@@ -7,7 +7,7 @@ import Image from 'next/image';
 import {
   Users, Award, Globe, Heart, Send, CheckCircle, ChevronRight, ChevronLeft,
   User, Mail, Lock, Phone, Briefcase, Building2, MapPin, GraduationCap, AlertCircle,
-  IndianRupee, Upload, ArrowLeft,
+  IndianRupee, Upload, ArrowLeft, Sparkles, PartyPopper,
 } from 'lucide-react';
 
 const benefits = [
@@ -658,15 +658,47 @@ export default function SecretJoinPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-transparent to-accent-light/10" />
         <div className="relative z-10 text-center px-6 max-w-4xl py-20">
           <AnimatedSection>
-            <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">
-              Be Part of Something Big
+            <p className="inline-flex items-center gap-2 px-4 py-1.5 mb-5 rounded-full bg-accent/10 border border-accent/30 text-accent font-semibold tracking-wider uppercase text-xs">
+              <Sparkles size={14} /> Instant Registration · Invite Only
             </p>
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-dark dark:text-white mb-6">
-              <span className="gradient-text">Join Us</span>
+              <span className="gradient-text">You&apos;re In</span>
             </h1>
             <p className="text-dark/60 dark:text-white/60 text-lg md:text-xl max-w-2xl mx-auto">
-              Take the first step towards becoming a leader who serves.
+              Registrations are closed for everyone else. Not for you.
             </p>
+          </AnimatedSection>
+        </div>
+      </section>
+
+      {/* The "how did you get here" note — only people who know the trick see this */}
+      <section data-rota="invite" className="px-6 md:px-12 lg:px-16 -mt-8">
+        <div className="max-w-3xl mx-auto w-full">
+          <AnimatedSection>
+            <div className="p-8 md:p-10 rounded-2xl bg-accent/5 border border-accent/20">
+              <div className="flex items-start gap-3 mb-5">
+                <PartyPopper size={24} className="text-accent flex-shrink-0 mt-0.5" />
+                <h2 className="font-display text-2xl md:text-3xl text-dark dark:text-white">
+                  Congratulations — you found the back door.
+                </h2>
+              </div>
+              <div className="space-y-4 text-dark/60 dark:text-white/60 leading-relaxed">
+                <p>
+                  This is an <span className="text-accent font-semibold">instant registration</span>,
+                  and it isn&apos;t open to everybody. We&apos;ve hit our membership limit, so the
+                  public page turns everyone away — no exceptions, no waiting list shortcuts.
+                </p>
+                <p>
+                  But you&apos;re here. Which means someone in the club thought highly enough of you
+                  to let you in on how to get here. That makes you a friend of RCB, and friends
+                  don&apos;t queue.
+                </p>
+                <p className="text-dark/80 dark:text-white/80">
+                  So even though registrations have closed — go ahead. The form below is the real
+                  one. Just keep this between us. 🤫
+                </p>
+              </div>
+            </div>
           </AnimatedSection>
         </div>
       </section>
