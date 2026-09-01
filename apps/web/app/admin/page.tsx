@@ -7,7 +7,7 @@ import {
   CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
-  Handshake, HeartHandshake, Globe, Brain, Award, Lock,
+  Handshake, HeartHandshake, Globe, Brain, Award,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
@@ -218,11 +218,9 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
 
 // ── Members Management Tab ───────────────────────────────────
 function MembersTab() {
-  const [view, setView] = useState<'pending' | 'all' | 'vault'>('pending');
-  // Bumped by the refresh button so the Vault list re-fetches too
-  const [vaultReloadKey, setVaultReloadKey] = useState(0);
+  const [view, setView] = useState<'pending' | 'all'>('pending');
   const [members, setMembers] = useState<AdminMember[]>([]);
-  const [membersLoading, setMembersLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<'name' | 'dob'>('name');
@@ -230,15 +228,8 @@ function MembersTab() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [paymentModal, setPaymentModal] = useState<AdminMember | null>(null);
 
-  // The Vault fetches on its own, so the member spinner never applies there
-  const loading = view !== 'vault' && membersLoading;
-
   const fetchMembers = useCallback(async () => {
-    if (view === 'vault') {
-      setVaultReloadKey(k => k + 1);
-      return;
-    }
-    setMembersLoading(true);
+    setLoading(true);
     try {
       const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
       const res = await fetch(`/api${endpoint}`, { headers: adminHeaders() });
@@ -247,15 +238,14 @@ function MembersTab() {
     } catch {
       setMessage({ text: 'Failed to fetch members', type: 'error' });
     } finally {
-      setMembersLoading(false);
+      setLoading(false);
     }
   }, [view]);
 
   useEffect(() => {
-    if (view === 'vault') return;
     let cancelled = false;
     (async () => {
-      setMembersLoading(true);
+      setLoading(true);
       try {
         const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
         const res = await fetch(`/api${endpoint}`, { headers: adminHeaders() });
@@ -264,7 +254,7 @@ function MembersTab() {
       } catch {
         if (!cancelled) setMessage({ text: 'Failed to fetch members', type: 'error' });
       } finally {
-        if (!cancelled) setMembersLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -364,12 +354,6 @@ function MembersTab() {
             }`}>
             <Users size={14} /> All Members
           </button>
-          <button onClick={() => setView('vault')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              view === 'vault' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
-            }`}>
-            <Lock size={14} /> The Vault
-          </button>
         </div>
 
         <div className="relative flex-1">
@@ -378,7 +362,7 @@ function MembersTab() {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={view === 'vault' ? 'Search RSVPs by name, email, club...' : 'Search by name, email, username...'}
+            placeholder="Search by name, email, username..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
           />
         </div>
@@ -389,8 +373,7 @@ function MembersTab() {
         </button>
       </div>
 
-      {/* Sort controls — member-only fields, not relevant to the Vault */}
-      {view !== 'vault' && (
+      {/* Sort controls */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs text-white/40 font-medium">Sort by</span>
         {/* Sort field */}
@@ -424,7 +407,6 @@ function MembersTab() {
           </button>
         </div>
       </div>
-      )}
 
       {/* Message */}
       {message && (
@@ -463,11 +445,8 @@ function MembersTab() {
         </div>
       )}
 
-      {/* The Vault — installation-ceremony RSVPs */}
-      {view === 'vault' && <VaultList search={search} reloadKey={vaultReloadKey} />}
-
       {/* Empty */}
-      {view !== 'vault' && !loading && filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="text-center py-12">
           <Users size={32} className="text-white/10 mx-auto mb-3" />
           <p className="text-white/30 text-sm">
@@ -477,7 +456,7 @@ function MembersTab() {
       )}
 
       {/* Member list */}
-      {view !== 'vault' && !loading && filtered.length > 0 && (
+      {!loading && filtered.length > 0 && (
         <div className="space-y-2">
           {filtered.map(m => {
             const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -633,170 +612,6 @@ function MembersTab() {
               )}
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── The Vault — Installation Ceremony RSVPs ──────────────────
-interface VaultRsvp {
-  rsvp_id: string;
-  full_name: string;
-  is_rotaractor: boolean;
-  club_name: string;
-  designation: string;
-  phone: string;
-  email: string;
-  created_at: string;
-}
-
-function VaultList({ search, reloadKey }: { search: string; reloadKey: number }) {
-  const [rsvps, setRsvps] = useState<VaultRsvp[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/admin/rsvps', { headers: adminHeaders() });
-        const data = await res.json();
-        if (cancelled) return;
-        if (!res.ok) {
-          setError(data.message || 'Failed to fetch RSVPs');
-          setRsvps([]);
-        } else {
-          setError('');
-          setRsvps(data.data || []);
-        }
-      } catch {
-        if (!cancelled) setError('Failed to fetch RSVPs');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [reloadKey]);
-
-  const q = search.trim().toLowerCase();
-  const filtered = q
-    ? rsvps.filter(r =>
-        r.full_name.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q) ||
-        r.club_name.toLowerCase().includes(q) ||
-        r.phone.toLowerCase().includes(q),
-      )
-    : rsvps;
-
-  const exportCsv = () => {
-    const header = ['Name', 'Rotaractor', 'Club', 'Designation', 'Phone', 'Email', 'Submitted'];
-    const rows = filtered.map(r => [
-      r.full_name,
-      r.is_rotaractor ? 'Yes' : 'No',
-      r.club_name,
-      r.designation,
-      r.phone,
-      r.email,
-      new Date(r.created_at).toLocaleString('en-IN'),
-    ]);
-    const csv = [header, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'installation-rsvps.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-3 rounded-xl text-sm flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400">
-        <AlertCircle size={14} /> {error}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Stats + export */}
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        <span className="px-3 py-1.5 rounded-lg bg-dark-surface text-white/50">
-          Total RSVPs: <span className="text-white font-medium">{rsvps.length}</span>
-        </span>
-        <span className="px-3 py-1.5 rounded-lg bg-accent/5 text-accent/70">
-          Rotaractors: <span className="text-accent font-medium">{rsvps.filter(r => r.is_rotaractor).length}</span>
-        </span>
-        <span className="px-3 py-1.5 rounded-lg bg-green-500/5 text-green-400/70">
-          Guests: <span className="text-green-400 font-medium">{rsvps.filter(r => !r.is_rotaractor).length}</span>
-        </span>
-        {rsvps.length > 0 && (
-          <button onClick={exportCsv}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/60 hover:text-white hover:border-accent transition-all font-medium">
-            <FileText size={13} /> Export CSV
-          </button>
-        )}
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <Lock size={32} className="text-white/10 mx-auto mb-3" />
-          <p className="text-white/30 text-sm">
-            {rsvps.length === 0 ? 'No RSVPs yet' : 'No RSVPs match your search'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map(r => {
-            const initials = r.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            const submitted = new Date(r.created_at).toLocaleDateString('en-IN', {
-              day: 'numeric', month: 'short', year: 'numeric',
-            });
-
-            return (
-              <div key={r.rsvp_id}
-                className="bg-dark-card rounded-xl border border-white/5 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/80 to-accent-light flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                    {initials}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-white font-medium text-sm truncate">{r.full_name}</h4>
-                      {r.is_rotaractor ? (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-accent/10 text-accent font-medium">Rotaractor</span>
-                      ) : (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-white/5 text-white/40 font-medium">Guest</span>
-                      )}
-                    </div>
-                    <p className="text-white/30 text-xs truncate">
-                      {r.club_name} &middot; {r.designation}
-                    </p>
-                    <p className="text-white/30 text-xs flex items-center gap-1 truncate">
-                      <Mail size={10} /> {r.email}
-                    </p>
-                    <p className="text-white/30 text-xs flex items-center gap-1">
-                      <Phone size={10} /> {r.phone}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-white/20 text-[10px] flex-shrink-0">
-                  RSVP&apos;d {submitted}
-                </span>
-              </div>
-            );
-          })}
         </div>
       )}
     </div>

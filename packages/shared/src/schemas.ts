@@ -193,21 +193,6 @@ export const CreateLegacySchema = z.object({
 
 export const UpdateLegacySchema = CreateLegacySchema.partial();
 
-// ── Installation RSVP (The Vault) ──────────────────────
-
-export const CreateRsvpSchema = z.object({
-  full_name:     z.string().trim().min(2, 'Name must be at least 2 characters'),
-  is_rotaractor: z.boolean(),
-  // Free text so non-Rotaractors can put "NA"; never blank.
-  club_name:     z.string().trim().min(1, 'Club name is required'),
-  designation:   z.string().trim().optional(),
-  phone:         z.string().trim()
-                   .regex(/^\d{10}$/, 'Phone number must be exactly 10 digits'),
-  email:         z.string().trim().email('Invalid email'),
-});
-
-export type CreateRsvpInput = z.infer<typeof CreateRsvpSchema>;
-
 // ── Inferred types from schemas ───────────────────────────────
 // Use these instead of writing duplicate interfaces
 

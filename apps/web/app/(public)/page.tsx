@@ -102,17 +102,6 @@ export default function HomePage() {
               Our Story →
             </Link>
           </div>
-
-          {/* RSVP teaser — 10th Installation Ceremony */}
-          <div className={`flex justify-center mt-5 transition-all duration-1000 delay-[850ms] ${loaded ? 'opacity-100' : 'opacity-0 translate-y-6'}`}>
-            <Link href="/rsvp" className={`group flex flex-col items-center gap-0.5 px-7 py-3 rounded-full border text-center transition-all duration-300 ${isDark ? 'border-white/15 hover:border-accent/60 hover:bg-white/5' : 'border-dark/15 hover:border-accent/60 hover:bg-dark/5'}`}>
-              <span className="flex items-center gap-2 text-sm font-medium">
-                10th Installation Ceremony
-                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-              </span>
-              <span className={`text-[11px] ${faint}`}>RSVP now · Sun, Aug 30</span>
-            </Link>
-          </div>
         </div>
 
         <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 ${faint}`}>
