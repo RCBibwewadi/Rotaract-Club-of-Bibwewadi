@@ -22,6 +22,14 @@ const baseNavLinks = [
 
 const directoryLink = { label: 'Directory', path: '/directory', num: '09' };
 
+// Easter egg: memberships are closed, so /join is now a notice page. Tapping
+// "Join Us" ten times inside fifteen seconds (desktop bar or mobile menu, they
+// share the counter) opens the real registration form. Timestamps live in a ref
+// — no state, no timers, nothing rendered.
+const SECRET_JOIN_PATH = '/join/tereliyeopenhai';
+const SECRET_TAPS = 10;
+const SECRET_WINDOW_MS = 15_000;
+
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -84,7 +92,26 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
+  // Returns true once the tenth tap inside the window lands, having already
+  // sent the visitor to the hidden form.
+  const joinTaps = useRef<number[]>([]);
+  const registerJoinTap = (): boolean => {
+    const now = Date.now();
+    joinTaps.current = [...joinTaps.current, now].filter(t => now - t < SECRET_WINDOW_MS);
+    if (joinTaps.current.length < SECRET_TAPS) return false;
+    joinTaps.current = [];
+    setMenuOpen(false);
+    router.push(SECRET_JOIN_PATH);
+    return true;
+  };
+
   const handleNavClick = (path: string) => {
+    if (path === '/join') {
+      if (registerJoinTap()) return;
+      // Already on /join: leave the menu open so the taps can keep landing
+      // instead of forcing the hamburger open again between each one.
+      if (pathname === '/join') return;
+    }
     setMenuOpen(false);
     if (path !== pathname) {
       router.push(path);
@@ -125,6 +152,13 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   href={link.path}
+                  onClick={e => {
+                    if (link.path !== '/join') return;
+                    // Already on /join, so the tenth tap is the only navigation
+                    // this click should ever cause.
+                    if (pathname === '/join') e.preventDefault();
+                    registerJoinTap();
+                  }}
                   className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
                     pathname === link.path
                       ? 'text-accent bg-accent/10'
