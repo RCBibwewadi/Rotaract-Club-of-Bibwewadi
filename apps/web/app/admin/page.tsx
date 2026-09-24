@@ -2580,9 +2580,9 @@ function ReimbursementsTab() {
                       <td className="p-3 text-center">
                         {r.screenshot_urls?.length > 0 ? (
                           r.screenshot_urls.some((u: string) => u.startsWith('http') && u.includes('drive.google.com')) ? (
-                            <a href={r.screenshot_urls[0]} target="_blank" rel="noreferrer" className="text-accent hover:text-accent-light transition-colors" title="Open in Google Drive">
+                            <button onClick={() => setScreenshotModal(r.screenshot_urls)} className="text-accent hover:text-accent-light transition-colors" title="Open in Google Drive">
                               <ExternalLink size={16} />
-                            </a>
+                            </button>
                           ) : (
                             <button onClick={() => setScreenshotModal(r.screenshot_urls)} className="text-accent hover:text-accent-light transition-colors">
                               <Eye size={16} />
@@ -2693,10 +2693,17 @@ function ReimbursementsTab() {
               <X size={20} />
             </button>
             <div className="space-y-4">
-              {screenshotModal.map((url, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={url} alt={`Screenshot ${i + 1}`} className="w-full rounded-xl border border-white/10" />
-              ))}
+              {screenshotModal.map((url, i) =>
+                url.includes('drive.google.com') ? (
+                  <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 rounded-xl border border-white/10 bg-dark-surface hover:border-accent/50 transition-colors">
+                    <ExternalLink size={18} className="text-accent shrink-0" />
+                    <span className="text-white/70 text-sm truncate">Drive Link {i + 1}</span>
+                  </a>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={url} alt={`Screenshot ${i + 1}`} className="w-full rounded-xl border border-white/10" />
+                )
+              )}
             </div>
           </div>
         </div>
