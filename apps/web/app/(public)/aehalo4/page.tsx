@@ -95,6 +95,16 @@ export default function GarbaWorkshopPage() {
     else if (file.size > 10 * 1024 * 1024) errs.payment_screenshot = 'That file is larger than 10 MB';
 
     setFieldErrors(errs);
+
+    // On a phone the submit button sits well below the fields, so an error
+    // above the fold would otherwise look like nothing happened.
+    const first = Object.keys(errs)[0];
+    if (first) {
+      document
+        .querySelector(`[data-field="${first}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     return Object.keys(errs).length === 0;
   };
 
@@ -244,7 +254,7 @@ export default function GarbaWorkshopPage() {
 
                   <div className="space-y-5">
                     {/* 1 — Name */}
-                    <div>
+                    <div data-field="full_name">
                       <label className={labelClass}>
                         <User size={14} className="inline mr-1" />Name *
                       </label>
@@ -256,7 +266,7 @@ export default function GarbaWorkshopPage() {
                     </div>
 
                     {/* 2 — Phone */}
-                    <div>
+                    <div data-field="phone">
                       <label className={labelClass}>
                         <Phone size={14} className="inline mr-1" />Phone Number *
                       </label>
@@ -340,7 +350,7 @@ export default function GarbaWorkshopPage() {
                     </div>
 
                     {/* 5 — Screenshot */}
-                    <div>
+                    <div data-field="payment_screenshot">
                       <label className={labelClass}>
                         <Upload size={14} className="inline mr-1" />Share Screenshot of Payment *
                       </label>
@@ -368,6 +378,14 @@ export default function GarbaWorkshopPage() {
                       )}
                       <FieldError message={fieldErrors.payment_screenshot} />
                     </div>
+
+                    {/* The banner at the top of the form is off-screen once
+                        you have scrolled down to submit, so repeat it here. */}
+                    {error && (
+                      <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm flex items-start gap-2">
+                        <AlertCircle size={16} className="flex-shrink-0 mt-0.5" /> {error}
+                      </div>
+                    )}
 
                     {/* Honeypot — hidden from people, catches scripted posts */}
                     <input type="text" name="website" value={honeypot} tabIndex={-1} autoComplete="off"

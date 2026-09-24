@@ -148,6 +148,19 @@ export async function POST(request: NextRequest) {
           409,
         );
       }
+      // Surfaced in the Vercel function logs — the message the visitor sees
+      // stays generic, but a failure is never a silent mystery.
+      console.error('event_registrations insert failed:', error.code, error.message);
+
+      // The table has not been created yet: 42P01 straight from Postgres,
+      // PGRST205 when PostgREST cannot find it in its schema cache.
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        return json(
+          errorResponse('NOT_READY', 'Registrations are not open just yet. Please try again shortly.'),
+          503,
+        );
+      }
+
       return json(errorResponse('DB_ERROR', 'Something went wrong saving your registration.'), 500);
     }
 
