@@ -11,8 +11,10 @@ import {
 import AnimatedSection from '@/components/AnimatedSection';
 import { GARBA, UPI, UPI_URI, registrationsClosed } from '@/lib/garba-event';
 
+// text-base (16px) on the input matters: anything smaller makes iOS Safari
+// zoom the page in when the field takes focus, and it never zooms back out.
 const inputClass =
-  'w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors';
+  'w-full px-4 py-3.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white text-base placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors';
 
 const labelClass = 'block text-dark/60 dark:text-white/60 text-sm mb-1.5';
 
@@ -20,10 +22,9 @@ interface FormState {
   full_name: string;
   phone: string;
   reference: string;
-  upi_txn_id: string;
 }
 
-const EMPTY: FormState = { full_name: '', phone: '', reference: '', upi_txn_id: '' };
+const EMPTY: FormState = { full_name: '', phone: '', reference: '' };
 
 /** The cutoff never changes while the page is open, so there is nothing to subscribe to. */
 const subscribeNever = () => () => {};
@@ -90,10 +91,6 @@ export default function GarbaWorkshopPage() {
 
     if (form.reference.trim().length > 100) errs.reference = 'Keep this under 100 characters';
 
-    const txn = form.upi_txn_id.trim();
-    if (txn.length < 6 || txn.length > 40) errs.upi_txn_id = 'Enter the transaction ID (6-40 characters)';
-    else if (!/^[a-zA-Z0-9]+$/.test(txn)) errs.upi_txn_id = 'Letters and numbers only';
-
     if (!file) errs.payment_screenshot = 'Attach a screenshot of your payment';
     else if (file.size > 10 * 1024 * 1024) errs.payment_screenshot = 'That file is larger than 10 MB';
 
@@ -111,7 +108,6 @@ export default function GarbaWorkshopPage() {
       body.append('full_name', form.full_name);
       body.append('phone', form.phone);
       body.append('reference', form.reference);
-      body.append('upi_txn_id', form.upi_txn_id);
       body.append('website', honeypot);
       if (file) body.append('payment_screenshot', file);
 
@@ -137,7 +133,7 @@ export default function GarbaWorkshopPage() {
   return (
     <div className="min-h-screen transition-colors">
       {/* Hero */}
-      <section data-rota="hero" className="pt-28 pb-12 px-6 md:px-12 lg:px-16">
+      <section data-rota="hero" className="pt-24 sm:pt-28 pb-10 px-4 sm:px-6 md:px-12 lg:px-16">
         <div className="max-w-3xl mx-auto w-full">
           <AnimatedSection>
             <Link href="/events"
@@ -147,7 +143,7 @@ export default function GarbaWorkshopPage() {
 
             {/* Poster supplied by the club (the Ae Haalo 4.0 artwork), so there
                 is no stock-photo credit to carry here. */}
-            <div className="relative w-full aspect-[4/5] sm:aspect-[16/10] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 mb-8">
+            <div className="relative w-full aspect-[3/2] sm:aspect-[16/10] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 mb-6 sm:mb-8">
               <Image
                 src={GARBA.poster}
                 alt={GARBA.posterAlt}
@@ -161,16 +157,16 @@ export default function GarbaWorkshopPage() {
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-3">
               {GARBA.subtitle}
             </p>
-            <h1 className="font-display text-4xl md:text-6xl text-dark dark:text-white mb-5">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-6xl text-dark dark:text-white mb-4 sm:mb-5">
               <span className="gradient-text">{GARBA.title}</span>
             </h1>
             <p className="text-dark/60 dark:text-white/60 text-base md:text-lg leading-relaxed mb-6">
               {GARBA.description}
             </p>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-3 text-dark/50 dark:text-white/50 text-sm">
-              <span className="flex items-center gap-1.5">
-                <Calendar size={15} className="text-accent" />
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-2.5 text-dark/50 dark:text-white/50 text-sm">
+              <span className="flex items-start gap-1.5">
+                <Calendar size={15} className="text-accent flex-shrink-0 mt-0.5" />
                 {eventDate.toLocaleDateString('en-IN', {
                   weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                 })}
@@ -178,8 +174,8 @@ export default function GarbaWorkshopPage() {
               <span className="flex items-center gap-1.5">
                 <Clock size={15} className="text-accent" /> {GARBA.timeLabel}
               </span>
-              <span className="flex items-center gap-1.5">
-                <MapPin size={15} className="text-accent" /> {GARBA.venue}
+              <span className="flex items-start gap-1.5">
+                <MapPin size={15} className="text-accent flex-shrink-0 mt-0.5" /> {GARBA.venue}
               </span>
               <span className="flex items-center gap-1.5">
                 <Shirt size={15} className="text-accent" /> Dress code: {GARBA.dressCode}
@@ -193,10 +189,10 @@ export default function GarbaWorkshopPage() {
       </section>
 
       {/* Registration form */}
-      <section data-rota="register" className="pb-24 px-6 md:px-12 lg:px-16">
+      <section data-rota="register" className="pb-20 px-4 sm:px-6 md:px-12 lg:px-16">
         <div className="max-w-3xl mx-auto w-full">
           <AnimatedSection>
-            <div className="p-6 md:p-10 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
+            <div className="p-5 sm:p-6 md:p-10 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
 
               {closed ? (
                 <div className="text-center py-10">
@@ -210,14 +206,14 @@ export default function GarbaWorkshopPage() {
                   <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-5">
                     <CheckCircle size={30} className="text-green-500" />
                   </div>
-                  <h2 className="font-display text-2xl md:text-3xl text-dark dark:text-white mb-3">
+                  <h2 className="font-display text-xl sm:text-2xl md:text-3xl text-dark dark:text-white mb-3">
                     You&apos;re registered for the Garba Workshop! 🎉
                   </h2>
                   <p className="text-dark/60 dark:text-white/60 leading-relaxed max-w-md mx-auto mb-6">
                     We&apos;ll verify your payment and see you on 26 September at 7 PM,
                     Deshpande Garden, Sinhagad Road.
                   </p>
-                  <div className="inline-flex flex-col sm:flex-row items-center gap-x-8 gap-y-3 px-6 py-4 rounded-xl bg-accent/5 border border-accent/20">
+                  <div className="flex flex-col sm:inline-flex sm:flex-row items-center gap-x-8 gap-y-4 px-5 sm:px-6 py-4 rounded-xl bg-accent/5 border border-accent/20">
                     <div>
                       <p className="text-dark/40 dark:text-white/40 text-xs uppercase tracking-wider mb-1">Name</p>
                       <p className="text-dark dark:text-white font-medium">{done.full_name}</p>
@@ -254,6 +250,7 @@ export default function GarbaWorkshopPage() {
                       </label>
                       <input type="text" value={form.full_name}
                         onChange={e => set('full_name', e.target.value)}
+                        autoComplete="name" autoCapitalize="words" enterKeyHint="next"
                         placeholder="Your full name" className={inputClass} />
                       <FieldError message={fieldErrors.full_name} />
                     </div>
@@ -263,8 +260,9 @@ export default function GarbaWorkshopPage() {
                       <label className={labelClass}>
                         <Phone size={14} className="inline mr-1" />Phone Number *
                       </label>
-                      <input type="tel" inputMode="tel" value={form.phone}
+                      <input type="tel" inputMode="numeric" value={form.phone}
                         onChange={e => set('phone', e.target.value)}
+                        autoComplete="tel" enterKeyHint="next"
                         placeholder="98765 43210" className={inputClass} />
                       <FieldError message={fieldErrors.phone} />
                     </div>
@@ -278,6 +276,7 @@ export default function GarbaWorkshopPage() {
                       </label>
                       <input type="text" value={form.reference}
                         onChange={e => set('reference', e.target.value)}
+                        autoCapitalize="words" enterKeyHint="done"
                         placeholder="Name of the person who invited you" className={inputClass} />
                       <FieldError message={fieldErrors.reference} />
                     </div>
@@ -289,11 +288,11 @@ export default function GarbaWorkshopPage() {
                         Pay {GARBA.feeInr}/- On the Below QR Code *
                       </label>
 
-                      <div className="p-5 rounded-xl bg-accent/5 border border-accent/20 space-y-4">
+                      <div className="p-4 sm:p-5 rounded-xl bg-accent/5 border border-accent/20 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
                           {/* QR */}
                           <div className="flex-shrink-0 mx-auto sm:mx-0">
-                            <div className="w-40 h-40 rounded-xl bg-white p-2 border border-accent/20 flex items-center justify-center">
+                            <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl bg-white p-2 border border-accent/20 flex items-center justify-center">
                               {qr ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={qr} alt={`UPI QR code to pay ${GARBA.feeInr} rupees to ${UPI.payee}`}
@@ -331,20 +330,12 @@ export default function GarbaWorkshopPage() {
                           </div>
                         </div>
 
-                        {/* Mobile: open the UPI app directly */}
+                        {/* Opens the UPI app on a phone; harmless on desktop,
+                            where the QR beside it is the way to pay. */}
                         <a href={UPI_URI}
-                          className="sm:hidden w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-accent text-white font-semibold hover:bg-accent-light transition-colors">
-                          <Smartphone size={16} /> Pay &#8377;{GARBA.feeInr} via UPI app
+                          className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-accent text-white font-semibold hover:bg-accent-light active:bg-accent-light transition-colors">
+                          <Smartphone size={18} /> Pay &#8377;{GARBA.feeInr} via UPI app
                         </a>
-                      </div>
-
-                      {/* Transaction id */}
-                      <div className="mt-4">
-                        <label className={labelClass}>UPI Transaction ID / UTR *</label>
-                        <input type="text" value={form.upi_txn_id}
-                          onChange={e => set('upi_txn_id', e.target.value)}
-                          placeholder="12-digit UTR from your payment app" className={inputClass} />
-                        <FieldError message={fieldErrors.upi_txn_id} />
                       </div>
                     </div>
 
@@ -363,11 +354,11 @@ export default function GarbaWorkshopPage() {
                           </button>
                         </div>
                       ) : (
-                        <label className={`${inputClass} cursor-pointer flex items-center gap-2`}>
-                          <Upload size={14} className="text-dark/30 dark:text-white/30 flex-shrink-0" />
+                        <label className={`${inputClass} cursor-pointer flex items-center gap-2 py-4`}>
+                          <Upload size={16} className="text-dark/30 dark:text-white/30 flex-shrink-0" />
                           <span className="text-dark/30 dark:text-white/30 text-sm">Choose screenshot or PDF</span>
                           <input type="file" className="hidden"
-                            accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
                             onChange={e => {
                               const f = e.target.files?.[0] || null;
                               setFile(f);
@@ -384,7 +375,7 @@ export default function GarbaWorkshopPage() {
                       className="absolute left-[-9999px] w-px h-px opacity-0" />
 
                     <button type="button" onClick={handleSubmit} disabled={submitting}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                      className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-accent text-white rounded-xl font-semibold text-base hover:bg-accent-light active:bg-accent-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                       {submitting ? (
                         <>
                           <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

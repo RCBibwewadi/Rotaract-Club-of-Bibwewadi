@@ -12,8 +12,8 @@ create table if not exists public.event_registrations (
   full_name                text not null,
   phone                    text not null,              -- normalised to 10 digits
   reference                text,                       -- optional: who sent them
-  upi_txn_id               text not null,
   payment_screenshot_path  text not null,              -- storage object path, not a public URL
+  screenshot_sha256        text not null,              -- so the same proof can't be submitted twice
   amount_inr               integer not null default 149,
   payment_verified         boolean not null default false,
   created_at               timestamptz not null default now()
@@ -22,8 +22,10 @@ create table if not exists public.event_registrations (
 create index if not exists event_registrations_slug_created_idx
   on public.event_registrations (event_slug, created_at desc);
 
--- One registration per transaction id, so a screenshot can't be reused.
-create unique index if not exists event_reg_unique_txn
-  on public.event_registrations (event_slug, upi_txn_id);
+-- One registration per payment screenshot, so the same proof cannot be
+-- submitted twice. There is no transaction-id field: the form asks only what
+-- the club's Google Form asked, and the screenshot is the proof.
+create unique index if not exists event_reg_unique_screenshot
+  on public.event_registrations (event_slug, screenshot_sha256);
 
 alter table public.event_registrations enable row level security;

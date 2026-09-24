@@ -640,7 +640,6 @@ interface GarbaRegistration {
   full_name: string;
   phone: string;
   reference: string | null;
-  upi_txn_id: string;
   amount_inr: number;
   payment_verified: boolean;
   created_at: string;
@@ -711,19 +710,18 @@ function GarbaRegistrations() {
   const filtered = rows.filter(r =>
     r.full_name.toLowerCase().includes(search.toLowerCase()) ||
     r.phone.includes(search) ||
-    r.upi_txn_id.toLowerCase().includes(search.toLowerCase()) ||
     (r.reference || '').toLowerCase().includes(search.toLowerCase()),
   );
 
   const exportCsv = () => {
-    const header = ['Name', 'Phone', 'Reference', 'UTR', 'Amount', 'Verified', 'Registered at'];
+    const header = ['Name', 'Phone', 'Reference', 'Amount', 'Verified', 'Registered at'];
     // Quote every cell and double any embedded quote, so a name with a comma
     // does not shift the columns.
     const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const lines = [
       header.map(cell).join(','),
       ...filtered.map(r => [
-        r.full_name, r.phone, r.reference || '', r.upi_txn_id,
+        r.full_name, r.phone, r.reference || '',
         r.amount_inr, r.payment_verified ? 'Yes' : 'No',
         new Date(r.created_at).toLocaleString('en-IN'),
       ].map(cell).join(',')),
@@ -749,7 +747,7 @@ function GarbaRegistrations() {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, phone, UTR, reference..."
+            placeholder="Search by name, phone, reference..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
           />
         </div>
@@ -818,7 +816,6 @@ function GarbaRegistrations() {
                 <th className="text-left font-medium px-4 py-3">Name</th>
                 <th className="text-left font-medium px-4 py-3">Phone</th>
                 <th className="text-left font-medium px-4 py-3">Reference</th>
-                <th className="text-left font-medium px-4 py-3">UTR</th>
                 <th className="text-left font-medium px-4 py-3">Screenshot</th>
                 <th className="text-left font-medium px-4 py-3">Verified</th>
                 <th className="text-left font-medium px-4 py-3">Registered</th>
@@ -832,7 +829,6 @@ function GarbaRegistrations() {
                     <a href={`tel:+91${r.phone}`} className="hover:text-accent transition-colors">{r.phone}</a>
                   </td>
                   <td className="px-4 py-3 text-white/60">{r.reference || <span className="text-white/20">—</span>}</td>
-                  <td className="px-4 py-3 text-white/60 font-mono text-xs">{r.upi_txn_id}</td>
                   <td className="px-4 py-3">
                     {r.screenshot_url ? (
                       <a href={r.screenshot_url} target="_blank" rel="noreferrer"

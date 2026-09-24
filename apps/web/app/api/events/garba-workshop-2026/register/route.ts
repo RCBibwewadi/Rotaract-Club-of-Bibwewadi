@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
         full_name: String(formData.get('full_name') || ''),
         phone: String(formData.get('phone') || ''),
         reference: String(formData.get('reference') || '') || undefined,
-        upi_txn_id: String(formData.get('upi_txn_id') || ''),
       });
     } catch (err) {
       if (err instanceof ZodError) {
@@ -111,6 +110,11 @@ export async function POST(request: NextRequest) {
     const objectPath = `${GARBA_SLUG}/${id}${ext}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Hashing the bytes is what stops the same screenshot being submitted
+    // twice, now that the form no longer asks for a transaction id.
+    const screenshotHash = crypto.createHash('sha256').update(buffer).digest('hex');
+
     const { error: uploadError } = await supabaseAdmin.storage
       .from(BUCKET)
       .upload(objectPath, buffer, { contentType: file.type, upsert: false });
@@ -127,8 +131,8 @@ export async function POST(request: NextRequest) {
         full_name: body.full_name,
         phone: body.phone,
         reference: body.reference ?? null,
-        upi_txn_id: body.upi_txn_id,
         payment_screenshot_path: objectPath,
+        screenshot_sha256: screenshotHash,
         amount_inr: GARBA.feeInr,
       })
       .select('id, full_name')
@@ -140,7 +144,7 @@ export async function POST(request: NextRequest) {
 
       if (error.code === '23505') {
         return json(
-          errorResponse('DUPLICATE_TXN', 'This transaction ID has already been used for a registration.'),
+          errorResponse('DUPLICATE_SCREENSHOT', 'This payment screenshot has already been used for a registration.'),
           409,
         );
       }

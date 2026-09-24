@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('event_registrations')
-      .select('id, event_slug, full_name, phone, reference, upi_txn_id, payment_screenshot_path, amount_inr, payment_verified, created_at')
+      .select('id, event_slug, full_name, phone, reference, payment_screenshot_path, amount_inr, payment_verified, created_at')
       .eq('event_slug', slug)
       .order('created_at', { ascending: false });
 

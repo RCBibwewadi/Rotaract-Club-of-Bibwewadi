@@ -28,7 +28,7 @@ export default function GarbaEventCard({ isDark }: { isDark: boolean }) {
     >
       <div className="flex flex-col sm:flex-row">
         {/* Poster */}
-        <div className="relative w-full sm:w-44 md:w-52 aspect-[4/5] sm:aspect-auto sm:self-stretch flex-shrink-0 min-h-[180px]">
+        <div className="relative w-full sm:w-44 md:w-52 aspect-[16/9] sm:aspect-auto sm:self-stretch flex-shrink-0 sm:min-h-[180px]">
           <Image
             src={GARBA.poster}
             alt={GARBA.posterAlt}
@@ -39,7 +39,7 @@ export default function GarbaEventCard({ isDark }: { isDark: boolean }) {
         </div>
 
         {/* Details */}
-        <div className="flex-1 min-w-0 p-6 md:p-8">
+        <div className="flex-1 min-w-0 p-5 sm:p-6 md:p-8">
           <p className="text-accent text-[11px] font-semibold tracking-[0.18em] uppercase mb-2">
             {closed ? 'Ae Haalo 4.0' : `Up next · ${GARBA.subtitle}`}
           </p>
@@ -52,22 +52,22 @@ export default function GarbaEventCard({ isDark }: { isDark: boolean }) {
             {GARBA.description}
           </p>
 
-          <div className={`flex flex-wrap gap-x-5 gap-y-2 text-sm ${muted} mb-6`}>
+          <div className={`flex flex-col sm:flex-row sm:flex-wrap gap-x-5 gap-y-2 text-sm ${muted} mb-6`}>
             <span className="flex items-center gap-1.5">
               <Calendar size={14} className="text-accent" /> Sat, 26 Sep 2026
             </span>
             <span className="flex items-center gap-1.5">
               <Clock size={14} className="text-accent" /> 7:00 PM
             </span>
-            <span className="flex items-center gap-1.5">
-              <MapPin size={14} className="text-accent" /> Deshpande Garden, Sinhagad Road
+            <span className="flex items-start gap-1.5">
+              <MapPin size={14} className="text-accent flex-shrink-0 mt-0.5" /> Deshpande Garden, Sinhagad Road
             </span>
             <span className="flex items-center gap-1.5">
               <IndianRupee size={14} className="text-accent" /> {GARBA.feeInr} per person
             </span>
           </div>
 
-          <span className="inline-flex items-center gap-2 px-6 py-2.5 bg-accent group-hover:bg-accent-light text-white rounded-full text-sm font-medium transition-colors duration-300">
+          <span className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-accent group-hover:bg-accent-light text-white rounded-full text-sm font-medium transition-colors duration-300">
             {closed ? 'View event' : 'Register Now'}
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </span>

@@ -207,7 +207,7 @@ export default function EventsPage() {
                       {isGarbaWorkshop(event.event_name) && (
                         <div className="mt-4">
                           <Link href={GARBA_PATH}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-semibold transition-colors duration-300 group/cta">
+                            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-accent hover:bg-accent-light active:bg-accent-light text-white rounded-xl text-sm font-semibold transition-colors duration-300 group/cta">
                             {registrationsClosed() ? 'View event' : 'Register Now'}
                             <ArrowRight size={14} className="group-hover/cta:translate-x-1 transition-transform" />
                           </Link>

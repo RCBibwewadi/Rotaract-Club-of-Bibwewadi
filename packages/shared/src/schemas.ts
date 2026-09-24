@@ -230,10 +230,6 @@ export const EventRegistrationSchema = z.object({
     .refine(v => /^[6-9]\d{9}$/.test(v), 'Enter a valid 10-digit Indian mobile number'),
   // Optional — people who found the workshop on their own leave this blank.
   reference: z.string().trim().max(100, 'Keep this under 100 characters').optional(),
-  upi_txn_id: z.string().trim()
-    .min(6, 'Transaction ID must be at least 6 characters')
-    .max(40, 'Transaction ID must be under 40 characters')
-    .regex(/^[a-zA-Z0-9]+$/, 'Transaction ID should be letters and numbers only'),
 });
 
 export type EventRegistrationInput = z.infer<typeof EventRegistrationSchema>;
