@@ -4,7 +4,11 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import { json, requireAdminPassword, handleError } from '../../../lib/middleware';
 import { successResponse, errorResponse } from '@rcb-2.0/shared';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error('RESEND_API_KEY not configured');
+  return new Resend(key);
+}
 
 interface AggregatedPerson {
   email: string;
@@ -113,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     for (const person of personMap.values()) {
       try {
-        await resend.emails.send({
+        await getResend().emails.send({
           from: 'Rotaract Club of Bibwewadi <rotaractclubofbibwewadi@gmail.com>',
           to: person.email,
           subject: `Reimbursement Confirmation — Rs. ${person.totalAmount.toLocaleString('en-IN')}/-`,
