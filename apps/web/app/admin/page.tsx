@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import {
   LogOut, Save, Plus, Trash2, Edit3, Eye, Settings, Users, FolderOpen,
-  CalendarDays, FileText, Sliders, CheckCircle, Ban, RefreshCw,
+  CalendarDays, FileText, Sliders, CheckCircle, RefreshCw,
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
   Handshake, HeartHandshake, Globe, Brain, Award,
@@ -2076,8 +2076,638 @@ function EventsTab() {
   );
 }
 
+// ── Reimbursements Tab ──────────────────────────────────────
+
+const ACTIVE_STATUSES = ['Fetched', 'Verification_Pending', 'Payment_Pending', 'Rejected', 'Payment_Done'] as const;
+
+const STATUS_COLORS: Record<string, string> = {
+  Fetched: 'bg-blue-500/10 text-blue-400',
+  Verification_Pending: 'bg-yellow-500/10 text-yellow-400',
+  Payment_Pending: 'bg-orange-500/10 text-orange-400',
+  Rejected: 'bg-red-500/10 text-red-400',
+  Payment_Done: 'bg-green-500/10 text-green-400',
+  Acknowledged: 'bg-emerald-500/10 text-emerald-400',
+  Email_Sent: 'bg-purple-500/10 text-purple-400',
+};
+
+interface Reimbursement {
+  id: string;
+  form_timestamp: string;
+  person_name: string;
+  designation: string;
+  person_email: string;
+  event_name: string;
+  purpose: string;
+  amount_inr: number;
+  screenshot_paths: string;
+  screenshot_urls: string[];
+  expense_date: string | null;
+  status: string;
+  created_at: string;
+}
+
+interface ReimbKpi {
+  total_amount: number;
+  total_entries: number;
+  pending_count: number;
+  highest_spender: { person_name: string; total: number } | null;
+  by_status: Record<string, number>;
+}
+
+const REIMB_AUTH_KEY = 'rcb-reimb-auth';
+
+function ReimbursementsTab() {
+  const [authed, setAuthed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem(REIMB_AUTH_KEY) === 'true';
+    }
+    return false;
+  });
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  // Data
+  const [rows, setRows] = useState<Reimbursement[]>([]);
+  const [kpi, setKpi] = useState<ReimbKpi | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Filters
+  const [filterStatus] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [filterEvent, setFilterEvent] = useState('');
+
+  // Selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [completedPage, setCompletedPage] = useState(1);
+  const perPage = 10;
+
+  // Screenshot modal
+  const [screenshotModal, setScreenshotModal] = useState<string[] | null>(null);
+
+  // Acknowledge modal
+  const [ackModal, setAckModal] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  // Sub-tabs: Pending vs Done
+  const [reimbTab, setReimbTab] = useState<'pending' | 'done'>('pending');
+
+  const handleReimbLogin = () => {
+    const envPass = process.env.REIMBURSEMENT_PASSWORD;
+    if (password === envPass) {
+      sessionStorage.setItem(REIMB_AUTH_KEY, 'true');
+      setAuthed(true);
+      setAuthError('');
+    } else {
+      setAuthError('Incorrect reimbursement password');
+    }
+  };
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  // Fetch list
+  const fetchList = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ view: 'list' });
+      if (filterStatus) params.set('status', filterStatus);
+      if (filterName) params.set('name', filterName);
+      if (filterEvent) params.set('event', filterEvent);
+
+      const res = await fetch(`/api/admin/reimbursements?${params}`, { headers: adminHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setRows(data.data || []);
+        setPage(1);
+      } else {
+        showMsg(data.message || 'Failed to fetch', 'error');
+      }
+    } catch { showMsg('Network error', 'error'); }
+    finally { setLoading(false); }
+  }, [filterStatus, filterName, filterEvent]);
+
+  // Fetch KPIs
+  const fetchKpi = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/reimbursements?view=kpi', { headers: adminHeaders() });
+      const data = await res.json();
+      if (res.ok) setKpi(data.data);
+    } catch { /* silent */ }
+  }, []);
+
+  // Sync from sheet
+  const syncSheet = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/admin/reimbursements?view=sync', { headers: adminHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(data.message || 'Synced', 'success');
+        fetchList();
+        fetchKpi();
+      } else {
+        showMsg(data.message || 'Sync failed', 'error');
+      }
+    } catch { showMsg('Network error', 'error'); }
+    finally { setSyncing(false); }
+  };
+
+  // Update status
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      const res = await fetch(`/api/admin/reimbursements/${id}`, {
+        method: 'PATCH',
+        headers: adminHeaders(),
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(data.message || 'Updated', 'success');
+        setRows(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+        fetchKpi();
+      } else {
+        showMsg(data.message || 'Update failed', 'error');
+      }
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  // Delete
+  const deleteRow = async (id: string) => {
+    if (!confirm('Delete this reimbursement?')) return;
+    try {
+      const res = await fetch(`/api/admin/reimbursements/${id}`, {
+        method: 'DELETE',
+        headers: adminHeaders(),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(data.message || 'Deleted', 'success');
+        setRows(prev => prev.filter(r => r.id !== id));
+        setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
+        fetchKpi();
+      } else {
+        showMsg(data.message || 'Delete failed', 'error');
+      }
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  // Send acknowledge emails
+  const sendAcknowledgeEmails = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setSending(true);
+    try {
+      const res = await fetch('/api/admin/reimbursements/acknowledge', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ ids, sendEmail: true }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(data.message || 'Emails sent', 'success');
+        setSelected(new Set());
+        setAckModal(false);
+        fetchList();
+        fetchKpi();
+      } else {
+        showMsg(data.message || 'Failed', 'error');
+      }
+    } catch { showMsg('Network error', 'error'); }
+    finally { setSending(false); }
+  };
+
+  useEffect(() => {
+    if (!authed) return;
+    queueMicrotask(() => { fetchList(); fetchKpi(); });
+  }, [authed, fetchList, fetchKpi]);
+
+  // Selection helpers
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  // Split rows: active vs completed
+  const activeRows = rows.filter(r => !['Acknowledged', 'Email_Sent'].includes(r.status));
+  const completedRows = rows.filter(r => ['Acknowledged', 'Email_Sent'].includes(r.status));
+
+  // Pagination for active table
+  const totalPages = Math.ceil(activeRows.length / perPage);
+  const paged = activeRows.slice((page - 1) * perPage, page * perPage);
+
+  // Pagination for completed table
+  const completedTotalPages = Math.ceil(completedRows.length / perPage);
+  const completedPaged = completedRows.slice((completedPage - 1) * perPage, completedPage * perPage);
+
+  // Unique events for filter dropdown
+  const uniqueEvents = [...new Set(rows.map(r => r.event_name).filter(Boolean))];
+
+  // Build acknowledge preview data
+  const selectedRows = rows.filter(r => selected.has(r.id) && r.status === 'Payment_Done');
+  const ackPreview = (() => {
+    const map = new Map<string, { name: string; email: string; total: number; count: number }>();
+    for (const r of selectedRows) {
+      const email = (r.person_email || '').trim().toLowerCase();
+      const key = email || r.person_name.toLowerCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.total += r.amount_inr || 0;
+        existing.count++;
+      } else {
+        map.set(key, { name: r.person_name, email, total: r.amount_inr || 0, count: 1 });
+      }
+    }
+    return Array.from(map.values());
+  })();
+
+  // ── Auth gate ──
+  if (!authed) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-full max-w-sm space-y-4">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-3">
+              <IndianRupee size={24} className="text-white" />
+            </div>
+            <h2 className="font-display text-xl text-white">Reimbursements</h2>
+            <p className="text-white/50 text-sm mt-1">Enter reimbursement password</p>
+          </div>
+          {authError && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+              <AlertCircle size={14} /> {authError}
+            </div>
+          )}
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleReimbLogin()}
+            placeholder="Reimbursement password"
+            className="w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors"
+          />
+          <button
+            onClick={handleReimbLogin}
+            className="w-full py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-semibold transition-colors"
+          >
+            Unlock
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main content ──
+  return (
+    <div className="space-y-4">
+      {/* Top bar: Acknowledge + Sync */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        {reimbTab === 'pending' && (
+          <button
+            onClick={() => setAckModal(true)}
+            disabled={selected.size === 0}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <CheckCircle size={15} /> Acknowledge ({selected.size})
+          </button>
+        )}
+        <div className="flex items-center gap-3 ml-auto">
+          <button
+            onClick={syncSheet}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 hover:text-white hover:border-accent transition-all text-sm disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync Sheet'}
+          </button>
+        </div>
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${
+          message.type === 'success'
+            ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+        }`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+          {message.text}
+        </div>
+      )}
+
+      {/* KPI Cards */}
+      {kpi && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
+            <p className="text-white/40 text-xs mb-1">Total Amount</p>
+            <p className="text-xl font-bold text-white">&#8377;{kpi.total_amount.toLocaleString('en-IN')}</p>
+          </div>
+          <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
+            <p className="text-white/40 text-xs mb-1">Total Entries</p>
+            <p className="text-xl font-bold text-white">{kpi.total_entries}</p>
+          </div>
+          <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
+            <p className="text-white/40 text-xs mb-1">Pending</p>
+            <p className="text-xl font-bold text-yellow-400">{kpi.pending_count}</p>
+          </div>
+          <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
+            <p className="text-white/40 text-xs mb-1">Highest Spender</p>
+            <p className="text-sm font-bold text-white capitalize">{kpi.highest_spender?.person_name || '—'}</p>
+            {kpi.highest_spender && (
+              <p className="text-xs text-accent">&#8377;{kpi.highest_spender.total.toLocaleString('en-IN')}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sub-tabs: Pending / Done */}
+      <div className="flex gap-1 bg-dark-surface rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setReimbTab('pending')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reimbTab === 'pending' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}
+        >
+          To Do ({activeRows.length})
+        </button>
+        <button
+          onClick={() => setReimbTab('done')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reimbTab === 'done' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}
+        >
+          Done ({completedRows.length})
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <input
+            type="text"
+            value={filterName}
+            onChange={e => setFilterName(e.target.value)}
+            placeholder="Search by name..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
+          />
+        </div>
+        {uniqueEvents.length > 0 && (
+          <select
+            value={filterEvent}
+            onChange={e => setFilterEvent(e.target.value)}
+            className="px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 text-sm outline-none focus:border-accent appearance-none cursor-pointer"
+          >
+            <option value="">All Events</option>
+            {uniqueEvents.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+        )}
+        <button onClick={fetchList}
+          className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* Loader */}
+      {loading && (
+        <div className="flex justify-center py-12">
+          <IndianRupee size={28} className="text-accent animate-bounce" />
+        </div>
+      )}
+
+      {/* Pending Tab */}
+      {!loading && reimbTab === 'pending' && (
+        <>
+          <div className="bg-dark-card rounded-2xl border border-white/5 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5 text-white/40 text-xs">
+                  <th className="p-3 text-left w-10"></th>
+                  <th className="p-3 text-left">Name</th>
+                  <th className="p-3 text-left hidden lg:table-cell">Designation</th>
+                  <th className="p-3 text-left">Purpose</th>
+                  <th className="p-3 text-right">Amount</th>
+                  <th className="p-3 text-center">SS</th>
+                  <th className="p-3 text-left">Status</th>
+                  <th className="p-3 text-left hidden md:table-cell">Date</th>
+                  <th className="p-3 text-center w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {paged.length === 0 && (
+                  <tr><td colSpan={9} className="p-8 text-center text-white/30">No pending reimbursements</td></tr>
+                )}
+                {paged.map(r => {
+                  const canCheck = r.status === 'Payment_Done';
+                  return (
+                    <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                      <td className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(r.id)}
+                          onChange={() => toggleSelect(r.id)}
+                          disabled={!canCheck}
+                          className="accent-emerald-500 w-4 h-4 rounded disabled:opacity-20"
+                        />
+                      </td>
+                      <td className="p-3 text-white font-medium capitalize whitespace-nowrap">{r.person_name.toLowerCase()}</td>
+                      <td className="p-3 text-white/50 capitalize hidden lg:table-cell">{r.designation.toLowerCase() || '—'}</td>
+                      <td className="p-3 text-white/70 max-w-[200px] truncate">{r.purpose || '—'}</td>
+                      <td className="p-3 text-right text-white font-medium whitespace-nowrap">
+                        {r.amount_inr ? `₹${r.amount_inr.toLocaleString('en-IN')}` : '—'}
+                      </td>
+                      <td className="p-3 text-center">
+                        {r.screenshot_urls?.length > 0 ? (
+                          r.screenshot_urls.some((u: string) => u.startsWith('http') && u.includes('drive.google.com')) ? (
+                            <a href={r.screenshot_urls[0]} target="_blank" rel="noreferrer" className="text-accent hover:text-accent-light transition-colors" title="Open in Google Drive">
+                              <ExternalLink size={16} />
+                            </a>
+                          ) : (
+                            <button onClick={() => setScreenshotModal(r.screenshot_urls)} className="text-accent hover:text-accent-light transition-colors">
+                              <Eye size={16} />
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-white/20">—</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <select
+                          value={r.status}
+                          onChange={e => updateStatus(r.id, e.target.value)}
+                          className={`px-2 py-1 rounded-lg text-xs font-medium border-0 outline-none cursor-pointer ${STATUS_COLORS[r.status] || 'bg-white/5 text-white/50'}`}
+                        >
+                          {ACTIVE_STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                        </select>
+                      </td>
+                      <td className="p-3 text-white/40 text-xs whitespace-nowrap hidden md:table-cell">
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                      </td>
+                      <td className="p-3 text-center">
+                        <button onClick={() => deleteRow(r.id)} className="text-white/20 hover:text-red-400 transition-colors">
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Prev</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => setPage(p)}
+                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${p === page ? 'bg-accent text-white' : 'bg-dark-surface border border-white/10 text-white/50 hover:text-white'}`}>{p}</button>
+              ))}
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Next</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Done Tab */}
+      {!loading && reimbTab === 'done' && (
+        <>
+          <div className="bg-dark-card rounded-2xl border border-white/5 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5 text-white/40 text-xs">
+                  <th className="p-3 text-left">Name</th>
+                  <th className="p-3 text-left hidden md:table-cell">Email</th>
+                  <th className="p-3 text-left">Purpose</th>
+                  <th className="p-3 text-right">Amount</th>
+                  <th className="p-3 text-left">Status</th>
+                  <th className="p-3 text-left hidden md:table-cell">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedPaged.length === 0 && (
+                  <tr><td colSpan={6} className="p-8 text-center text-white/30">No completed transactions</td></tr>
+                )}
+                {completedPaged.map(r => (
+                  <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                    <td className="p-3 text-white font-medium capitalize whitespace-nowrap">{r.person_name.toLowerCase()}</td>
+                    <td className="p-3 text-white/50 text-xs hidden md:table-cell">{r.person_email || '—'}</td>
+                    <td className="p-3 text-white/70 max-w-[200px] truncate">{r.purpose || '—'}</td>
+                    <td className="p-3 text-right text-white font-medium whitespace-nowrap">
+                      {r.amount_inr ? `₹${r.amount_inr.toLocaleString('en-IN')}` : '—'}
+                    </td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${STATUS_COLORS[r.status] || 'bg-white/5 text-white/50'}`}>
+                        {r.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="p-3 text-white/40 text-xs whitespace-nowrap hidden md:table-cell">
+                      {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {completedTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button onClick={() => setCompletedPage(p => Math.max(1, p - 1))} disabled={completedPage === 1}
+                className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Prev</button>
+              {Array.from({ length: completedTotalPages }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => setCompletedPage(p)}
+                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${p === completedPage ? 'bg-accent text-white' : 'bg-dark-surface border border-white/10 text-white/50 hover:text-white'}`}>{p}</button>
+              ))}
+              <button onClick={() => setCompletedPage(p => Math.min(completedTotalPages, p + 1))} disabled={completedPage === completedTotalPages}
+                className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Next</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Screenshot Modal */}
+      {screenshotModal && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" onClick={() => setScreenshotModal(null)}>
+          <div className="relative max-w-3xl w-full max-h-[90vh] overflow-auto bg-dark-card rounded-2xl border border-white/10 p-4" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setScreenshotModal(null)} className="absolute top-3 right-3 text-white/50 hover:text-white">
+              <X size={20} />
+            </button>
+            <div className="space-y-4">
+              {screenshotModal.map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={url} alt={`Screenshot ${i + 1}`} className="w-full rounded-xl border border-white/10" />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Acknowledge Modal */}
+      {ackModal && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" onClick={() => !sending && setAckModal(false)}>
+          <div className="relative max-w-lg w-full max-h-[90vh] overflow-auto bg-dark-card rounded-2xl border border-white/10 p-6" onClick={e => e.stopPropagation()}>
+            <button onClick={() => !sending && setAckModal(false)} className="absolute top-4 right-4 text-white/50 hover:text-white">
+              <X size={20} />
+            </button>
+
+            <h3 className="text-lg font-display text-white mb-1">Acknowledge & Send Email</h3>
+            <p className="text-white/50 text-sm mb-4">The following email(s) will be sent to acknowledge payment:</p>
+
+            <div className="space-y-3 mb-6">
+              {ackPreview.map((p, i) => (
+                <div key={i} className="bg-dark-surface rounded-xl border border-white/5 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white font-medium capitalize">{p.name.toLowerCase()}</span>
+                    <span className="text-emerald-400 font-bold">₹{p.total.toLocaleString('en-IN')}</span>
+                  </div>
+                  <p className="text-white/40 text-xs">{p.email || 'No email — will be acknowledged without email'}</p>
+                  {p.count > 1 && <p className="text-white/30 text-xs mt-1">{p.count} entries aggregated</p>}
+                </div>
+              ))}
+            </div>
+
+            {/* Email preview */}
+            <div className="bg-dark-surface rounded-xl border border-white/5 p-4 mb-6">
+              <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Email Preview</p>
+              <div className="text-sm text-white/70 space-y-2 leading-relaxed">
+                <p>Hi <span className="text-white font-medium">[Name]</span>,</p>
+                <p>I&apos;m reaching out to confirm that your reimbursement of <span className="text-emerald-400 font-bold">Rs. [Amount]/-</span> was transferred on <span className="text-white font-medium">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span> for the expenses incurred by you on behalf of the club.</p>
+                <p>Could you please reply with &quot;<span className="text-emerald-400 font-medium">Acknowledged</span>&quot; to confirm that the said amount has been duly received by you.</p>
+                <p className="mt-4">
+                  Thank you,<br />
+                  <span className="text-white font-medium">Rtr. Akanksha Navale</span>,<br />
+                  Treasurer,<br />
+                  Rotaract Club of Bibwewadi Pune.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={sendAcknowledgeEmails}
+              disabled={sending || ackPreview.length === 0}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sending ? (
+                <><RefreshCw size={16} className="animate-spin" /> Sending...</>
+              ) : (
+                <><Mail size={16} /> Send Emails & Acknowledge</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Admin Dashboard ─────────────────────────────────────
-type Tab = 'members' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings';
+type Tab = 'members' | 'reimbursements' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings';
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const store = useStore();
@@ -2091,6 +2721,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'members', label: 'Members', icon: <Users size={16} /> },
+    { id: 'reimbursements', label: 'Reimburse', icon: <IndianRupee size={16} /> },
     { id: 'content', label: 'Content', icon: <FileText size={16} /> },
     { id: 'board', label: 'Board', icon: <Users size={16} /> },
     { id: 'legacy', label: 'Legacy', icon: <History size={16} /> },
@@ -2100,7 +2731,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   ];
 
   const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
-  const labelClass = "block text-sm font-medium text-white/70 mb-2";
 
   return (
     <div className="min-h-screen bg-dark text-white">
@@ -2152,6 +2782,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <div className="flex-1 min-w-0">
             {/* === MEMBERS TAB === */}
             {tab === 'members' && <MembersTab />}
+
+            {/* === REIMBURSEMENTS TAB === */}
+            {tab === 'reimbursements' && <ReimbursementsTab />}
 
             {/* === CONTENT TAB === */}
             {tab === 'content' && <ContentTab />}
