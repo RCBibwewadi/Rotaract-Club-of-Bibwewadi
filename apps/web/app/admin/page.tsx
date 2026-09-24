@@ -2085,8 +2085,8 @@ const STATUS_COLORS: Record<string, string> = {
   Verification_Pending: 'bg-yellow-500/10 text-yellow-400',
   Payment_Pending: 'bg-orange-500/10 text-orange-400',
   Rejected: 'bg-red-500/10 text-red-400',
-  Payment_Done: 'bg-green-500/10 text-green-400',
-  Acknowledged: 'bg-emerald-500/10 text-emerald-400',
+  Payment_Done: 'bg-warm/10 text-warm',
+  Acknowledged: 'bg-accent/10 text-accent-light',
   Email_Sent: 'bg-purple-500/10 text-purple-400',
 };
 
@@ -2109,8 +2109,7 @@ interface Reimbursement {
 interface ReimbKpi {
   total_amount: number;
   total_entries: number;
-  pending_count: number;
-  highest_spender: { person_name: string; total: number } | null;
+  reimbursed_amount: number;
   by_status: Record<string, number>;
 }
 
@@ -2137,6 +2136,9 @@ function ReimbursementsTab() {
   const [filterStatus] = useState('');
   const [filterName, setFilterName] = useState('');
   const [filterEvent, setFilterEvent] = useState('');
+  const [filterDatePreset, setFilterDatePreset] = useState('all');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   // Selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -2297,9 +2299,33 @@ function ReimbursementsTab() {
     });
   };
 
+  // Date filter helper
+  const getDateRange = (): { from: string; to: string } | null => {
+    if (filterDatePreset === 'all') return null;
+    if (filterDatePreset === 'custom') {
+      return { from: filterDateFrom, to: filterDateTo };
+    }
+    const today = new Date();
+    const toStr = today.toISOString().split('T')[0];
+    if (filterDatePreset === 'today') return { from: toStr, to: toStr };
+    const daysBack = filterDatePreset === '7d' ? 7 : 30;
+    const from = new Date(today);
+    from.setDate(from.getDate() - daysBack);
+    return { from: from.toISOString().split('T')[0], to: toStr };
+  };
+
+  const matchesDateFilter = (r: Reimbursement) => {
+    const range = getDateRange();
+    if (!range) return true;
+    if (!r.expense_date) return false;
+    if (range.from && r.expense_date < range.from) return false;
+    if (range.to && r.expense_date > range.to) return false;
+    return true;
+  };
+
   // Split rows: active vs completed
-  const activeRows = rows.filter(r => !['Acknowledged', 'Email_Sent'].includes(r.status));
-  const completedRows = rows.filter(r => ['Acknowledged', 'Email_Sent'].includes(r.status));
+  const activeRows = rows.filter(r => !['Acknowledged', 'Email_Sent'].includes(r.status) && matchesDateFilter(r));
+  const completedRows = rows.filter(r => ['Acknowledged', 'Email_Sent'].includes(r.status) && matchesDateFilter(r));
 
   // Pagination for active table
   const totalPages = Math.ceil(activeRows.length / perPage);
@@ -2336,7 +2362,7 @@ function ReimbursementsTab() {
       <div className="flex items-center justify-center py-20">
         <div className="w-full max-w-sm space-y-4">
           <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center mx-auto mb-3">
               <IndianRupee size={24} className="text-white" />
             </div>
             <h2 className="font-display text-xl text-white">Reimbursements</h2>
@@ -2357,7 +2383,7 @@ function ReimbursementsTab() {
           />
           <button
             onClick={handleReimbLogin}
-            className="w-full py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-semibold transition-colors"
+            className="w-full py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold transition-colors"
           >
             Unlock
           </button>
@@ -2369,34 +2395,11 @@ function ReimbursementsTab() {
   // ── Main content ──
   return (
     <div className="space-y-4">
-      {/* Top bar: Acknowledge + Sync */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        {reimbTab === 'pending' && (
-          <button
-            onClick={() => setAckModal(true)}
-            disabled={selected.size === 0}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <CheckCircle size={15} /> Acknowledge ({selected.size})
-          </button>
-        )}
-        <div className="flex items-center gap-3 ml-auto">
-          <button
-            onClick={syncSheet}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 hover:text-white hover:border-accent transition-all text-sm disabled:opacity-50"
-          >
-            <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Syncing...' : 'Sync Sheet'}
-          </button>
-        </div>
-      </div>
-
       {/* Message */}
       {message && (
         <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${
           message.type === 'success'
-            ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+            ? 'bg-accent/10 border border-accent/20 text-accent-light'
             : 'bg-red-500/10 border border-red-500/20 text-red-400'
         }`}>
           {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
@@ -2416,33 +2419,57 @@ function ReimbursementsTab() {
             <p className="text-xl font-bold text-white">{kpi.total_entries}</p>
           </div>
           <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
-            <p className="text-white/40 text-xs mb-1">Pending</p>
-            <p className="text-xl font-bold text-yellow-400">{kpi.pending_count}</p>
+            <p className="text-white/40 text-xs mb-1">Total Reimbursed</p>
+            <p className="text-xl font-bold text-warm">{(kpi.by_status['Acknowledged'] || 0) + (kpi.by_status['Email_Sent'] || 0)}</p>
           </div>
           <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
-            <p className="text-white/40 text-xs mb-1">Highest Spender</p>
-            <p className="text-sm font-bold text-white capitalize">{kpi.highest_spender?.person_name || '—'}</p>
-            {kpi.highest_spender && (
-              <p className="text-xs text-accent">&#8377;{kpi.highest_spender.total.toLocaleString('en-IN')}</p>
-            )}
+            <p className="text-white/40 text-xs mb-1">Amount Reimbursed</p>
+            <p className="text-xl font-bold text-warm">&#8377;{(kpi.reimbursed_amount || 0).toLocaleString('en-IN')}</p>
           </div>
         </div>
       )}
 
-      {/* Sub-tabs: Pending / Done */}
-      <div className="flex gap-1 bg-dark-surface rounded-xl p-1 w-fit">
-        <button
-          onClick={() => setReimbTab('pending')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reimbTab === 'pending' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}
-        >
-          To Do ({activeRows.length})
-        </button>
-        <button
-          onClick={() => setReimbTab('done')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reimbTab === 'done' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}
-        >
-          Done ({completedRows.length})
-        </button>
+      {/* Sub-tabs + Actions */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="flex gap-1 bg-dark-surface rounded-xl p-1 w-fit">
+          <button
+            onClick={() => setReimbTab('pending')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reimbTab === 'pending' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}
+          >
+            To Do ({activeRows.length})
+          </button>
+          <button
+            onClick={() => setReimbTab('done')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${reimbTab === 'done' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}
+          >
+            Done ({completedRows.length})
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          {reimbTab === 'pending' && (
+            <button
+              onClick={() => setAckModal(true)}
+              disabled={selected.size === 0}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white font-semibold text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <CheckCircle size={15} /> Acknowledge ({selected.size})
+            </button>
+          )}
+          <button
+            onClick={syncSheet}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 hover:text-white hover:border-accent transition-all text-sm disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync Sheet'}
+          </button>
+          <button
+            onClick={() => { sessionStorage.removeItem(REIMB_AUTH_KEY); setAuthed(false); }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 hover:text-red-400 hover:border-red-400/30 transition-all text-sm"
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -2467,6 +2494,35 @@ function ReimbursementsTab() {
             {uniqueEvents.map(e => <option key={e} value={e}>{e}</option>)}
           </select>
         )}
+        <select
+          value={filterDatePreset}
+          onChange={e => { setFilterDatePreset(e.target.value); if (e.target.value !== 'custom') { setFilterDateFrom(''); setFilterDateTo(''); } }}
+          className="px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 text-sm outline-none focus:border-accent appearance-none cursor-pointer"
+        >
+          <option value="all">All Dates</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="custom">Custom Range</option>
+        </select>
+        {filterDatePreset === 'custom' && (
+          <>
+            <input
+              type="date"
+              value={filterDateFrom}
+              onChange={e => setFilterDateFrom(e.target.value)}
+              className="px-3 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 text-sm outline-none focus:border-accent transition-colors [color-scheme:dark]"
+              title="From date"
+            />
+            <input
+              type="date"
+              value={filterDateTo}
+              onChange={e => setFilterDateTo(e.target.value)}
+              className="px-3 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 text-sm outline-none focus:border-accent transition-colors [color-scheme:dark]"
+              title="To date"
+            />
+          </>
+        )}
         <button onClick={fetchList}
           className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -2482,8 +2538,8 @@ function ReimbursementsTab() {
 
       {/* Pending Tab */}
       {!loading && reimbTab === 'pending' && (
-        <>
-          <div className="bg-dark-card rounded-2xl border border-white/5 overflow-x-auto">
+        <div className="bg-dark-card rounded-2xl border border-white/5 overflow-x-auto flex flex-col">
+          <div className="min-h-[480px]">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 text-white/40 text-xs">
@@ -2494,7 +2550,7 @@ function ReimbursementsTab() {
                   <th className="p-3 text-right">Amount</th>
                   <th className="p-3 text-center">SS</th>
                   <th className="p-3 text-left">Status</th>
-                  <th className="p-3 text-left hidden md:table-cell">Date</th>
+                  <th className="p-3 text-left hidden md:table-cell">Expense Date</th>
                   <th className="p-3 text-center w-10"></th>
                 </tr>
               </thead>
@@ -2512,7 +2568,7 @@ function ReimbursementsTab() {
                           checked={selected.has(r.id)}
                           onChange={() => toggleSelect(r.id)}
                           disabled={!canCheck}
-                          className="accent-emerald-500 w-4 h-4 rounded disabled:opacity-20"
+                          className="accent-accent w-4 h-4 rounded disabled:opacity-20"
                         />
                       </td>
                       <td className="p-3 text-white font-medium capitalize whitespace-nowrap">{r.person_name.toLowerCase()}</td>
@@ -2546,7 +2602,7 @@ function ReimbursementsTab() {
                         </select>
                       </td>
                       <td className="p-3 text-white/40 text-xs whitespace-nowrap hidden md:table-cell">
-                        {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                        {r.expense_date ? new Date(r.expense_date + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
                       </td>
                       <td className="p-3 text-center">
                         <button onClick={() => deleteRow(r.id)} className="text-white/20 hover:text-red-400 transition-colors">
@@ -2559,9 +2615,8 @@ function ReimbursementsTab() {
               </tbody>
             </table>
           </div>
-
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-3 border-t border-white/5 justify-end">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                 className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Prev</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -2572,13 +2627,13 @@ function ReimbursementsTab() {
                 className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Next</button>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Done Tab */}
       {!loading && reimbTab === 'done' && (
-        <>
-          <div className="bg-dark-card rounded-2xl border border-white/5 overflow-x-auto">
+        <div className="bg-dark-card rounded-2xl border border-white/5 overflow-x-auto flex flex-col">
+          <div className="min-h-[480px]">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 text-white/40 text-xs">
@@ -2587,7 +2642,7 @@ function ReimbursementsTab() {
                   <th className="p-3 text-left">Purpose</th>
                   <th className="p-3 text-right">Amount</th>
                   <th className="p-3 text-left">Status</th>
-                  <th className="p-3 text-left hidden md:table-cell">Date</th>
+                  <th className="p-3 text-left hidden md:table-cell">Expense Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -2608,16 +2663,15 @@ function ReimbursementsTab() {
                       </span>
                     </td>
                     <td className="p-3 text-white/40 text-xs whitespace-nowrap hidden md:table-cell">
-                      {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                      {r.expense_date ? new Date(r.expense_date + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
           {completedTotalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-3 border-t border-white/5 justify-end">
               <button onClick={() => setCompletedPage(p => Math.max(1, p - 1))} disabled={completedPage === 1}
                 className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Prev</button>
               {Array.from({ length: completedTotalPages }, (_, i) => i + 1).map(p => (
@@ -2628,7 +2682,7 @@ function ReimbursementsTab() {
                 className="px-3 py-1.5 rounded-lg bg-dark-surface border border-white/10 text-white/50 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all">Next</button>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Screenshot Modal */}
@@ -2664,7 +2718,7 @@ function ReimbursementsTab() {
                 <div key={i} className="bg-dark-surface rounded-xl border border-white/5 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-white font-medium capitalize">{p.name.toLowerCase()}</span>
-                    <span className="text-emerald-400 font-bold">₹{p.total.toLocaleString('en-IN')}</span>
+                    <span className="text-warm font-bold">₹{p.total.toLocaleString('en-IN')}</span>
                   </div>
                   <p className="text-white/40 text-xs">{p.email || 'No email — will be acknowledged without email'}</p>
                   {p.count > 1 && <p className="text-white/30 text-xs mt-1">{p.count} entries aggregated</p>}
@@ -2677,8 +2731,8 @@ function ReimbursementsTab() {
               <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Email Preview</p>
               <div className="text-sm text-white/70 space-y-2 leading-relaxed">
                 <p>Hi <span className="text-white font-medium">[Name]</span>,</p>
-                <p>I&apos;m reaching out to confirm that your reimbursement of <span className="text-emerald-400 font-bold">Rs. [Amount]/-</span> was transferred on <span className="text-white font-medium">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span> for the expenses incurred by you on behalf of the club.</p>
-                <p>Could you please reply with &quot;<span className="text-emerald-400 font-medium">Acknowledged</span>&quot; to confirm that the said amount has been duly received by you.</p>
+                <p>I&apos;m reaching out to confirm that your reimbursement of <span className="text-warm font-bold">Rs. [Amount]/-</span> was transferred on <span className="text-white font-medium">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span> for the expenses incurred by you on behalf of the club.</p>
+                <p>Could you please reply with &quot;<span className="text-warm font-medium">Acknowledged</span>&quot; to confirm that the said amount has been duly received by you.</p>
                 <p className="mt-4">
                   Thank you,<br />
                   <span className="text-white font-medium">Rtr. Akanksha Navale</span>,<br />
@@ -2691,7 +2745,7 @@ function ReimbursementsTab() {
             <button
               onClick={sendAcknowledgeEmails}
               disabled={sending || ackPreview.length === 0}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {sending ? (
                 <><RefreshCw size={16} className="animate-spin" /> Sending...</>

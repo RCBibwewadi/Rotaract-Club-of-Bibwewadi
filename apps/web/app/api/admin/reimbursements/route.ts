@@ -197,45 +197,31 @@ async function attachScreenshotUrls(
 interface KpiResult {
   total_amount: number;
   total_entries: number;
-  pending_count: number;
-  highest_spender: { person_name: string; total: number } | null;
+  reimbursed_amount: number;
   by_status: Record<string, number>;
 }
 
 async function computeKpis(): Promise<KpiResult> {
   const { data: rows } = await supabaseAdmin
     .from('reimbursements')
-    .select('person_name, amount_inr, status');
+    .select('amount_inr, status');
 
   const all = rows || [];
 
   const total_amount = all.reduce((sum, r) => sum + (r.amount_inr || 0), 0);
   const total_entries = all.length;
 
-  const pendingStatuses = ['Fetched', 'Verification_Pending', 'Payment_Pending'];
-  const pending_count = all.filter(r => pendingStatuses.includes(r.status)).length;
-
-  const spenderMap: Record<string, number> = {};
-  for (const r of all) {
-    const name = r.person_name.toLowerCase().trim();
-    spenderMap[name] = (spenderMap[name] || 0) + (r.amount_inr || 0);
-  }
-
-  let highest_spender: KpiResult['highest_spender'] = null;
-  let maxSpend = 0;
-  for (const [name, total] of Object.entries(spenderMap)) {
-    if (total > maxSpend) {
-      maxSpend = total;
-      highest_spender = { person_name: name, total };
-    }
-  }
+  const reimbursedStatuses = ['Acknowledged', 'Email_Sent'];
+  const reimbursed_amount = all
+    .filter(r => reimbursedStatuses.includes(r.status))
+    .reduce((sum, r) => sum + (r.amount_inr || 0), 0);
 
   const by_status: Record<string, number> = {};
   for (const r of all) {
     by_status[r.status] = (by_status[r.status] || 0) + 1;
   }
 
-  return { total_amount, total_entries, pending_count, highest_spender, by_status };
+  return { total_amount, total_entries, reimbursed_amount, by_status };
 }
 
 // ---------- Route handler ----------

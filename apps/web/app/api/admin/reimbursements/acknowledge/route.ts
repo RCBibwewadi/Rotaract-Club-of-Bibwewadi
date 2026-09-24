@@ -24,9 +24,11 @@ function formatDate(): string {
 
 function buildEmailHtml(name: string, totalAmount: number): string {
   const date = formatDate();
+  const logoUrl = 'https://www.rcbibwewadipune.org/logo.png';
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
-      <div style="background: linear-gradient(135deg, #059669, #10b981); padding: 32px; text-align: center;">
+      <div style="background: linear-gradient(135deg, #8b1a2b, #a82640); padding: 32px; text-align: center;">
+        <img src="${logoUrl}" alt="RCB Logo" width="64" height="64" style="border-radius: 50%; margin-bottom: 12px;" />
         <h1 style="color: white; margin: 0; font-size: 24px;">Reimbursement Confirmation</h1>
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Rotaract Club of Bibwewadi, Pune</p>
       </div>
@@ -35,10 +37,10 @@ function buildEmailHtml(name: string, totalAmount: number): string {
           Hi <strong>${name}</strong>,
         </p>
         <p style="font-size: 15px; color: #374151; line-height: 1.8;">
-          I'm reaching out to confirm that your reimbursement of <strong>Rs. ${totalAmount.toLocaleString('en-IN')}/-</strong> was transferred on <strong>${date}</strong> for the expenses incurred by you on behalf of the club.
+          I'm reaching out to confirm that your reimbursement of <strong style="color: #c9a84c;">Rs. ${totalAmount.toLocaleString('en-IN')}/-</strong> was transferred on <strong>${date}</strong> for the expenses incurred by you on behalf of the club.
         </p>
         <p style="font-size: 15px; color: #374151; line-height: 1.8;">
-          Could you please reply with "<strong>Acknowledged</strong>" to confirm that the said amount has been duly received by you.
+          Could you please reply with "<strong style="color: #8b1a2b;">Acknowledged</strong>" to confirm that the said amount has been duly received by you.
         </p>
         <p style="font-size: 15px; color: #374151; line-height: 1.8; margin-top: 24px;">
           Thank you,<br/>
@@ -46,6 +48,9 @@ function buildEmailHtml(name: string, totalAmount: number): string {
           Treasurer,<br/>
           Rotaract Club of Bibwewadi Pune.
         </p>
+      </div>
+      <div style="background: #8b1a2b; padding: 16px; text-align: center;">
+        <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 12px;">Rotaract Club of Bibwewadi, Pune &bull; www.rcbibwewadipune.org</p>
       </div>
     </div>
   `;
