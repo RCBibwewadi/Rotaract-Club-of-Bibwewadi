@@ -10,6 +10,7 @@ const pillarIconMap: Record<string, React.ElementType> = {
 import { useStore } from '@/lib/store';
 import { useScrollY } from '@/hooks/useScrollY';
 import AnimatedSection from '@/components/AnimatedSection';
+import GarbaEventCard from '@/components/GarbaEventCard';
 
 /* Rotary gear — barely visible, slowly spinning */
 function GearMark({ className = '' }: { className?: string }) {
@@ -106,6 +107,20 @@ export default function HomePage() {
 
         <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 ${faint}`}>
           <ChevronDown size={18} className="animate-bounce" />
+        </div>
+      </section>
+
+      <Connector isDark={isDark} />
+
+      {/* ═══════════════════════════════════════
+          UP NEXT — The featured event
+          ═══════════════════════════════════════ */}
+      <section data-rota="home-upnext" className="py-16 md:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimatedSection>
+            <p className={`text-xs tracking-[0.2em] uppercase ${faint} mb-8`}>Up next</p>
+            <GarbaEventCard isDark={isDark} />
+          </AnimatedSection>
         </div>
       </section>
 

@@ -218,7 +218,7 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
 
 // ── Members Management Tab ───────────────────────────────────
 function MembersTab() {
-  const [view, setView] = useState<'pending' | 'all'>('pending');
+  const [view, setView] = useState<'pending' | 'all' | 'garba'>('pending');
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -229,6 +229,8 @@ function MembersTab() {
   const [paymentModal, setPaymentModal] = useState<AdminMember | null>(null);
 
   const fetchMembers = useCallback(async () => {
+    // The Garba view has its own component and fetches its own rows.
+    if (view === 'garba') return;
     setLoading(true);
     try {
       const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
@@ -243,6 +245,7 @@ function MembersTab() {
   }, [view]);
 
   useEffect(() => {
+    if (view === 'garba') return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -354,27 +357,39 @@ function MembersTab() {
             }`}>
             <Users size={14} /> All Members
           </button>
+          <button onClick={() => setView('garba')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              view === 'garba' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
+            }`}>
+            <CalendarDays size={14} /> Garba Workshop
+          </button>
         </div>
 
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, email, username..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
-          />
-        </div>
+        {view !== 'garba' && (
+          <>
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name, email, username..."
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
+              />
+            </div>
 
-        <button onClick={fetchMembers}
-          className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
+            <button onClick={fetchMembers}
+              className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </>
+        )}
       </div>
 
+      {view === 'garba' && <GarbaRegistrations />}
+
       {/* Sort controls */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className={`flex flex-wrap items-center gap-3 ${view === 'garba' ? 'hidden' : ''}`}>
         <span className="text-xs text-white/40 font-medium">Sort by</span>
         {/* Sort field */}
         <div className="flex gap-1 p-1 rounded-xl bg-dark-surface border border-white/5">
@@ -439,14 +454,14 @@ function MembersTab() {
       )}
 
       {/* Loading */}
-      {loading && (
+      {view !== 'garba' && loading && (
         <div className="flex justify-center py-12">
           <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
       )}
 
       {/* Empty */}
-      {!loading && filtered.length === 0 && (
+      {view !== 'garba' && !loading && filtered.length === 0 && (
         <div className="text-center py-12">
           <Users size={32} className="text-white/10 mx-auto mb-3" />
           <p className="text-white/30 text-sm">
@@ -456,7 +471,7 @@ function MembersTab() {
       )}
 
       {/* Member list */}
-      {!loading && filtered.length > 0 && (
+      {view !== 'garba' && !loading && filtered.length > 0 && (
         <div className="space-y-2">
           {filtered.map(m => {
             const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -614,6 +629,245 @@ function MembersTab() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Garba Workshop Registrations (inside the Members tab) ────
+interface GarbaRegistration {
+  id: string;
+  event_slug: string;
+  full_name: string;
+  phone: string;
+  reference: string | null;
+  upi_txn_id: string;
+  amount_inr: number;
+  payment_verified: boolean;
+  created_at: string;
+  screenshot_url: string | null;
+}
+
+function GarbaRegistrations() {
+  const [rows, setRows] = useState<GarbaRegistration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const fetchRows = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/event-registrations', { headers: adminHeaders() });
+      const data = await res.json();
+      if (res.ok) setRows(data.data || []);
+      else showMsg(data.message || 'Failed to fetch registrations', 'error');
+    } catch {
+      showMsg('Network error', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/event-registrations', { headers: adminHeaders() });
+        const data = await res.json();
+        if (!cancelled && res.ok) setRows(data.data || []);
+      } catch { /* the refresh button covers a failed first load */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const toggleVerified = async (row: GarbaRegistration) => {
+    setBusy(row.id);
+    try {
+      const res = await fetch(`/api/admin/event-registrations/${row.id}/verify`, {
+        method: 'PATCH',
+        headers: adminHeaders(),
+        body: JSON.stringify({ payment_verified: !row.payment_verified }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRows(rs => rs.map(r => (r.id === row.id ? { ...r, payment_verified: !row.payment_verified } : r)));
+        showMsg(data.message || 'Updated', 'success');
+      } else {
+        showMsg(data.message || 'Update failed', 'error');
+      }
+    } catch {
+      showMsg('Network error', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const filtered = rows.filter(r =>
+    r.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    r.phone.includes(search) ||
+    r.upi_txn_id.toLowerCase().includes(search.toLowerCase()) ||
+    (r.reference || '').toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const exportCsv = () => {
+    const header = ['Name', 'Phone', 'Reference', 'UTR', 'Amount', 'Verified', 'Registered at'];
+    // Quote every cell and double any embedded quote, so a name with a comma
+    // does not shift the columns.
+    const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = [
+      header.map(cell).join(','),
+      ...filtered.map(r => [
+        r.full_name, r.phone, r.reference || '', r.upi_txn_id,
+        r.amount_inr, r.payment_verified ? 'Yes' : 'No',
+        new Date(r.created_at).toLocaleString('en-IN'),
+      ].map(cell).join(',')),
+    ];
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `garba-workshop-2026-registrations-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const verifiedCount = rows.filter(r => r.payment_verified).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Search + actions */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, phone, UTR, reference..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
+          />
+        </div>
+        <button onClick={exportCsv} disabled={filtered.length === 0}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 hover:text-white hover:border-accent transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+          <FileText size={15} /> Export CSV
+        </button>
+        <button onClick={fetchRows}
+          className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {message && (
+        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${
+          message.type === 'success'
+            ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+        }`}>
+          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+          {message.text}
+        </div>
+      )}
+
+      {/* Stats */}
+      {!loading && (
+        <div className="flex flex-wrap gap-3 text-xs">
+          <span className="px-3 py-1.5 rounded-lg bg-dark-surface text-white/50">
+            Registrations: <span className="text-white font-medium">{rows.length}</span>
+          </span>
+          <span className="px-3 py-1.5 rounded-lg bg-green-500/5 text-green-400/70">
+            Verified: <span className="text-green-400 font-medium">{verifiedCount}</span>
+          </span>
+          <span className="px-3 py-1.5 rounded-lg bg-yellow-500/5 text-yellow-400/70">
+            Awaiting check: <span className="text-yellow-400 font-medium">{rows.length - verifiedCount}</span>
+          </span>
+          <span className="px-3 py-1.5 rounded-lg bg-accent/5 text-accent/80">
+            Collected: <span className="text-accent font-medium">
+              &#8377;{rows.reduce((sum, r) => sum + (r.amount_inr || 0), 0).toLocaleString('en-IN')}
+            </span>
+          </span>
+        </div>
+      )}
+
+      {loading && (
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && (
+        <div className="text-center py-12">
+          <CalendarDays size={32} className="text-white/10 mx-auto mb-3" />
+          <p className="text-white/30 text-sm">
+            {rows.length === 0 ? 'No registrations yet' : 'No registrations match that search'}
+          </p>
+        </div>
+      )}
+
+      {/* Table — scrolls sideways on narrow screens rather than squashing */}
+      {!loading && filtered.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border border-white/5">
+          <table className="w-full min-w-[820px] text-sm">
+            <thead>
+              <tr className="bg-dark-surface text-white/40 text-xs uppercase tracking-wider">
+                <th className="text-left font-medium px-4 py-3">Name</th>
+                <th className="text-left font-medium px-4 py-3">Phone</th>
+                <th className="text-left font-medium px-4 py-3">Reference</th>
+                <th className="text-left font-medium px-4 py-3">UTR</th>
+                <th className="text-left font-medium px-4 py-3">Screenshot</th>
+                <th className="text-left font-medium px-4 py-3">Verified</th>
+                <th className="text-left font-medium px-4 py-3">Registered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => (
+                <tr key={r.id} className="border-t border-white/5 bg-dark-card">
+                  <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{r.full_name}</td>
+                  <td className="px-4 py-3 text-white/60 whitespace-nowrap">
+                    <a href={`tel:+91${r.phone}`} className="hover:text-accent transition-colors">{r.phone}</a>
+                  </td>
+                  <td className="px-4 py-3 text-white/60">{r.reference || <span className="text-white/20">—</span>}</td>
+                  <td className="px-4 py-3 text-white/60 font-mono text-xs">{r.upi_txn_id}</td>
+                  <td className="px-4 py-3">
+                    {r.screenshot_url ? (
+                      <a href={r.screenshot_url} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
+                        <ExternalLink size={12} /> Open
+                      </a>
+                    ) : (
+                      <span className="text-white/20 text-xs">unavailable</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => toggleVerified(r)} disabled={busy === r.id}
+                      className={`px-2.5 py-1 text-[11px] rounded-full font-medium transition-colors disabled:opacity-50 ${
+                        r.payment_verified
+                          ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                          : 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20'
+                      }`}>
+                      {r.payment_verified ? 'Verified' : 'Mark verified'}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">
+                    {new Date(r.created_at).toLocaleString('en-IN', {
+                      day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-xs text-white/30">
+        Screenshot links are signed and expire ten minutes after the list is loaded — hit refresh if one stops working.
+      </p>
     </div>
   );
 }

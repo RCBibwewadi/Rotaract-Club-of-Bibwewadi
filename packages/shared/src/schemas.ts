@@ -207,3 +207,33 @@ export type CreateEventInput = z.infer<typeof CreateEventSchema>;
 export type UpdateEventInput = z.infer<typeof UpdateEventSchema>;
 export type CreateLegacyInput = z.infer<typeof CreateLegacySchema>;
 export type UpdateLegacyInput = z.infer<typeof UpdateLegacySchema>;
+
+// ── Event registrations (Ae Haalo 4.0 — Garba Workshop) ───────
+//
+// Shared between the browser form and the API route so both sides
+// enforce exactly the same rules.
+
+/** Accepts +91 / 91 / 0 prefixes; yields a bare 10-digit Indian mobile. */
+export function normalisePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+  return digits;
+}
+
+export const EventRegistrationSchema = z.object({
+  full_name: z.string().trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be under 100 characters'),
+  phone: z.string()
+    .transform(normalisePhone)
+    .refine(v => /^[6-9]\d{9}$/.test(v), 'Enter a valid 10-digit Indian mobile number'),
+  // Optional — people who found the workshop on their own leave this blank.
+  reference: z.string().trim().max(100, 'Keep this under 100 characters').optional(),
+  upi_txn_id: z.string().trim()
+    .min(6, 'Transaction ID must be at least 6 characters')
+    .max(40, 'Transaction ID must be under 40 characters')
+    .regex(/^[a-zA-Z0-9]+$/, 'Transaction ID should be letters and numbers only'),
+});
+
+export type EventRegistrationInput = z.infer<typeof EventRegistrationSchema>;

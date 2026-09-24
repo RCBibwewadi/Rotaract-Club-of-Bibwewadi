@@ -1,8 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, Tag, Users, Award } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, Clock, MapPin, Tag, Users, Award, ArrowRight } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
+import { GARBA, GARBA_PATH, registrationsClosed } from '@/lib/garba-event';
+
+/**
+ * The Garba Workshop takes registrations on its own page. The events table has
+ * no column for that, so the card is matched by name and given a CTA.
+ */
+const isGarbaWorkshop = (name: string) =>
+  name.trim().toLowerCase() === GARBA.title.toLowerCase();
 
 
 
@@ -195,6 +204,16 @@ export default function EventsPage() {
                           </span>
                         )}
                       </div>
+                      {isGarbaWorkshop(event.event_name) && (
+                        <div className="mt-4">
+                          <Link href={GARBA_PATH}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-light text-white rounded-xl text-sm font-semibold transition-colors duration-300 group/cta">
+                            {registrationsClosed() ? 'View event' : 'Register Now'}
+                            <ArrowRight size={14} className="group-hover/cta:translate-x-1 transition-transform" />
+                          </Link>
+                        </div>
+                      )}
+
                       {event.best_member && (
                         <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
                           <Award size={16} className="text-yellow-500 flex-shrink-0" />
