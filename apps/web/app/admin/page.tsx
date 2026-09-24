@@ -2157,7 +2157,7 @@ function ReimbursementsTab() {
   const [reimbTab, setReimbTab] = useState<'pending' | 'done'>('pending');
 
   const handleReimbLogin = () => {
-    const envPass = process.env.REIMBURSEMENT_PASSWORD;
+    const envPass = process.env.NEXT_PUBLIC_REIMBURSEMENT_PASSWORD;
     if (password === envPass) {
       sessionStorage.setItem(REIMB_AUTH_KEY, 'true');
       setAuthed(true);
