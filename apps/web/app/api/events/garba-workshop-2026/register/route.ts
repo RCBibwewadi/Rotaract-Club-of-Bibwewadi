@@ -152,11 +152,16 @@ export async function POST(request: NextRequest) {
       // stays generic, but a failure is never a silent mystery.
       console.error('event_registrations insert failed:', error.code, error.message);
 
-      // The table has not been created yet: 42P01 straight from Postgres,
-      // PGRST205 when PostgREST cannot find it in its schema cache.
+      // The table is missing: 42P01 straight from Postgres, PGRST205 when
+      // PostgREST cannot find it in its schema cache. This is a setup fault on
+      // our side, not a closed registration window — say so, so nobody waits
+      // for a form that is never going to start working on its own.
       if (error.code === '42P01' || error.code === 'PGRST205') {
         return json(
-          errorResponse('NOT_READY', 'Registrations are not open just yet. Please try again shortly.'),
+          errorResponse(
+            'NOT_CONFIGURED',
+            'We could not save your registration — something is misconfigured on our side. Please message the club so we can sort it out.',
+          ),
           503,
         );
       }
