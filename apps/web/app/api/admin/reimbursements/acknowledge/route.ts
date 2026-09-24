@@ -118,7 +118,8 @@ export async function POST(request: NextRequest) {
     for (const person of personMap.values()) {
       try {
         await getResend().emails.send({
-          from: 'Rotaract Club of Bibwewadi <rotaractclubofbibwewadi@gmail.com>',
+          from: 'Rotaract Club of Bibwewadi <treasurer@rcbibwewadipune.org>',
+          replyTo: 'rotaractclubofbibwewadi@gmail.com',
           to: person.email,
           subject: `Reimbursement Confirmation — Rs. ${person.totalAmount.toLocaleString('en-IN')}/-`,
           html: buildEmailHtml(person.name, person.totalAmount),
