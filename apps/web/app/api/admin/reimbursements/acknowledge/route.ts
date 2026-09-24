@@ -19,7 +19,7 @@ interface AggregatedPerson {
 }
 
 function formatDate(): string {
-  return new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
 function buildEmailHtml(name: string, totalAmount: number): string {
