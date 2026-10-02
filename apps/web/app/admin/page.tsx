@@ -8,6 +8,7 @@ import {
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
   Handshake, HeartHandshake, Globe, Brain, Award,
+  Lock, UserPlus, Shuffle, Ban, Music, Vote,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
@@ -2767,8 +2768,227 @@ function ReimbursementsTab() {
   );
 }
 
+// ── Reel the Vibe Tab ────────────────────────────────────────
+interface ReelTeamMember {
+  id: string;
+  photo_url: string;
+  status: string;
+  members: { full_name: string; email: string; avatar_url?: string };
+}
+interface ReelTeam {
+  team_id: string;
+  team_name: string;
+  assigned_song: string;
+  status?: string;
+  reel_video_url?: string;
+  members: ReelTeamMember[];
+  vote_count: number;
+}
+interface ReelRegistration {
+  id: string;
+  photo_url: string;
+  status: string;
+  members: { full_name: string; email: string; avatar_url?: string };
+}
+interface ReelData {
+  phase: string;
+  teams: ReelTeam[];
+  registrations: ReelRegistration[];
+  total_votes: number;
+}
+
+const PHASE_LABELS: Record<string, string> = {
+  registration: 'Registrations Open',
+  stimulated: 'Teams Created (Hidden)',
+  revealed: 'Teams Revealed',
+  voting: 'Voting Active',
+};
+const PHASE_COLORS: Record<string, string> = {
+  registration: '#22c55e',
+  stimulated: '#eab308',
+  revealed: '#3b82f6',
+  voting: '#a855f7',
+};
+
+function ReelTab() {
+  const [reelPass, setReelPass] = useState('');
+  const [reelAuthed, setReelAuthed] = useState(false);
+  const [reelData, setReelData] = useState<ReelData | null>(null);
+  const [reelLoading, setReelLoading] = useState(false);
+  const [reelAction, setReelAction] = useState<string | null>(null);
+  const [reelError, setReelError] = useState<string | null>(null);
+  const [reelMsg, setReelMsg] = useState<string | null>(null);
+  const [storedReelPass, setStoredReelPass] = useState('');
+
+  const fetchReel = useCallback(async (pass: string) => {
+    setReelLoading(true);
+    setReelError(null);
+    try {
+      const res = await fetch('/api/reel-the-vibe/admin', { headers: { 'x-reel-pass': pass } });
+      const d = await res.json();
+      if (!res.ok) { if (res.status === 401) { setReelAuthed(false); setReelError('Invalid password'); } else setReelError(d.message); return; }
+      setReelData(d.data);
+    } catch { setReelError('Network error'); }
+    finally { setReelLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('reel-admin-pass');
+    if (saved) { setStoredReelPass(saved); setReelAuthed(true); fetchReel(saved); }
+  }, [fetchReel]);
+
+  const loginReel = () => { setStoredReelPass(reelPass); setReelAuthed(true); sessionStorage.setItem('reel-admin-pass', reelPass); fetchReel(reelPass); };
+
+  const doReelAction = async (action: string, extra?: Record<string, unknown>) => {
+    setReelAction(action); setReelMsg(null); setReelError(null);
+    try {
+      const res = await fetch('/api/reel-the-vibe/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-reel-pass': storedReelPass }, body: JSON.stringify({ action, ...extra }) });
+      const d = await res.json();
+      if (!res.ok) { setReelError(d.message); return; }
+      setReelMsg(d.message || 'Done');
+      fetchReel(storedReelPass);
+    } catch { setReelError('Network error'); }
+    finally { setReelAction(null); }
+  };
+
+  if (!reelAuthed) {
+    return (
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-8 max-w-sm mx-auto text-center">
+        <Lock size={28} className="mx-auto mb-3 text-accent" />
+        <h3 className="text-lg font-semibold mb-4">Reel the Vibe Password</h3>
+        <input type="password" value={reelPass} onChange={e => setReelPass(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') loginReel(); }}
+          className="w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white text-sm outline-none focus:border-accent mb-3" placeholder="Enter reel password" />
+        <button onClick={loginReel} className="w-full px-6 py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold text-sm transition-all">Enter</button>
+        {reelError && <p className="text-red-400 text-sm mt-3">{reelError}</p>}
+      </div>
+    );
+  }
+
+  const phase = reelData?.phase || 'registration';
+
+  return (
+    <div className="space-y-6">
+      {reelMsg && <div className="px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm">{reelMsg}</div>}
+      {reelError && <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{reelError}</div>}
+
+      {/* Phase + Controls */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2"><Video size={18} /> Controls</h3>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono px-3 py-1.5 rounded-full border" style={{ color: PHASE_COLORS[phase], borderColor: PHASE_COLORS[phase] + '40' }}>
+              {PHASE_LABELS[phase]}
+            </span>
+            <button onClick={() => fetchReel(storedReelPass)} className="p-1.5 text-white/40 hover:text-white"><RefreshCw size={14} className={reelLoading ? 'animate-spin' : ''} /></button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button onClick={() => doReelAction('open_registrations')} disabled={reelAction !== null || phase === 'registration'}
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+            style={{ background: phase === 'registration' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'registration' ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.05)' }}>
+            <UserPlus size={18} style={{ color: phase === 'registration' ? '#22c55e' : '#666' }} />
+            <span className="text-xs font-medium">{reelAction === 'open_registrations' ? 'Working...' : 'Open Registrations'}</span>
+          </button>
+          <button onClick={() => { if (confirm('Create teams and assign songs?')) doReelAction('stimulate'); }} disabled={reelAction !== null || phase === 'revealed' || phase === 'voting'}
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+            style={{ background: phase === 'stimulated' ? 'rgba(234,179,8,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'stimulated' ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.05)' }}>
+            <Shuffle size={18} style={{ color: phase === 'stimulated' ? '#eab308' : '#666' }} />
+            <span className="text-xs font-medium">{reelAction === 'stimulate' ? 'Creating...' : 'Stimulate'}</span>
+          </button>
+          <button onClick={() => doReelAction('reveal')} disabled={reelAction !== null || phase === 'registration' || phase === 'voting'}
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+            style={{ background: phase === 'revealed' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'revealed' ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.05)' }}>
+            <Eye size={18} style={{ color: phase === 'revealed' ? '#3b82f6' : '#666' }} />
+            <span className="text-xs font-medium">{reelAction === 'reveal' ? 'Revealing...' : 'Reveal'}</span>
+          </button>
+          <button onClick={() => doReelAction('voting')} disabled={reelAction !== null || phase === 'registration' || phase === 'stimulated'}
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+            style={{ background: phase === 'voting' ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'voting' ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.05)' }}>
+            <Award size={18} style={{ color: phase === 'voting' ? '#a855f7' : '#666' }} />
+            <span className="text-xs font-medium">{reelAction === 'voting' ? 'Starting...' : 'Voting'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
+          <p className="text-2xl font-semibold">{reelData?.registrations.length || 0}</p>
+          <p className="text-xs text-white/40 mt-1">Registrations</p>
+        </div>
+        <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
+          <p className="text-2xl font-semibold">{reelData?.teams.length || 0}</p>
+          <p className="text-xs text-white/40 mt-1">Teams</p>
+        </div>
+        <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
+          <p className="text-2xl font-semibold">{reelData?.total_votes || 0}</p>
+          <p className="text-xs text-white/40 mt-1">Total Votes</p>
+        </div>
+      </div>
+
+      {/* Teams */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Users size={18} /> Teams ({reelData?.teams.length || 0})</h3>
+        {!reelData?.teams.length ? (
+          <p className="text-white/30 text-sm text-center py-8">No teams yet. Use Stimulate to create teams.</p>
+        ) : (
+          <div className="space-y-2">
+            {reelData.teams.map((team, rank) => (
+              <div key={team.team_id} className="flex items-center gap-3 px-4 py-3 rounded-xl border flex-wrap"
+                style={{ background: team.status === 'disqualified' ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.02)', borderColor: team.status === 'disqualified' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                <span className="text-sm font-mono text-white/30 w-6">{rank === 0 ? '🏆' : `#${rank + 1}`}</span>
+                <div className="flex-1 min-w-[100px]">
+                  <p className="text-sm font-medium">{team.team_name}</p>
+                  <p className="text-xs text-white/30 flex items-center gap-1"><Music size={10} className="text-accent" />{team.assigned_song}</p>
+                </div>
+                <div className="flex gap-1.5">
+                  {team.members.map(m => (
+                    <span key={m.id} className="text-xs px-2 py-0.5 rounded bg-white/5 text-white/50">{m.members?.full_name?.split(' ')[0]}</span>
+                  ))}
+                </div>
+                <span className="text-sm font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400">{team.vote_count} votes</span>
+                {team.reel_video_url && <span className="text-[10px] px-2 py-0.5 rounded bg-green-500/10 text-green-400">Reel ✓</span>}
+                {team.status === 'disqualified' ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400">DQ</span>
+                ) : (
+                  <button onClick={() => { if (confirm(`Disqualify ${team.team_name}?`)) doReelAction('disqualify', { team_id: team.team_id }); }}
+                    className="text-white/15 hover:text-red-400 transition-colors p-1"><Ban size={14} /></button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Registrations */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4">Registrations ({reelData?.registrations.length || 0})</h3>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+          {(reelData?.registrations || []).map(r => (
+            <div key={r.id} className="rounded-xl bg-dark-surface border border-white/5 overflow-hidden group relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={r.photo_url} alt="" className="w-full aspect-square object-cover" />
+              <div className="px-2 py-1.5">
+                <p className="text-[11px] font-medium truncate">{r.members?.full_name}</p>
+                <p className="text-[10px] text-white/30">{r.status === 'blocked' ? <span className="text-red-400">Blocked</span> : r.status}</p>
+              </div>
+              <button
+                onClick={() => { if (confirm(`Remove ${r.members?.full_name}?`)) doReelAction('remove_user', { registration_id: r.id }); }}
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove user"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Admin Dashboard ─────────────────────────────────────
-type Tab = 'members' | 'reimbursements' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings';
+type Tab = 'members' | 'reimbursements' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings' | 'reel';
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const store = useStore();
@@ -2789,6 +3009,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'fomo', label: 'FOMO', icon: <FolderOpen size={16} /> },
     { id: 'events', label: 'Events', icon: <CalendarDays size={16} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={16} /> },
+    { id: 'reel', label: 'Reel', icon: <Video size={16} /> },
   ];
 
   const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
@@ -2861,6 +3082,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
             {/* === EVENTS TAB === */}
             {tab === 'events' && <EventsTab />}
+
+            {/* === REEL TAB === */}
+            {tab === 'reel' && <ReelTab />}
 
             {/* === SETTINGS TAB === */}
             {tab === 'settings' && (
