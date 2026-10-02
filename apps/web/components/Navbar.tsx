@@ -139,6 +139,7 @@ export default function Navbar() {
     ...(reelTheVibeChildren.length > 0 ? [{
       label: 'Reel the Vibe',
       num: '05',
+      requiresAuth: true,
       children: reelTheVibeChildren,
     }] : []),
   ];
