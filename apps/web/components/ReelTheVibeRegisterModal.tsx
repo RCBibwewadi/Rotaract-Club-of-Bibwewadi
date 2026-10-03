@@ -37,6 +37,7 @@ export default function ReelTheVibeRegisterModal({ open, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -50,6 +51,7 @@ export default function ReelTheVibeRegisterModal({ open, onClose }: Props) {
   // Check registration status
   useEffect(() => {
     if (!open || !token) return;
+    setCheckingStatus(true);
     fetch('/api/reel-the-vibe/register', {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -57,7 +59,8 @@ export default function ReelTheVibeRegisterModal({ open, onClose }: Props) {
       .then(d => {
         if (d.data?.registered) setAlreadyRegistered(true);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setCheckingStatus(false));
   }, [open, token]);
 
   // Cleanup preview URL
@@ -280,7 +283,11 @@ export default function ReelTheVibeRegisterModal({ open, onClose }: Props) {
               </h2>
             </div>
 
-            {alreadyRegistered ? (
+            {checkingStatus ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={28} className="animate-spin" style={{ color: '#B98255' }} />
+              </div>
+            ) : alreadyRegistered ? (
               <div className="text-center py-10">
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
