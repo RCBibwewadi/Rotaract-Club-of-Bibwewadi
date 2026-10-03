@@ -1,31 +1,81 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sun, Moon, Shield, User, LogOut } from 'lucide-react';
+import { Sun, Moon, User, LogOut, ChevronDown, Lock } from 'lucide-react';
 import { FaInstagram, FaLinkedinIn, FaFacebookF } from 'react-icons/fa';
 import { useStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
+import ReelTheVibeRegisterModal from './ReelTheVibeRegisterModal';
 
-const baseNavLinks = [
-  { label: 'Home', path: '/', num: '01' },
-  { label: 'About', path: '/about', num: '02' },
-  { label: 'FOMO', path: '/projects', num: '03' },
-  { label: 'Events', path: '/events', num: '04' },
-  { label: 'Board', path: '/board', num: '05' },
-  { label: 'Legacy', path: '/legacy', num: '06' },
-  { label: 'Join Us', path: '/join', num: '07' },
-  { label: 'Contact', path: '/contact', num: '08' },
+interface NavItem {
+  label: string;
+  path?: string;
+  num: string;
+  children?: { label: string; path: string }[];
+  requiresAuth?: boolean;
+}
+
+const navStructure: NavItem[] = [
+  {
+    label: 'Home',
+    num: '01',
+    children: [
+      { label: 'About', path: '/about' },
+      { label: 'Board', path: '/board' },
+      { label: 'Legacy', path: '/legacy' },
+    ],
+  },
+  {
+    label: 'Up Next',
+    num: '02',
+    children: [
+      { label: 'FOMO', path: '/projects' },
+      { label: 'Events', path: '/events' },
+    ],
+  },
+  {
+    label: 'Contact Us',
+    num: '03',
+    children: [
+      { label: 'Contact', path: '/contact' },
+      { label: 'Join Us', path: '/join' },
+    ],
+  },
+  {
+    label: 'Exclusive',
+    num: '04',
+    requiresAuth: true,
+    children: [
+      { label: 'Directory', path: '/directory' },
+    ],
+  },
 ];
 
-const directoryLink = { label: 'Directory', path: '/directory', num: '09' };
+// Phase-aware children for Reel the Vibe (built dynamically)
+function getReelTheVibeChildren(phase: string): { label: string; path: string }[] {
+  const items: { label: string; path: string }[] = [];
+
+  if (phase === 'registration') {
+    items.push({ label: 'Register', path: '__register__' });
+  }
+
+  if (phase === 'revealed' || phase === 'voting') {
+    items.push({ label: 'Leaderboard', path: '/leaderboard' });
+    items.push({ label: 'Team', path: '/team-revel' });
+  }
+
+  if (phase === 'voting') {
+    items.push({ label: 'Voting', path: '/voting' });
+  }
+
+  return items;
+}
 
 // Easter egg: memberships are closed, so /join is now a notice page. Tapping
-// "Join Us" ten times inside fifteen seconds (desktop bar or mobile menu, they
-// share the counter) opens the real registration form. Timestamps live in a ref
-// — no state, no timers, nothing rendered.
+// "Join Us" ten times inside fifteen seconds opens the real registration form.
 const SECRET_JOIN_PATH = '/join/tereliyeopenhai';
 const SECRET_TAPS = 10;
 const SECRET_WINDOW_MS = 15_000;
@@ -34,18 +84,23 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [reelPhase, setReelPhase] = useState('registration');
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [openSubDropdown, setOpenSubDropdown] = useState<string | null>(null);
+  const [expandedMobile, setExpandedMobile] = useState<string | null>(null);
+  const [expandedMobileSub, setExpandedMobileSub] = useState<string | null>(null);
+  const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { isDark, toggleDark } = useStore();
   const { token, member, logout } = useAuthStore();
   const isLoggedIn = token !== null;
-
-  const navLinks = [...baseNavLinks.slice(0, 5), directoryLink, ...baseNavLinks.slice(5)];
+  const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const subDropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const memberInitials = member?.full_name
     ?.split(' ')
-    .map(w => w[0])
+    .map((w: string) => w[0])
     .join('')
     .slice(0, 2)
     .toUpperCase() || '';
@@ -68,6 +123,27 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  // Fetch reel phase
+  useEffect(() => {
+    fetch('/api/reel-the-vibe/state')
+      .then(r => r.json())
+      .then(d => { if (d.data?.phase) setReelPhase(d.data.phase); })
+      .catch(() => {});
+  }, []);
+
+  const reelTheVibeChildren = getReelTheVibeChildren(reelPhase);
+
+  // Build full nav with dynamic Reel the Vibe
+  const fullNavStructure: NavItem[] = [
+    ...navStructure,
+    ...(reelTheVibeChildren.length > 0 ? [{
+      label: 'Reel the Vibe',
+      num: '05',
+      requiresAuth: true,
+      children: reelTheVibeChildren,
+    }] : []),
+  ];
+
   // Apply dark class to html
   useEffect(() => {
     if (isDark) {
@@ -83,6 +159,8 @@ export default function Navbar() {
     if (prevPathname.current !== pathname) {
       prevPathname.current = pathname;
       setMenuOpen(false);
+      setOpenDropdown(null);
+      setOpenSubDropdown(null);
     }
   }, [pathname]);
 
@@ -92,8 +170,7 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
-  // Returns true once the tenth tap inside the window lands, having already
-  // sent the visitor to the hidden form.
+  // Easter egg tap counter
   const joinTaps = useRef<number[]>([]);
   const registerJoinTap = (): boolean => {
     const now = Date.now();
@@ -108,28 +185,68 @@ export default function Navbar() {
   const handleNavClick = (path: string) => {
     if (path === '/join') {
       if (registerJoinTap()) return;
-      // Already on /join: leave the menu open so the taps can keep landing
-      // instead of forcing the hamburger open again between each one.
       if (pathname === '/join') return;
     }
     setMenuOpen(false);
+    setOpenDropdown(null);
+    setOpenSubDropdown(null);
     if (path !== pathname) {
       router.push(path);
     }
   };
 
-  const bg = scrolled
-    ? isDark
-      ? 'bg-dark/80 backdrop-blur-2xl border-b border-white/5'
-      : 'bg-white/80 backdrop-blur-2xl border-b border-black/5'
-    : 'bg-transparent';
+  const handleDropdownEnter = useCallback((label: string) => {
+    if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+    setOpenDropdown(label);
+  }, []);
+
+  const handleDropdownLeave = useCallback(() => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setOpenDropdown(null);
+      setOpenSubDropdown(null);
+    }, 150);
+  }, []);
+
+  const handleSubDropdownEnter = useCallback((label: string) => {
+    if (subDropdownTimeoutRef.current) clearTimeout(subDropdownTimeoutRef.current);
+    setOpenSubDropdown(label);
+  }, []);
+
+  const handleSubDropdownLeave = useCallback(() => {
+    subDropdownTimeoutRef.current = setTimeout(() => {
+      setOpenSubDropdown(null);
+    }, 150);
+  }, []);
+
+  const isChildActive = (item: NavItem) => {
+    return item.children?.some(c => pathname === c.path) || false;
+  };
+
+  const isTeamRevel = pathname === '/team-revel';
+
+  // On /team-revel: always visible but transparent, solid bg only near footer
+  const teamRevelAtFooter = isTeamRevel && scrollProgress > 0.85;
+
+  const bg = isTeamRevel
+    ? teamRevelAtFooter
+      ? isDark
+        ? 'bg-dark/80 backdrop-blur-2xl border-b border-white/5'
+        : 'bg-white/80 backdrop-blur-2xl border-b border-black/5'
+      : 'bg-transparent'
+    : scrolled
+      ? isDark
+        ? 'bg-dark/80 backdrop-blur-2xl border-b border-white/5'
+        : 'bg-white/80 backdrop-blur-2xl border-b border-black/5'
+      : 'bg-transparent';
 
   return (
     <>
       {/* Top bar */}
       <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${bg}`}>
         {/* Scroll progress bar */}
-        <div className="absolute bottom-0 left-0 h-[2px] bg-accent/80 transition-none" style={{ width: `${scrollProgress * 100}%` }} />
+        {!isTeamRevel && (
+          <div className="absolute bottom-0 left-0 h-[2px] bg-accent/80 transition-none" style={{ width: `${scrollProgress * 100}%` }} />
+        )}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20 md:h-24">
@@ -146,30 +263,158 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* Desktop inline links */}
-            <div className="hidden lg:flex items-center gap-1.5">
-              {navLinks.map(link => (
-                <Link
-                  key={link.path}
-                  href={link.path}
-                  onClick={e => {
-                    if (link.path !== '/join') return;
-                    // Already on /join, so the tenth tap is the only navigation
-                    // this click should ever cause.
-                    if (pathname === '/join') e.preventDefault();
-                    registerJoinTap();
-                  }}
-                  className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
-                    pathname === link.path
-                      ? 'text-accent bg-accent/10'
-                      : isDark
-                        ? 'text-white/60 hover:text-white/90 hover:bg-white/5'
-                        : 'text-dark/60 hover:text-dark/90 hover:bg-dark/5'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
+            {/* Desktop dropdown links */}
+            <div className="hidden lg:flex items-center gap-1">
+              {fullNavStructure.map((item) => {
+                const isLocked = item.requiresAuth && !isLoggedIn;
+                const isOpen = openDropdown === item.label;
+                const active = isChildActive(item);
+
+                return (
+                  <div
+                    key={item.label}
+                    className="relative"
+                    onMouseEnter={() => !isLocked && handleDropdownEnter(item.label)}
+                    onMouseLeave={handleDropdownLeave}
+                  >
+                    <button
+                      className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+                        active
+                          ? 'text-accent bg-accent/10'
+                          : isLocked
+                            ? isDark ? 'text-white/30 cursor-not-allowed' : 'text-dark/30 cursor-not-allowed'
+                            : isDark
+                              ? 'text-white/60 hover:text-white/90 hover:bg-white/5'
+                              : 'text-dark/60 hover:text-dark/90 hover:bg-dark/5'
+                      }`}
+                      onClick={() => {
+                        if (isLocked) {
+                          router.push('/login');
+                          return;
+                        }
+                        setOpenDropdown(isOpen ? null : item.label);
+                      }}
+                    >
+                      {isLocked && <Lock size={14} />}
+                      {item.label}
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Dropdown menu */}
+                    {isOpen && !isLocked && (
+                      <div className={`absolute top-full left-0 mt-1 min-w-[180px] rounded-xl border shadow-xl py-1.5 ${
+                        isDark
+                          ? 'bg-dark/95 backdrop-blur-xl border-white/10'
+                          : 'bg-white/95 backdrop-blur-xl border-black/10'
+                      }`}>
+                        {item.children?.map((child) => {
+                          const isReelTheVibe = child.label === 'Reel the Vibe';
+                          const isSubOpen = openSubDropdown === child.label;
+
+                          if (isReelTheVibe) {
+                            return (
+                              <div
+                                key={child.path}
+                                className="relative"
+                                onMouseEnter={() => handleSubDropdownEnter(child.label)}
+                                onMouseLeave={handleSubDropdownLeave}
+                              >
+                                <button
+                                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
+                                    pathname === child.path || reelTheVibeChildren.some(r => pathname === r.path)
+                                      ? 'text-accent bg-accent/10'
+                                      : isDark
+                                        ? 'text-white/70 hover:text-white hover:bg-white/5'
+                                        : 'text-dark/70 hover:text-dark hover:bg-dark/5'
+                                  }`}
+                                >
+                                  {child.label}
+                                  <ChevronDown size={12} className={`transition-transform duration-200 -rotate-90 ${isSubOpen ? '!rotate-0' : ''}`} />
+                                </button>
+
+                                {isSubOpen && (
+                                  <div className={`absolute left-full top-0 ml-1 min-w-[160px] rounded-xl border shadow-xl py-1.5 ${
+                                    isDark
+                                      ? 'bg-dark/95 backdrop-blur-xl border-white/10'
+                                      : 'bg-white/95 backdrop-blur-xl border-black/10'
+                                  }`}>
+                                    {reelTheVibeChildren.map((sub) =>
+                                      sub.path === '__register__' ? (
+                                        <button
+                                          key={sub.path}
+                                          onClick={() => {
+                                            setOpenDropdown(null);
+                                            setOpenSubDropdown(null);
+                                            setRegisterModalOpen(true);
+                                          }}
+                                          className={`block w-full text-left px-4 py-2.5 text-sm font-semibold transition-all duration-200 text-accent hover:bg-accent/10`}
+                                        >
+                                          {sub.label}
+                                        </button>
+                                      ) : (
+                                        <Link
+                                          key={sub.path}
+                                          href={sub.path}
+                                          className={`block px-4 py-2.5 text-sm transition-all duration-200 ${
+                                            pathname === sub.path
+                                              ? 'text-accent bg-accent/10'
+                                              : isDark
+                                                ? 'text-white/70 hover:text-white hover:bg-white/5'
+                                                : 'text-dark/70 hover:text-dark hover:bg-dark/5'
+                                          }`}
+                                        >
+                                          {sub.label}
+                                        </Link>
+                                      )
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (child.path === '__register__') {
+                            return (
+                              <button
+                                key={child.path}
+                                onClick={() => {
+                                  setOpenDropdown(null);
+                                  setRegisterModalOpen(true);
+                                }}
+                                className="block w-full text-left px-4 py-2.5 text-sm font-semibold transition-all duration-200 text-accent hover:bg-accent/10"
+                              >
+                                {child.label}
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <Link
+                              key={child.path}
+                              href={child.path}
+                              onClick={(e) => {
+                                if (child.path === '/join') {
+                                  if (pathname === '/join') e.preventDefault();
+                                  registerJoinTap();
+                                }
+                              }}
+                              className={`block px-4 py-2.5 text-sm transition-all duration-200 ${
+                                pathname === child.path
+                                  ? 'text-accent bg-accent/10'
+                                  : isDark
+                                    ? 'text-white/70 hover:text-white hover:bg-white/5'
+                                    : 'text-dark/70 hover:text-dark hover:bg-dark/5'
+                              }`}
+                            >
+                              {child.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Right actions */}
@@ -205,14 +450,6 @@ export default function Navbar() {
                   <User size={22} />
                 </Link>
               )}
-{/*
-              <Link
-                href="/admin"
-                className={`p-2 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-accent' : isDark ? 'text-white/70 hover:text-accent hover:bg-white/10' : 'text-dark/70 hover:text-accent hover:bg-dark/10'}`}
-                aria-label="Admin"
-              >
-                <Shield size={22} />
-              </Link>. */}
 
               {/* Hamburger */}
               <button
@@ -264,50 +501,137 @@ export default function Navbar() {
               {/* Links */}
               <nav className="flex-1">
                 <ul className="space-y-1 sm:space-y-2 md:space-y-3">
-                  {navLinks.map((link, i) => {
-                    const isActive = pathname === link.path;
-                    const isHovered = hoveredIdx === i;
-                    const isFaded = hoveredIdx !== null && !isHovered;
+                  {/* Home link */}
+                  <li
+                    className={`transition-all duration-700 ${menuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}
+                    style={{ transitionDelay: menuOpen ? '150ms' : '0ms' }}
+                  >
+                    <button
+                      onClick={() => handleNavClick('/')}
+                      className={`group flex items-center gap-4 md:gap-6 transition-all duration-300`}
+                    >
+                      <span className={`text-xs font-mono transition-colors ${pathname === '/' ? 'text-accent' : 'text-white/40'}`}>
+                        00
+                      </span>
+                      <span className={`font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl transition-all duration-300 ${
+                        pathname === '/' ? 'text-accent' : 'text-white/70 hover:text-white hover:translate-x-3'
+                      }`}>
+                        Home
+                      </span>
+                      {pathname === '/' && <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />}
+                    </button>
+                  </li>
+
+                  {fullNavStructure.map((item, i) => {
+                    const isExpanded = expandedMobile === item.label;
+                    const isLocked = item.requiresAuth && !isLoggedIn;
+                    const active = isChildActive(item);
 
                     return (
                       <li
-                        key={link.path}
+                        key={item.label}
                         className={`transition-all duration-700 ${menuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}
-                        style={{ transitionDelay: menuOpen ? `${150 + i * 60}ms` : '0ms' }}
-                        onMouseEnter={() => setHoveredIdx(i)}
-                        onMouseLeave={() => setHoveredIdx(null)}
+                        style={{ transitionDelay: menuOpen ? `${210 + i * 60}ms` : '0ms' }}
                       >
                         <button
-                          onClick={() => handleNavClick(link.path)}
-                          className={`group flex items-center gap-4 md:gap-6 transition-all duration-300 ${isFaded ? 'opacity-30' : 'opacity-100'}`}
+                          onClick={() => {
+                            if (isLocked) {
+                              handleNavClick('/login');
+                              return;
+                            }
+                            setExpandedMobile(isExpanded ? null : item.label);
+                            setExpandedMobileSub(null);
+                          }}
+                          className={`group flex items-center gap-4 md:gap-6 transition-all duration-300 ${isLocked ? 'opacity-40' : ''}`}
                         >
-                          <span className={`text-xs font-mono transition-colors ${isActive ? 'text-accent' : 'text-white/40'}`}>
-                            {link.num}
+                          <span className={`text-xs font-mono transition-colors ${active ? 'text-accent' : 'text-white/40'}`}>
+                            {item.num}
                           </span>
-                          <span
-                            className={`font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl transition-all duration-300 ${
-                              isActive
-                                ? 'text-accent'
-                                : isHovered
-                                  ? 'text-white translate-x-3'
-                                  : 'text-white/70'
-                            }`}
-                          >
-                            {link.label}
+                          <span className={`font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl transition-all duration-300 ${
+                            active ? 'text-accent' : 'text-white/70'
+                          }`}>
+                            {item.label}
                           </span>
-                          {/* Active indicator */}
-                          {isActive && (
-                            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                          )}
-                          {/* Hover arrow */}
-                          <span
-                            className={`text-accent font-display text-2xl transition-all duration-300 ${
-                              isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
-                            }`}
-                          >
-                            →
-                          </span>
+                          {isLocked && <Lock size={20} className="text-white/30" />}
+                          <ChevronDown size={24} className={`text-white/40 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
+
+                        {/* Mobile submenu */}
+                        <div className={`overflow-hidden transition-all duration-500 ${isExpanded ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+                          <div className="pl-12 md:pl-16 space-y-1">
+                            {item.children?.map((child) => {
+                              const isReelTheVibe = child.label === 'Reel the Vibe';
+                              const isSubExpanded = expandedMobileSub === child.label;
+
+                              if (isReelTheVibe) {
+                                return (
+                                  <div key={child.path}>
+                                    <button
+                                      onClick={() => setExpandedMobileSub(isSubExpanded ? null : child.label)}
+                                      className={`flex items-center gap-3 py-2 text-lg sm:text-xl md:text-2xl transition-all duration-300 ${
+                                        pathname === child.path || reelTheVibeChildren.some(r => pathname === r.path)
+                                          ? 'text-accent'
+                                          : 'text-white/50 hover:text-white/80'
+                                      }`}
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                                      {child.label}
+                                      <ChevronDown size={16} className={`text-white/30 transition-transform duration-300 ${isSubExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    <div className={`overflow-hidden transition-all duration-400 ${isSubExpanded ? 'max-h-[200px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                                      <div className="pl-8 space-y-1">
+                                        {reelTheVibeChildren.map((sub) => (
+                                          <button
+                                            key={sub.path}
+                                            onClick={() => {
+                                              if (sub.path === '__register__') {
+                                                setMenuOpen(false);
+                                                setRegisterModalOpen(true);
+                                              } else {
+                                                handleNavClick(sub.path);
+                                              }
+                                            }}
+                                            className={`flex items-center gap-3 py-1.5 text-base sm:text-lg transition-all duration-300 ${
+                                              sub.path === '__register__'
+                                                ? 'text-accent font-semibold'
+                                                : pathname === sub.path ? 'text-accent' : 'text-white/40 hover:text-white/70'
+                                            }`}
+                                          >
+                                            <span className="w-1 h-1 rounded-full bg-white/15" />
+                                            {sub.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <button
+                                  key={child.path}
+                                  onClick={() => {
+                                    if (child.path === '__register__') {
+                                      setMenuOpen(false);
+                                      setRegisterModalOpen(true);
+                                    } else {
+                                      handleNavClick(child.path);
+                                    }
+                                  }}
+                                  className={`flex items-center gap-3 py-2 text-lg sm:text-xl md:text-2xl transition-all duration-300 ${
+                                    child.path === '__register__'
+                                      ? 'text-accent font-semibold'
+                                      : pathname === child.path ? 'text-accent' : 'text-white/50 hover:text-white/80'
+                                  }`}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                                  {child.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </li>
                     );
                   })}
@@ -319,7 +643,7 @@ export default function Navbar() {
                     className={`mt-6 pt-4 border-t border-white/10 flex items-center gap-4 transition-all duration-700 ${
                       menuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
                     }`}
-                    style={{ transitionDelay: menuOpen ? `${150 + navLinks.length * 60}ms` : '0ms' }}
+                    style={{ transitionDelay: menuOpen ? `${150 + (fullNavStructure.length + 1) * 60}ms` : '0ms' }}
                   >
                     <Link href="/profile" onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 text-white/60 hover:text-white transition-colors">
@@ -373,6 +697,12 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Reel the Vibe Registration Modal */}
+      <ReelTheVibeRegisterModal
+        open={registerModalOpen}
+        onClose={() => setRegisterModalOpen(false)}
+      />
     </>
   );
 }
