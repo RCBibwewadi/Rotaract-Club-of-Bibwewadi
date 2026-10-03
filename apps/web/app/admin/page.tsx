@@ -8,7 +8,7 @@ import {
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
   Handshake, HeartHandshake, Globe, Brain, Award,
-  Lock, UserPlus, Shuffle, Ban, Music, Vote,
+  Lock, UserPlus, Shuffle, Ban, Music,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
@@ -2790,11 +2790,18 @@ interface ReelRegistration {
   status: string;
   members: { full_name: string; email: string; avatar_url?: string };
 }
+interface ReelSong {
+  id: string;
+  name: string;
+  artist: string;
+  ref?: string;
+}
 interface ReelData {
   phase: string;
   teams: ReelTeam[];
   registrations: ReelRegistration[];
   total_votes: number;
+  songs: ReelSong[];
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -2812,13 +2819,48 @@ const PHASE_COLORS: Record<string, string> = {
 
 function ReelTab() {
   const [reelPass, setReelPass] = useState('');
-  const [reelAuthed, setReelAuthed] = useState(false);
+  const [reelAuthed, setReelAuthed] = useState(() => typeof window !== 'undefined' && !!sessionStorage.getItem('reel-admin-pass'));
   const [reelData, setReelData] = useState<ReelData | null>(null);
   const [reelLoading, setReelLoading] = useState(false);
   const [reelAction, setReelAction] = useState<string | null>(null);
   const [reelError, setReelError] = useState<string | null>(null);
   const [reelMsg, setReelMsg] = useState<string | null>(null);
-  const [storedReelPass, setStoredReelPass] = useState('');
+  const [storedReelPass, setStoredReelPass] = useState(() => (typeof window !== 'undefined' && sessionStorage.getItem('reel-admin-pass')) || '');
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [songName, setSongName] = useState('');
+  const [songArtist, setSongArtist] = useState('');
+  const [songRef, setSongRef] = useState('');
+
+  const addSong = async () => {
+    if (!songName.trim() || !songArtist.trim()) return;
+    setReelAction('add_song');
+    setReelError(null);
+    try {
+      const res = await fetch('/api/reel-the-vibe/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-reel-pass': storedReelPass },
+        body: JSON.stringify({ action: 'add_song', song: { name: songName.trim(), artist: songArtist.trim(), ref: songRef.trim() || undefined } }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setReelError(d.error?.message || 'Failed'); return; }
+      setSongName(''); setSongArtist(''); setSongRef('');
+      fetchReel(storedReelPass);
+    } catch { setReelError('Network error'); }
+    finally { setReelAction(null); }
+  };
+
+  const removeSong = async (songId: string) => {
+    setReelAction('remove_song');
+    try {
+      await fetch('/api/reel-the-vibe/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-reel-pass': storedReelPass },
+        body: JSON.stringify({ action: 'remove_song', song_id: songId }),
+      });
+      fetchReel(storedReelPass);
+    } catch { setReelError('Network error'); }
+    finally { setReelAction(null); }
+  };
 
   const fetchReel = useCallback(async (pass: string) => {
     setReelLoading(true);
@@ -2834,7 +2876,7 @@ function ReelTab() {
 
   useEffect(() => {
     const saved = sessionStorage.getItem('reel-admin-pass');
-    if (saved) { setStoredReelPass(saved); setReelAuthed(true); fetchReel(saved); }
+    if (saved) fetchReel(saved);
   }, [fetchReel]);
 
   const loginReel = () => { setStoredReelPass(reelPass); setReelAuthed(true); sessionStorage.setItem('reel-admin-pass', reelPass); fetchReel(reelPass); };
@@ -2884,25 +2926,25 @@ function ReelTab() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button onClick={() => doReelAction('open_registrations')} disabled={reelAction !== null || phase === 'registration'}
-            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             style={{ background: phase === 'registration' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'registration' ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.05)' }}>
             <UserPlus size={18} style={{ color: phase === 'registration' ? '#22c55e' : '#666' }} />
             <span className="text-xs font-medium">{reelAction === 'open_registrations' ? 'Working...' : 'Open Registrations'}</span>
           </button>
-          <button onClick={() => { if (confirm('Create teams and assign songs?')) doReelAction('stimulate'); }} disabled={reelAction !== null || phase === 'revealed' || phase === 'voting'}
-            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+          <button onClick={() => setConfirmModal({ message: 'Create teams and assign songs?', onConfirm: () => doReelAction('stimulate') })} disabled={reelAction !== null || phase === 'revealed' || phase === 'voting'}
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             style={{ background: phase === 'stimulated' ? 'rgba(234,179,8,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'stimulated' ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.05)' }}>
             <Shuffle size={18} style={{ color: phase === 'stimulated' ? '#eab308' : '#666' }} />
             <span className="text-xs font-medium">{reelAction === 'stimulate' ? 'Creating...' : 'Stimulate'}</span>
           </button>
           <button onClick={() => doReelAction('reveal')} disabled={reelAction !== null || phase === 'registration' || phase === 'voting'}
-            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             style={{ background: phase === 'revealed' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'revealed' ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.05)' }}>
             <Eye size={18} style={{ color: phase === 'revealed' ? '#3b82f6' : '#666' }} />
             <span className="text-xs font-medium">{reelAction === 'reveal' ? 'Revealing...' : 'Reveal'}</span>
           </button>
           <button onClick={() => doReelAction('voting')} disabled={reelAction !== null || phase === 'registration' || phase === 'stimulated'}
-            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30"
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             style={{ background: phase === 'voting' ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'voting' ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.05)' }}>
             <Award size={18} style={{ color: phase === 'voting' ? '#a855f7' : '#666' }} />
             <span className="text-xs font-medium">{reelAction === 'voting' ? 'Starting...' : 'Voting'}</span>
@@ -2923,6 +2965,42 @@ function ReelTab() {
         <div className="bg-dark-card rounded-2xl border border-white/5 p-4">
           <p className="text-2xl font-semibold">{reelData?.total_votes || 0}</p>
           <p className="text-xs text-white/40 mt-1">Total Votes</p>
+        </div>
+      </div>
+
+      {/* Songs */}
+      <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Music size={18} /> Songs ({reelData?.songs?.length || 0})</h3>
+        <div className="space-y-4">
+          {/* Add Song Form */}
+          <div className="flex items-center gap-2">
+            <input value={songName} onChange={e => setSongName(e.target.value)} placeholder="Song name *" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
+            <input value={songArtist} onChange={e => setSongArtist(e.target.value)} placeholder="Artist *" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
+            <input value={songRef} onChange={e => setSongRef(e.target.value)} placeholder="Ref link (optional)" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
+            <button onClick={addSong} disabled={!songName.trim() || !songArtist.trim() || reelAction === 'add_song'}
+              className="p-2 rounded-xl bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0">
+              <Plus size={18} />
+            </button>
+          </div>
+          {/* Songs List */}
+          {(reelData?.songs?.length || 0) > 0 ? (
+            <div className="space-y-2">
+              {reelData!.songs.map((song, i) => (
+                <div key={song.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02]">
+                  <span className="text-xs font-mono text-white/30 w-5">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{song.name}</p>
+                    <p className="text-xs text-white/40 truncate">{song.artist}</p>
+                  </div>
+                  
+                  <button onClick={() => setConfirmModal({ message: `Remove "${song.name}"?`, onConfirm: () => removeSong(song.id) })}
+                    className="text-white/15 hover:text-red-400 transition-colors p-1 cursor-pointer"><Trash2 size={14} /></button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-sm text-center py-4">No songs added. Add songs before stimulating teams.</p>
+          )}
         </div>
       </div>
 
@@ -2951,8 +3029,8 @@ function ReelTab() {
                 {team.status === 'disqualified' ? (
                   <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400">DQ</span>
                 ) : (
-                  <button onClick={() => { if (confirm(`Disqualify ${team.team_name}?`)) doReelAction('disqualify', { team_id: team.team_id }); }}
-                    className="text-white/15 hover:text-red-400 transition-colors p-1"><Ban size={14} /></button>
+                  <button onClick={() => setConfirmModal({ message: `Disqualify ${team.team_name}?`, onConfirm: () => doReelAction('disqualify', { team_id: team.team_id }) })}
+                    className="text-white/15 hover:text-red-400 transition-colors p-1 cursor-pointer"><Ban size={14} /></button>
                 )}
               </div>
             ))}
@@ -2973,7 +3051,7 @@ function ReelTab() {
                 <p className="text-[10px] text-white/30">{r.status === 'blocked' ? <span className="text-red-400">Blocked</span> : r.status}</p>
               </div>
               <button
-                onClick={() => { if (confirm(`Remove ${r.members?.full_name}?`)) doReelAction('remove_user', { registration_id: r.id }); }}
+                onClick={() => setConfirmModal({ message: `Remove ${r.members?.full_name}?`, onConfirm: () => doReelAction('remove_user', { registration_id: r.id }) })}
                 className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Remove user"
               >
@@ -2983,6 +3061,19 @@ function ReelTab() {
           ))}
         </div>
       </div>
+
+      {/* Confirm Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setConfirmModal(null)}>
+          <div className="bg-dark-card border border-white/10 rounded-2xl p-6 max-w-sm w-full mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <p className="text-sm text-white/80">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 text-sm rounded-xl border border-white/10 text-white/50 hover:text-white transition-colors cursor-pointer">Cancel</button>
+              <button onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }} className="px-4 py-2 text-sm rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors cursor-pointer">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
