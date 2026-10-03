@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import jwt from 'jsonwebtoken';
 import { supabase } from '../../lib/supabase';
 import { hashPassword } from '../../lib/auth';
 import { json, handleError } from '../../lib/middleware';
@@ -6,11 +7,18 @@ import { errorResponse, successResponse } from '@rcb-2.0/shared';
 
 export async function POST(request: NextRequest) {
   try {
-    const { code, newPassword } = await request.json();
+    const { token, newPassword, confirmPassword } = await request.json();
 
-    if (!code || !newPassword) {
+    if (!token || !newPassword || !confirmPassword) {
       return json(
-        errorResponse('VALIDATION_ERROR', 'Code and new password are required'),
+        errorResponse('VALIDATION_ERROR', 'Token, new password and confirm password are required'),
+        400,
+      );
+    }
+
+    if (newPassword !== confirmPassword) {
+      return json(
+        errorResponse('VALIDATION_ERROR', 'Passwords do not match'),
         400,
       );
     }
@@ -22,30 +30,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Code format: username-email
-    const separatorIndex = code.indexOf('-');
-    if (separatorIndex === -1) {
+    // Verify the reset token
+    let decoded: { member_id: string; purpose: string };
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET!) as { member_id: string; purpose: string };
+    } catch {
       return json(
-        errorResponse('INVALID_CODE', 'Invalid reset code'),
+        errorResponse('INVALID_TOKEN', 'Reset link is invalid or has expired. Please request a new one.'),
         400,
       );
     }
 
-    const username = code.substring(0, separatorIndex);
-    const email = code.substring(separatorIndex + 1);
+    if (decoded.purpose !== 'password-reset') {
+      return json(
+        errorResponse('INVALID_TOKEN', 'Invalid reset token'),
+        400,
+      );
+    }
 
-    // Validate against DB
+    // Verify member exists
     const { data: member, error } = await supabase
       .from('members')
-      .select('member_id, username, email')
-      .eq('username', username)
-      .eq('email', email)
+      .select('member_id')
+      .eq('member_id', decoded.member_id)
       .single();
 
     if (error || !member) {
       return json(
-        errorResponse('INVALID_CODE', 'Invalid reset code. Please check your username and email.'),
-        400,
+        errorResponse('NOT_FOUND', 'Account not found'),
+        404,
       );
     }
 
