@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AnimatedSection from '@/components/AnimatedSection';
 import { useAuthStore } from '@/lib/auth-store';
-import { Lock, User, AlertCircle, ArrowRight, X, KeyRound, CheckCircle } from 'lucide-react';
+import { Lock, User, AlertCircle, ArrowRight, X, KeyRound, CheckCircle, Mail } from 'lucide-react';
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -13,8 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
-  const [resetCode, setResetCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
   const [resetStep, setResetStep] = useState<'form' | 'success'>('form');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
@@ -44,26 +43,26 @@ export default function LoginPage() {
     setLoading(false);
   };
 
-  const handleResetPassword = async () => {
+  const handleForgotPassword = async () => {
     setResetError('');
-    if (newPassword.length < 6) {
-      setResetError('Password must be at least 6 characters');
+    if (!resetEmail.trim()) {
+      setResetError('Please enter your email address');
       return;
     }
     setResetLoading(true);
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: resetCode, newPassword }),
+        body: JSON.stringify({ email: resetEmail }),
       });
       const data = await res.json();
 
       if (res.ok) {
         setResetStep('success');
       } else {
-        setResetError(data.error?.message || 'Failed to reset password');
+        setResetError(data.error?.message || 'Failed to send reset link');
       }
     } catch {
       setResetError('Something went wrong. Try again.');
@@ -74,8 +73,7 @@ export default function LoginPage() {
 
   const closeForgotModal = () => {
     setShowForgot(false);
-    setResetCode('');
-    setNewPassword('');
+    setResetEmail('');
     setResetStep('form');
     setResetError('');
   };
@@ -209,42 +207,29 @@ export default function LoginPage() {
             {resetStep === 'form' && (
               <div className="space-y-4">
                 <p className="text-dark/60 dark:text-white/60 text-sm text-center">
-                  Enter your reset code in the format:<br />
-                  <span className="font-mono text-accent">username-email</span>
+                  Enter your registered email address and we&apos;ll send you a link to reset your password.
                 </p>
                 <div>
                   <label className="block text-dark/60 dark:text-white/60 text-sm mb-1.5">
-                    Reset Code
+                    <Mail size={14} className="inline mr-1" />Email Address
                   </label>
                   <input
-                    type="text"
-                    value={resetCode}
-                    onChange={e => setResetCode(e.target.value)}
-                    placeholder="username-your@email.com"
-                    className="w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-dark/60 dark:text-white/60 text-sm mb-1.5">
-                    <Lock size={14} className="inline mr-1" />New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Enter new password (min 6 chars)"
+                    type="email"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    placeholder="your@email.com"
                     className="w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors"
                   />
                 </div>
                 <button
-                  onClick={handleResetPassword}
-                  disabled={resetLoading || !resetCode || !newPassword}
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading || !resetEmail}
                   className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent-light transition-colors duration-300 disabled:opacity-50"
                 >
                   {resetLoading ? (
                     <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <>Update Password <ArrowRight size={18} /></>
+                    <>Send Reset Link <ArrowRight size={18} /></>
                   )}
                 </button>
               </div>
@@ -254,10 +239,10 @@ export default function LoginPage() {
               <div className="text-center py-4">
                 <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
                 <p className="text-dark dark:text-white font-semibold text-lg mb-1">
-                  Password Updated!
+                  Check Your Email
                 </p>
                 <p className="text-dark/60 dark:text-white/60 text-sm mb-4">
-                  You can now login with your new password.
+                  If an account with that email exists, we&apos;ve sent a password reset link. Please check your inbox and spam folder.
                 </p>
                 <button
                   onClick={closeForgotModal}
