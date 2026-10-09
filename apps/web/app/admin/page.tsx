@@ -219,7 +219,7 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
 
 // ── Members Management Tab ───────────────────────────────────
 function MembersTab() {
-  const [view, setView] = useState<'pending' | 'all' | 'garba'>('pending');
+  const [view, setView] = useState<'pending' | 'all'>('pending');
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -230,8 +230,6 @@ function MembersTab() {
   const [paymentModal, setPaymentModal] = useState<AdminMember | null>(null);
 
   const fetchMembers = useCallback(async () => {
-    // The Garba view has its own component and fetches its own rows.
-    if (view === 'garba') return;
     setLoading(true);
     try {
       const endpoint = view === 'pending' ? '/admin/members/pending' : '/admin/members/all';
@@ -246,7 +244,6 @@ function MembersTab() {
   }, [view]);
 
   useEffect(() => {
-    if (view === 'garba') return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -358,39 +355,27 @@ function MembersTab() {
             }`}>
             <Users size={14} /> All Members
           </button>
-          <button onClick={() => setView('garba')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              view === 'garba' ? 'bg-accent text-white' : 'text-white/50 hover:text-white'
-            }`}>
-            <CalendarDays size={14} /> Garba Workshop
-          </button>
         </div>
 
-        {view !== 'garba' && (
-          <>
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search by name, email, username..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
-              />
-            </div>
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, email, username..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
+          />
+        </div>
 
-            <button onClick={fetchMembers}
-              className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </>
-        )}
+        <button onClick={fetchMembers}
+          className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+        </button>
       </div>
 
-      {view === 'garba' && <GarbaRegistrations />}
-
       {/* Sort controls */}
-      <div className={`flex flex-wrap items-center gap-3 ${view === 'garba' ? 'hidden' : ''}`}>
+      <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs text-white/40 font-medium">Sort by</span>
         {/* Sort field */}
         <div className="flex gap-1 p-1 rounded-xl bg-dark-surface border border-white/5">
@@ -455,14 +440,14 @@ function MembersTab() {
       )}
 
       {/* Loading */}
-      {view !== 'garba' && loading && (
+      {loading && (
         <div className="flex justify-center py-12">
           <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
       )}
 
       {/* Empty */}
-      {view !== 'garba' && !loading && filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="text-center py-12">
           <Users size={32} className="text-white/10 mx-auto mb-3" />
           <p className="text-white/30 text-sm">
@@ -472,7 +457,7 @@ function MembersTab() {
       )}
 
       {/* Member list */}
-      {view !== 'garba' && !loading && filtered.length > 0 && (
+      {!loading && filtered.length > 0 && (
         <div className="space-y-2">
           {filtered.map(m => {
             const initials = m.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -630,241 +615,6 @@ function MembersTab() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Garba Workshop Registrations (inside the Members tab) ────
-interface GarbaRegistration {
-  id: string;
-  event_slug: string;
-  full_name: string;
-  phone: string;
-  reference: string | null;
-  amount_inr: number;
-  payment_verified: boolean;
-  created_at: string;
-  screenshot_url: string | null;
-}
-
-function GarbaRegistrations() {
-  const [rows, setRows] = useState<GarbaRegistration[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-  const showMsg = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 3000);
-  };
-
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/event-registrations', { headers: adminHeaders() });
-      const data = await res.json();
-      if (res.ok) setRows(data.data || []);
-      else showMsg(data.message || 'Failed to fetch registrations', 'error');
-    } catch {
-      showMsg('Network error', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/admin/event-registrations', { headers: adminHeaders() });
-        const data = await res.json();
-        if (!cancelled && res.ok) setRows(data.data || []);
-      } catch { /* the refresh button covers a failed first load */ }
-      finally { if (!cancelled) setLoading(false); }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const toggleVerified = async (row: GarbaRegistration) => {
-    setBusy(row.id);
-    try {
-      const res = await fetch(`/api/admin/event-registrations/${row.id}/verify`, {
-        method: 'PATCH',
-        headers: adminHeaders(),
-        body: JSON.stringify({ payment_verified: !row.payment_verified }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setRows(rs => rs.map(r => (r.id === row.id ? { ...r, payment_verified: !row.payment_verified } : r)));
-        showMsg(data.message || 'Updated', 'success');
-      } else {
-        showMsg(data.message || 'Update failed', 'error');
-      }
-    } catch {
-      showMsg('Network error', 'error');
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const filtered = rows.filter(r =>
-    r.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    r.phone.includes(search) ||
-    (r.reference || '').toLowerCase().includes(search.toLowerCase()),
-  );
-
-  const exportCsv = () => {
-    const header = ['Name', 'Phone', 'Reference', 'Amount', 'Verified', 'Registered at'];
-    // Quote every cell and double any embedded quote, so a name with a comma
-    // does not shift the columns.
-    const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const lines = [
-      header.map(cell).join(','),
-      ...filtered.map(r => [
-        r.full_name, r.phone, r.reference || '',
-        r.amount_inr, r.payment_verified ? 'Yes' : 'No',
-        new Date(r.created_at).toLocaleString('en-IN'),
-      ].map(cell).join(',')),
-    ];
-    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `garba-workshop-2026-registrations-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const verifiedCount = rows.filter(r => r.payment_verified).length;
-
-  return (
-    <div className="space-y-4">
-      {/* Search + actions */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, phone, reference..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm"
-          />
-        </div>
-        <button onClick={exportCsv} disabled={filtered.length === 0}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/70 hover:text-white hover:border-accent transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed">
-          <FileText size={15} /> Export CSV
-        </button>
-        <button onClick={fetchRows}
-          className="p-2.5 rounded-xl bg-dark-surface border border-white/10 text-white/50 hover:text-white hover:border-accent transition-all">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
-
-      {message && (
-        <div className={`p-3 rounded-xl text-sm flex items-center gap-2 ${
-          message.type === 'success'
-            ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-            : 'bg-red-500/10 border border-red-500/20 text-red-400'
-        }`}>
-          {message.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-          {message.text}
-        </div>
-      )}
-
-      {/* Stats */}
-      {!loading && (
-        <div className="flex flex-wrap gap-3 text-xs">
-          <span className="px-3 py-1.5 rounded-lg bg-dark-surface text-white/50">
-            Registrations: <span className="text-white font-medium">{rows.length}</span>
-          </span>
-          <span className="px-3 py-1.5 rounded-lg bg-green-500/5 text-green-400/70">
-            Verified: <span className="text-green-400 font-medium">{verifiedCount}</span>
-          </span>
-          <span className="px-3 py-1.5 rounded-lg bg-yellow-500/5 text-yellow-400/70">
-            Awaiting check: <span className="text-yellow-400 font-medium">{rows.length - verifiedCount}</span>
-          </span>
-          <span className="px-3 py-1.5 rounded-lg bg-accent/5 text-accent/80">
-            Collected: <span className="text-accent font-medium">
-              &#8377;{rows.reduce((sum, r) => sum + (r.amount_inr || 0), 0).toLocaleString('en-IN')}
-            </span>
-          </span>
-        </div>
-      )}
-
-      {loading && (
-        <div className="flex justify-center py-12">
-          <div className="h-6 w-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-        </div>
-      )}
-
-      {!loading && filtered.length === 0 && (
-        <div className="text-center py-12">
-          <CalendarDays size={32} className="text-white/10 mx-auto mb-3" />
-          <p className="text-white/30 text-sm">
-            {rows.length === 0 ? 'No registrations yet' : 'No registrations match that search'}
-          </p>
-        </div>
-      )}
-
-      {/* Table — scrolls sideways on narrow screens rather than squashing */}
-      {!loading && filtered.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-white/5">
-          <table className="w-full min-w-[820px] text-sm">
-            <thead>
-              <tr className="bg-dark-surface text-white/40 text-xs uppercase tracking-wider">
-                <th className="text-left font-medium px-4 py-3">Name</th>
-                <th className="text-left font-medium px-4 py-3">Phone</th>
-                <th className="text-left font-medium px-4 py-3">Reference</th>
-                <th className="text-left font-medium px-4 py-3">Screenshot</th>
-                <th className="text-left font-medium px-4 py-3">Verified</th>
-                <th className="text-left font-medium px-4 py-3">Registered</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(r => (
-                <tr key={r.id} className="border-t border-white/5 bg-dark-card">
-                  <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{r.full_name}</td>
-                  <td className="px-4 py-3 text-white/60 whitespace-nowrap">
-                    <a href={`tel:+91${r.phone}`} className="hover:text-accent transition-colors">{r.phone}</a>
-                  </td>
-                  <td className="px-4 py-3 text-white/60">{r.reference || <span className="text-white/20">—</span>}</td>
-                  <td className="px-4 py-3">
-                    {r.screenshot_url ? (
-                      <a href={r.screenshot_url} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
-                        <ExternalLink size={12} /> Open
-                      </a>
-                    ) : (
-                      <span className="text-white/20 text-xs">unavailable</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => toggleVerified(r)} disabled={busy === r.id}
-                      className={`px-2.5 py-1 text-[11px] rounded-full font-medium transition-colors disabled:opacity-50 ${
-                        r.payment_verified
-                          ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                          : 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20'
-                      }`}>
-                      {r.payment_verified ? 'Verified' : 'Mark verified'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString('en-IN', {
-                      day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
-                    })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <p className="text-xs text-white/30">
-        Screenshot links are signed and expire ten minutes after the list is loaded — hit refresh if one stops working.
-      </p>
     </div>
   );
 }
@@ -2790,18 +2540,18 @@ interface ReelRegistration {
   status: string;
   members: { full_name: string; email: string; avatar_url?: string };
 }
-interface ReelSong {
+interface ReelClue {
   id: string;
-  name: string;
-  artist: string;
-  ref?: string;
+  headline: string;
+  songs: string;
+  theme: string;
 }
 interface ReelData {
   phase: string;
   teams: ReelTeam[];
   registrations: ReelRegistration[];
   total_votes: number;
-  songs: ReelSong[];
+  clues: ReelClue[];
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -2827,35 +2577,35 @@ function ReelTab() {
   const [reelMsg, setReelMsg] = useState<string | null>(null);
   const [storedReelPass, setStoredReelPass] = useState(() => (typeof window !== 'undefined' && sessionStorage.getItem('reel-admin-pass')) || '');
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
-  const [songName, setSongName] = useState('');
-  const [songArtist, setSongArtist] = useState('');
-  const [songRef, setSongRef] = useState('');
+  const [clueHeadline, setClueHeadline] = useState('');
+  const [clueSongs, setClueSongs] = useState('');
+  const [clueTheme, setClueTheme] = useState('');
 
-  const addSong = async () => {
-    if (!songName.trim() || !songArtist.trim()) return;
+  const addClue = async () => {
+    if (!clueHeadline.trim() || !clueSongs.trim() || !clueTheme.trim()) return;
     setReelAction('add_song');
     setReelError(null);
     try {
       const res = await fetch('/api/reel-the-vibe/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-reel-pass': storedReelPass },
-        body: JSON.stringify({ action: 'add_song', song: { name: songName.trim(), artist: songArtist.trim(), ref: songRef.trim() || undefined } }),
+        body: JSON.stringify({ action: 'add_song', clue: { headline: clueHeadline.trim(), songs: clueSongs.trim(), theme: clueTheme.trim() } }),
       });
       const d = await res.json();
       if (!res.ok) { setReelError(d.error?.message || 'Failed'); return; }
-      setSongName(''); setSongArtist(''); setSongRef('');
+      setClueHeadline(''); setClueSongs(''); setClueTheme('');
       fetchReel(storedReelPass);
     } catch { setReelError('Network error'); }
     finally { setReelAction(null); }
   };
 
-  const removeSong = async (songId: string) => {
+  const removeClue = async (clueId: string) => {
     setReelAction('remove_song');
     try {
       await fetch('/api/reel-the-vibe/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-reel-pass': storedReelPass },
-        body: JSON.stringify({ action: 'remove_song', song_id: songId }),
+        body: JSON.stringify({ action: 'remove_song', clue_id: clueId }),
       });
       fetchReel(storedReelPass);
     } catch { setReelError('Network error'); }
@@ -2931,7 +2681,7 @@ function ReelTab() {
             <UserPlus size={18} style={{ color: phase === 'registration' ? '#22c55e' : '#666' }} />
             <span className="text-xs font-medium">{reelAction === 'open_registrations' ? 'Working...' : 'Open Registrations'}</span>
           </button>
-          <button onClick={() => setConfirmModal({ message: 'Create teams and assign songs?', onConfirm: () => doReelAction('stimulate') })} disabled={reelAction !== null || phase === 'revealed' || phase === 'voting'}
+          <button onClick={() => setConfirmModal({ message: 'Create teams and assign clues?', onConfirm: () => doReelAction('stimulate') })} disabled={reelAction !== null || phase === 'revealed' || phase === 'voting'}
             className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             style={{ background: phase === 'stimulated' ? 'rgba(234,179,8,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'stimulated' ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.05)' }}>
             <Shuffle size={18} style={{ color: phase === 'stimulated' ? '#eab308' : '#666' }} />
@@ -2968,38 +2718,38 @@ function ReelTab() {
         </div>
       </div>
 
-      {/* Songs */}
+      {/* Clues */}
       <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Music size={18} /> Songs ({reelData?.songs?.length || 0})</h3>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Music size={18} /> Clues ({reelData?.clues?.length || 0})</h3>
         <div className="space-y-4">
-          {/* Add Song Form */}
+          {/* Add Clue Form */}
           <div className="flex items-center gap-2">
-            <input value={songName} onChange={e => setSongName(e.target.value)} placeholder="Song name *" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
-            <input value={songArtist} onChange={e => setSongArtist(e.target.value)} placeholder="Artist *" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
-            <input value={songRef} onChange={e => setSongRef(e.target.value)} placeholder="Ref link (optional)" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
-            <button onClick={addSong} disabled={!songName.trim() || !songArtist.trim() || reelAction === 'add_song'}
+            <input value={clueHeadline} onChange={e => setClueHeadline(e.target.value)} placeholder="Headline *" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
+            <input value={clueSongs} onChange={e => setClueSongs(e.target.value)} placeholder="Songs *" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
+            <input value={clueTheme} onChange={e => setClueTheme(e.target.value)} placeholder="Theme *" className="flex-1 px-3 py-2 rounded-xl bg-dark-surface border border-white/10 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/20" />
+            <button onClick={addClue} disabled={!clueHeadline.trim() || !clueSongs.trim() || !clueTheme.trim() || reelAction === 'add_song'}
               className="p-2 rounded-xl bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0">
               <Plus size={18} />
             </button>
           </div>
-          {/* Songs List */}
-          {(reelData?.songs?.length || 0) > 0 ? (
+          {/* Clues List */}
+          {(reelData?.clues?.length || 0) > 0 ? (
             <div className="space-y-2">
-              {reelData!.songs.map((song, i) => (
-                <div key={song.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02]">
+              {reelData!.clues.map((clue, i) => (
+                <div key={clue.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02]">
                   <span className="text-xs font-mono text-white/30 w-5">{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{song.name}</p>
-                    <p className="text-xs text-white/40 truncate">{song.artist}</p>
+                    <p className="text-sm font-medium truncate">{clue.headline}</p>
+                    <p className="text-xs text-white/40 truncate">Songs: {clue.songs} · Theme: {clue.theme}</p>
                   </div>
-                  
-                  <button onClick={() => setConfirmModal({ message: `Remove "${song.name}"?`, onConfirm: () => removeSong(song.id) })}
+
+                  <button onClick={() => setConfirmModal({ message: `Remove "${clue.headline}"?`, onConfirm: () => removeClue(clue.id) })}
                     className="text-white/15 hover:text-red-400 transition-colors p-1 cursor-pointer"><Trash2 size={14} /></button>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-white/30 text-sm text-center py-4">No songs added. Add songs before stimulating teams.</p>
+            <p className="text-white/30 text-sm text-center py-4">No clues added. Add clues before stimulating teams.</p>
           )}
         </div>
       </div>
@@ -3017,7 +2767,7 @@ function ReelTab() {
                 <span className="text-sm font-mono text-white/30 w-6">{rank === 0 ? '🏆' : `#${rank + 1}`}</span>
                 <div className="flex-1 min-w-[100px]">
                   <p className="text-sm font-medium">{team.team_name}</p>
-                  <p className="text-xs text-white/30 flex items-center gap-1"><Music size={10} className="text-accent" />{team.assigned_song}</p>
+                  <p className="text-xs text-white/30 flex items-center gap-1"><Music size={10} className="text-accent" />{(() => { try { const c = JSON.parse(team.assigned_song); return c.headline; } catch { return team.assigned_song; } })()}</p>
                 </div>
                 <div className="flex gap-1.5">
                   {team.members.map(m => (

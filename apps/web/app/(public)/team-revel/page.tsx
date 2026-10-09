@@ -13,7 +13,7 @@ const TOTAL_HEIGHT = 600;
 export default function TeamRevelPage() {
   const { token } = useAuthStore();
   const [players, setPlayers] = useState<{ name: string; photo: string }[]>([]);
-  const [assignedSong, setAssignedSong] = useState({ title: '', movie: '' });
+  const [assignedClue, setAssignedClue] = useState({ headline: '', songs: '', theme: '' });
   const [scrollY, setScrollY] = useState(0);
   const [teamName, setTeamName] = useState('');
   const [editing, setEditing] = useState(false);
@@ -47,7 +47,12 @@ export default function TeamRevelPage() {
           });
           setPlayers(memberData);
           setTeamName(team.team_name || initialsName(memberData));
-          setAssignedSong({ title: team.assigned_song || '', movie: '' });
+          try {
+            const clue = JSON.parse(team.assigned_song || '{}');
+            setAssignedClue({ headline: clue.headline || '', songs: clue.songs || '', theme: clue.theme || '' });
+          } catch {
+            setAssignedClue({ headline: team.assigned_song || '', songs: '', theme: '' });
+          }
         }
       })
       .catch(() => {});
@@ -281,255 +286,164 @@ export default function TeamRevelPage() {
           })}
         </div>
 
-        {/* ===== SECTION 2: Triangle (desktop) / Stacked (mobile) ===== */}
+        {/* ===== SECTION 2: Structured layout ===== */}
         <div
           className="absolute inset-0 z-30 pointer-events-none"
           style={{ opacity: section2Progress > 0 ? 1 : 0 }}
         >
-          {/* Mobile: vertical stack */}
-          <div className="md:hidden absolute inset-0 flex flex-col items-center justify-center gap-5 px-6 pointer-events-auto overflow-y-auto py-24">
-            {/* TEAM */}
-            <div style={getInfoItemStyle(0)}>
-              <div
-                className="px-6 py-5 rounded-2xl text-center"
-                style={{
-                  background: 'rgba(11,10,8,0.7)',
-                  backdropFilter: 'blur(16px)',
-                  border: '1px solid rgba(90,81,70,0.2)',
-                  boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
-                  width: '220px',
-                }}
-              >
-                <span className="text-[10px] uppercase tracking-[3px] font-medium block mb-2" style={{ color: '#B98255' }}>Team</span>
-                {editing ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <input
-                      ref={inputRef}
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value.slice(0, 10))}
-                      onBlur={saveTeamName}
-                      onKeyDown={e => { if (e.key === 'Enter') saveTeamName(); }}
-                      className="bg-transparent border-b-2 text-center font-display text-2xl outline-none"
-                      style={{ color: '#E8DFD2', borderColor: '#B98255', caretColor: '#B98255', width: `${Math.max(3, editValue.length + 1)}ch` }}
-                    />
-                    <button onClick={saveTeamName} className="p-1" style={{ color: '#B98255' }}><Check size={16} /></button>
-                  </div>
-                ) : (
-                  <div className="relative flex items-center justify-center group cursor-pointer" onClick={() => { setEditValue(teamName); setEditing(true); }}>
-                    <h2 className="font-display text-2xl font-medium tracking-wider truncate max-w-[160px] text-center" style={{ color: '#E8DFD2' }}>{teamName}</h2>
-                    <Pencil size={14} className="absolute -right-5 opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: '#B98255' }} />
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* SONG */}
-            <div style={getInfoItemStyle(1)}>
-              <div
-                className="px-6 py-5 rounded-2xl text-center"
-                style={{ background: 'rgba(11,10,8,0.7)', backdropFilter: 'blur(16px)', border: '1px solid rgba(90,81,70,0.2)', boxShadow: '0 16px 40px rgba(0,0,0,0.4)', width: '220px' }}
-              >
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Music size={14} style={{ color: '#B98255' }} />
-                  <span className="text-[10px] uppercase tracking-[2.5px] font-medium" style={{ color: '#B98255' }}>Assigned Song</span>
-                </div>
-                <p className="font-display text-xl font-medium tracking-wide" style={{ color: '#E8DFD2' }}>{assignedSong.title}</p>
-                <p className="text-xs mt-1.5 tracking-wider" style={{ color: '#A9A095' }}>{assignedSong.movie}</p>
-              </div>
-            </div>
-            {/* REEL */}
-            <div style={getInfoItemStyle(2)}>
-              <div
-                className="px-6 py-5 rounded-2xl text-center"
-                style={{ background: 'rgba(11,10,8,0.7)', backdropFilter: 'blur(16px)', border: '1px solid rgba(90,81,70,0.2)', boxShadow: '0 16px 40px rgba(0,0,0,0.4)', width: '220px' }}
-              >
-                <span className="text-[10px] uppercase tracking-[3px] font-medium block mb-3" style={{ color: '#B98255' }}>Your Reel</span>
-                {reelSubmitted && reelUrl ? (
-                  <div className="flex justify-center">
-                    <div className="overflow-hidden" style={{ width: '100px', aspectRatio: '9/16', borderRadius: '12px', border: '1px solid rgba(90,81,70,0.3)' }}>
-                      <video src={reelUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                    </div>
-                  </div>
-                ) : !reelFile ? (
-                  <>
-                    <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2.5 px-5 py-3 rounded-xl transition-all duration-300 mx-auto" style={{ background: 'rgba(21,18,14,0.8)', border: '1px solid rgba(90,81,70,0.3)', color: '#E8DFD2' }}>
-                      <Upload size={16} style={{ color: '#B98255' }} />
-                      <span className="text-sm font-medium tracking-wide">Upload Reel</span>
-                    </button>
-                    <div className="flex items-center justify-center gap-1.5 mt-2.5">
-                      <AlertTriangle size={10} style={{ color: '#A9A095' }} />
-                      <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-14 h-14 rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(90,81,70,0.3)' }}>
-                      <video src={reelPreview!} muted className="w-full h-full object-cover" />
-                    </div>
-                    <button onClick={handleReelSubmit} disabled={uploading} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-display font-medium tracking-wide transition-all duration-300" style={{ background: 'linear-gradient(135deg, #1A1611, #2A2118)', border: '1px solid rgba(185,130,85,0.35)', color: '#E8DFD2' }}>
-                      {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit Reel'}
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      <AlertTriangle size={10} style={{ color: '#A9A095' }} />
-                      <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
-                    </div>
-                  </div>
-                )}
-                {uploadError && <p className="text-xs mt-2" style={{ color: '#D4836A' }}>{uploadError}</p>}
-              </div>
-            </div>
-          </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-auto overflow-y-auto" style={{ padding: '4vh 0' }}>
+            <div className="w-full max-w-3xl px-4 sm:px-6 flex flex-col gap-4 md:gap-5">
 
-          {/* Desktop: triangle layout */}
-          {/* TEAM — top center */}
-          <div
-            className="hidden md:block absolute left-1/2 pointer-events-auto"
-            style={{
-              top: '38%',
-              transform: `translateX(-45%) translateY(${getInfoItemStyle(0).transform.match(/translateY\((.+)\)/)?.[1] || '0px'})`,
-              opacity: getInfoItemStyle(0).opacity,
-            }}
-          >
-            <div
-              className="px-8 py-6 rounded-2xl text-center"
-              style={{
-                background: 'rgba(11,10,8,0.7)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(90,81,70,0.2)',
-                boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
-                width: '220px',
-              }}
-            >
-              <span className="text-[10px] uppercase tracking-[3px] font-medium block mb-2" style={{ color: '#B98255' }}>
-                Team
-              </span>
-              {editing ? (
-                <div className="flex items-center justify-center gap-2">
-                  <input
-                    ref={inputRef}
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value.slice(0, 10))}
-                    onBlur={saveTeamName}
-                    onKeyDown={e => { if (e.key === 'Enter') saveTeamName(); }}
-                    className="bg-transparent border-b-2 text-center font-display text-3xl sm:text-4xl outline-none"
-                    style={{ color: '#E8DFD2', borderColor: '#B98255', caretColor: '#B98255', width: `${Math.max(3, editValue.length + 1)}ch` }}
-                  />
-                  <button onClick={saveTeamName} className="p-1" style={{ color: '#B98255' }}>
-                    <Check size={16} />
-                  </button>
+              {/* TEAM — top center */}
+              <div style={getInfoItemStyle(0)} className="flex justify-center">
+                <div
+                  className="px-6 py-4 md:px-8 md:py-5 rounded-2xl text-center"
+                  style={{
+                    background: 'rgba(11,10,8,0.75)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(185,130,85,0.25)',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
+                    minWidth: '180px',
+                  }}
+                >
+                  <span className="text-[10px] uppercase tracking-[3px] font-medium block mb-2" style={{ color: '#B98255' }}>Team</span>
+                  {editing ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <input
+                        ref={inputRef}
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value.slice(0, 10))}
+                        onBlur={saveTeamName}
+                        onKeyDown={e => { if (e.key === 'Enter') saveTeamName(); }}
+                        className="bg-transparent border-b-2 text-center font-display text-2xl md:text-3xl outline-none"
+                        style={{ color: '#E8DFD2', borderColor: '#B98255', caretColor: '#B98255', width: `${Math.max(3, editValue.length + 1)}ch` }}
+                      />
+                      <button onClick={saveTeamName} className="p-1" style={{ color: '#B98255' }}><Check size={16} /></button>
+                    </div>
+                  ) : (
+                    <div className="relative flex items-center justify-center group cursor-pointer" onClick={() => { setEditValue(teamName); setEditing(true); }}>
+                      <h2 className="font-display text-2xl md:text-3xl font-medium tracking-wider text-center" style={{ color: '#E8DFD2', textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}>
+                        {teamName}
+                      </h2>
+                      <Pencil size={14} className="absolute -right-5 opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: '#B98255' }} />
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="relative flex items-center justify-center group cursor-pointer" onClick={() => { setEditValue(teamName); setEditing(true); }}>
-                  <h2 className="font-display text-3xl sm:text-4xl font-medium tracking-wider truncate max-w-[160px] text-center" style={{ color: '#E8DFD2', textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}>
-                    {teamName}
-                  </h2>
-                  <Pencil size={14} className="absolute -right-5 opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: '#B98255' }} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ASSIGNED SONG — bottom left */}
-          <div
-            className="hidden md:block absolute pointer-events-auto"
-            style={{
-              bottom: '28%',
-              left: 'max(28%, 100px)',
-              ...getInfoItemStyle(1),
-            }}
-          >
-            <div
-              className="px-6 py-5 rounded-2xl text-center"
-              style={{
-                background: 'rgba(11,10,8,0.7)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(90,81,70,0.2)',
-                boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
-                width: '220px',
-              }}
-            >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Music size={14} style={{ color: '#B98255' }} />
-                <span className="text-[10px] uppercase tracking-[2.5px] font-medium" style={{ color: '#B98255' }}>
-                  Assigned Song
-                </span>
               </div>
-              <p className="font-display text-xl sm:text-2xl font-medium tracking-wide" style={{ color: '#E8DFD2' }}>
-                {assignedSong.title}
-              </p>
-              <p className="text-xs mt-1.5 tracking-wider" style={{ color: '#A9A095' }}>
-                {assignedSong.movie}
-              </p>
-            </div>
-          </div>
 
-          {/* YOUR REEL — bottom right */}
-          <div
-            className="hidden md:block absolute pointer-events-auto"
-            style={{
-              bottom: '28%',
-              right: 'max(28%, 100px)',
-              ...getInfoItemStyle(2),
-            }}
-          >
-            <div
-              className="px-6 py-5 rounded-2xl text-center"
-              style={{
-                background: 'rgba(11,10,8,0.7)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(90,81,70,0.2)',
-                boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
-                width: '220px',
-              }}
-            >
-              <span className="text-[10px] uppercase tracking-[3px] font-medium block mb-3" style={{ color: '#B98255' }}>
-                Your Reel
-              </span>
+              {/* CLUE + REEL — side by side on desktop, stacked on mobile */}
+              <div className="flex flex-col md:flex-row gap-4 md:gap-5 md:items-start">
 
-              {reelSubmitted && reelUrl ? (
-                <div className="flex justify-center">
-                  <div className="overflow-hidden" style={{ width: '100px', aspectRatio: '9/16', borderRadius: '12px', border: '1px solid rgba(90,81,70,0.3)' }}>
-                    <video src={reelUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                  </div>
-                </div>
-              ) : !reelFile ? (
-                <>
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    className="flex items-center gap-2.5 px-5 py-3 rounded-xl transition-all duration-300 mx-auto"
-                    style={{ background: 'rgba(21,18,14,0.8)', border: '1px solid rgba(90,81,70,0.3)', color: '#E8DFD2' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.5)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(90,81,70,0.3)'; }}
+                {/* YOUR CLUE — 60-65% on desktop */}
+                <div style={getInfoItemStyle(1)} className="w-full md:flex-[3]">
+                  <div
+                    className="px-5 py-5 md:px-6 md:py-6 rounded-2xl"
+                    style={{
+                      background: 'rgba(11,10,8,0.75)',
+                      backdropFilter: 'blur(16px)',
+                      border: '1px solid rgba(90,81,70,0.2)',
+                      boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
+                    }}
                   >
-                    <Upload size={16} style={{ color: '#B98255' }} />
-                    <span className="text-sm font-medium tracking-wide">Upload Reel</span>
-                  </button>
-                  <div className="flex items-center justify-center gap-1.5 mt-2.5">
-                    <AlertTriangle size={10} style={{ color: '#A9A095' }} />
-                    <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-14 h-14 rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(90,81,70,0.3)' }}>
-                    <video src={reelPreview!} muted className="w-full h-full object-cover" />
-                  </div>
-                  <button
-                    onClick={handleReelSubmit}
-                    disabled={uploading}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-display font-medium tracking-wide transition-all duration-300"
-                    style={{ background: 'linear-gradient(135deg, #1A1611, #2A2118)', border: '1px solid rgba(185,130,85,0.35)', color: '#E8DFD2' }}
-                    onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = 'rgba(185,130,85,0.6)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.35)'; }}
-                  >
-                    {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit Reel'}
-                  </button>
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle size={10} style={{ color: '#A9A095' }} />
-                    <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <Music size={14} style={{ color: '#B98255' }} />
+                      <span className="text-[10px] uppercase tracking-[2.5px] font-medium" style={{ color: '#B98255' }}>Your Clue</span>
+                    </div>
+                    {assignedClue.headline && (
+                      <p className="font-display text-lg md:text-xl font-medium tracking-wide mb-2 text-center" style={{ color: '#E8DFD2' }}>
+                        {assignedClue.headline}
+                      </p>
+                    )}
+                    {assignedClue.songs && (
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, rgba(185,130,85,0.3))' }} />
+                        <p className="text-xs tracking-wider shrink-0" style={{ color: '#B98255' }}>
+                          {assignedClue.songs}
+                        </p>
+                        <div className="h-px flex-1" style={{ background: 'linear-gradient(to left, transparent, rgba(185,130,85,0.3))' }} />
+                      </div>
+                    )}
+                    {assignedClue.theme && (
+                      <div
+                        className="overflow-y-auto rounded-xl px-3 py-3"
+                        style={{
+                          maxHeight: '28vh',
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid rgba(90,81,70,0.1)',
+                        }}
+                      >
+                        <p className="text-xs md:text-[13px] leading-relaxed tracking-wider whitespace-pre-line text-left" style={{ color: '#A9A095' }}>
+                          {assignedClue.theme}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-              {uploadError && <p className="text-xs mt-2" style={{ color: '#D4836A' }}>{uploadError}</p>}
+
+                {/* YOUR REEL — 35-40% on desktop */}
+                <div style={getInfoItemStyle(2)} className="w-full md:flex-[2]">
+                  <div
+                    className="px-5 py-5 md:px-6 md:py-6 rounded-2xl text-center"
+                    style={{
+                      background: 'rgba(11,10,8,0.75)',
+                      backdropFilter: 'blur(16px)',
+                      border: '1px solid rgba(90,81,70,0.2)',
+                      boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    <span className="text-[10px] uppercase tracking-[3px] font-medium block mb-4" style={{ color: '#B98255' }}>
+                      Your Reel
+                    </span>
+
+                    {reelSubmitted && reelUrl ? (
+                      <div className="flex justify-center">
+                        <div className="overflow-hidden" style={{ width: '100px', aspectRatio: '9/16', borderRadius: '12px', border: '1px solid rgba(90,81,70,0.3)' }}>
+                          <video src={reelUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    ) : !reelFile ? (
+                      <>
+                        <button
+                          onClick={() => fileRef.current?.click()}
+                          className="flex items-center gap-2.5 px-5 py-3 rounded-xl transition-all duration-300 mx-auto"
+                          style={{ background: 'rgba(21,18,14,0.8)', border: '1px solid rgba(90,81,70,0.3)', color: '#E8DFD2' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.5)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(90,81,70,0.3)'; }}
+                        >
+                          <Upload size={16} style={{ color: '#B98255' }} />
+                          <span className="text-sm font-medium tracking-wide">Upload Reel</span>
+                        </button>
+                        <div className="flex items-center justify-center gap-1.5 mt-2.5">
+                          <AlertTriangle size={10} style={{ color: '#A9A095' }} />
+                          <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-14 h-14 rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(90,81,70,0.3)' }}>
+                          <video src={reelPreview!} muted className="w-full h-full object-cover" />
+                        </div>
+                        <button
+                          onClick={handleReelSubmit}
+                          disabled={uploading}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-display font-medium tracking-wide transition-all duration-300"
+                          style={{ background: 'linear-gradient(135deg, #1A1611, #2A2118)', border: '1px solid rgba(185,130,85,0.35)', color: '#E8DFD2' }}
+                          onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = 'rgba(185,130,85,0.6)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.35)'; }}
+                        >
+                          {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit Reel'}
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <AlertTriangle size={10} style={{ color: '#A9A095' }} />
+                          <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
+                        </div>
+                      </div>
+                    )}
+                    {uploadError && <p className="text-xs mt-2" style={{ color: '#D4836A' }}>{uploadError}</p>}
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 

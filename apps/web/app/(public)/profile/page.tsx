@@ -214,7 +214,7 @@ export default function ProfilePage() {
     <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section className="relative overflow-hidden pt-28 pb-12 px-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-black/80 shadow-[0_10px_40px_rgba(0,0,0,0.8)]" />
         <div className="relative z-10 max-w-4xl mx-auto">
           <AnimatedSection>
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
