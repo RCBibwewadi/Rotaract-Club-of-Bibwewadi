@@ -12,14 +12,14 @@ function requireReelPass(request: NextRequest) {
   }
 }
 
-interface ReelSong {
+interface ReelClue {
   id: string;
-  name: string;
-  artist: string;
-  ref?: string;
+  headline: string;
+  songs: string;
+  theme: string;
 }
 
-async function getSongs(): Promise<ReelSong[]> {
+async function getClues(): Promise<ReelClue[]> {
   const { data } = await supabaseAdmin.from('reel_config').select('value').eq('key', 'songs').maybeSingle();
   if (!data?.value) return [];
   try { return JSON.parse(data.value); } catch { return []; }
@@ -39,12 +39,12 @@ export async function GET(request: NextRequest) {
   try {
     requireReelPass(request);
 
-    const [phaseRes, teamsRes, registrationsRes, votesRes, songs] = await Promise.all([
+    const [phaseRes, teamsRes, registrationsRes, votesRes, clues] = await Promise.all([
       supabaseAdmin.from('reel_config').select('*').eq('key', 'phase').maybeSingle(),
       supabaseAdmin.from('reel_the_vibe_teams').select('*').order('created_at'),
       supabaseAdmin.from('reel_the_vibe').select('*, members!inner(full_name, email, avatar_url)').order('created_at'),
       supabaseAdmin.from('reel_the_vibe_votes').select('*').order('created_at'),
-      getSongs(),
+      getClues(),
     ]);
 
     // Count votes per team
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       teams,
       registrations: registrationsRes.data || [],
       total_votes: (votesRes.data || []).length,
-      songs,
+      clues,
     }));
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 401) {
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
   try {
     requireReelPass(request);
 
-    const { action, team_id, registration_id, song, song_id } = await request.json();
+    const { action, team_id, registration_id, song_id, clue, clue_id } = await request.json();
 
     switch (action) {
       case 'open_registrations': {
@@ -106,23 +106,25 @@ export async function POST(request: NextRequest) {
           return json(errorResponse('NOT_ENOUGH', 'Need at least 3 registrations to make teams'), 400);
         }
 
-        const dbSongs = await getSongs();
-        if (!dbSongs.length) {
-          return json(errorResponse('NO_SONGS', 'Add songs before stimulating teams'), 400);
+        const dbClues = await getClues();
+        if (!dbClues.length) {
+          return json(errorResponse('NO_CLUES', 'Add clues before stimulating teams'), 400);
         }
 
         // Shuffle and group into teams of 3
         const shuffled = shuffleArray(registrations);
-        const shuffledSongs = shuffleArray(dbSongs);
+        const shuffledClues = shuffleArray(dbClues);
         const teams = [];
 
         for (let i = 0; i + 2 < shuffled.length; i += 3) {
+          const clueIdx = Math.floor(i / 3) % shuffledClues.length;
+          const assignedClue = shuffledClues[clueIdx];
           teams.push({
             team_name: `Team ${Math.floor(i / 3) + 1}`,
             member1_id: shuffled[i].id,
             member2_id: shuffled[i + 1].id,
             member3_id: shuffled[i + 2].id,
-            assigned_song: shuffledSongs[Math.floor(i / 3) % shuffledSongs.length].name,
+            assigned_song: JSON.stringify({ headline: assignedClue.headline, songs: assignedClue.songs, theme: assignedClue.theme }),
           });
         }
 
@@ -204,22 +206,23 @@ export async function POST(request: NextRequest) {
       }
 
       case 'add_song': {
-        if (!song?.name || !song?.artist) {
-          return json(errorResponse('MISSING_FIELD', 'name and artist required'), 400);
+        if (!clue?.headline || !clue?.songs || !clue?.theme) {
+          return json(errorResponse('MISSING_FIELD', 'headline, songs, and theme required'), 400);
         }
-        const currentSongs = await getSongs();
-        const newSong: ReelSong = { id: crypto.randomUUID(), name: song.name, artist: song.artist, ...(song.ref ? { ref: song.ref } : {}) };
-        currentSongs.push(newSong);
-        await supabaseAdmin.from('reel_config').upsert({ key: 'songs', value: JSON.stringify(currentSongs) }, { onConflict: 'key' });
-        return json(successResponse(newSong, 'Song added'));
+        const currentClues = await getClues();
+        const newClue: ReelClue = { id: crypto.randomUUID(), headline: clue.headline, songs: clue.songs, theme: clue.theme };
+        currentClues.push(newClue);
+        await supabaseAdmin.from('reel_config').upsert({ key: 'songs', value: JSON.stringify(currentClues) }, { onConflict: 'key' });
+        return json(successResponse(newClue, 'Clue added'));
       }
 
       case 'remove_song': {
-        if (!song_id) return json(errorResponse('MISSING_FIELD', 'song_id required'), 400);
-        const currentSongs2 = await getSongs();
-        const filtered = currentSongs2.filter(s => s.id !== song_id);
+        const removeId = clue_id || song_id;
+        if (!removeId) return json(errorResponse('MISSING_FIELD', 'clue_id required'), 400);
+        const currentClues2 = await getClues();
+        const filtered = currentClues2.filter(s => s.id !== removeId);
         await supabaseAdmin.from('reel_config').upsert({ key: 'songs', value: JSON.stringify(filtered) }, { onConflict: 'key' });
-        return json(successResponse(null, 'Song removed'));
+        return json(successResponse(null, 'Clue removed'));
       }
 
       default:
