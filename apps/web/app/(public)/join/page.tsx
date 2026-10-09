@@ -84,7 +84,7 @@ export default function JoinPage() {
     <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="hero" className="min-h-[55vh] flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-transparent to-accent-light/10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-black/80 shadow-[0_10px_40px_rgba(0,0,0,0.8)]" />
         <div className="relative z-10 text-center px-6 max-w-4xl py-20">
           <AnimatedSection>
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">
@@ -101,7 +101,7 @@ export default function JoinPage() {
       </section>
 
       {/* Message + waitlist form */}
-      <section data-rota="notice" className="px-6 md:px-12 lg:px-16 pb-24">
+      <section data-rota="notice" className="px-6 md:px-12 lg:px-16 pb-24 mt-6">
         <div className="max-w-3xl mx-auto w-full">
           <AnimatedSection>
             <div className="p-8 md:p-10 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">

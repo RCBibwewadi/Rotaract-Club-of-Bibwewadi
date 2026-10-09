@@ -12,9 +12,12 @@ export async function GET() {
         event_id,
         event_name,
         event_date,
+        event_time,
         event_place,
+        open_to_all,
         event_strength,
         event_avenue,
+        event_description,
         event_images,
         event_best_member,
         members!event_lead_id (

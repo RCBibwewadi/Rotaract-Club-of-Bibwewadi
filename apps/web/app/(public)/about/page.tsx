@@ -24,7 +24,7 @@ export default function AboutPage() {
     <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="hero" className="min-h-[60vh] flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-black/80 shadow-[0_10px_40px_rgba(0,0,0,0.8)]" />
         <div className="relative z-10 text-center px-6 max-w-4xl py-20">
           <AnimatedSection>
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">About Us</p>

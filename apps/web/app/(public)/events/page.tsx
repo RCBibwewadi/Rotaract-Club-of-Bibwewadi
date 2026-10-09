@@ -1,19 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Calendar, Clock, MapPin, Tag, Users, Award, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, Tag, Users, Award } from 'lucide-react';
 import AnimatedSection from '@/components/AnimatedSection';
-import { GARBA, GARBA_PATH, registrationsClosed } from '@/lib/garba-event';
-
-/**
- * The Garba Workshop takes registrations on its own page. The events table has
- * no column for that, so the card is matched by name and given a CTA.
- */
-const isGarbaWorkshop = (name: string) =>
-  name.trim().toLowerCase() === GARBA.title.toLowerCase();
-
-
 
 interface EventItem {
   event_id: string;
@@ -49,8 +38,10 @@ export default function EventsPage() {
         ]);
         const [upData, pastData] = await Promise.all([upRes.json(), pastRes.json()]);
         if (!cancelled) {
-          setUpcoming(upData.data || []);
-          setPast(pastData.data || []);
+          const up = upData.data || [];
+          const pa = pastData.data || [];
+          setUpcoming(up);
+          setPast(pa);
         }
       } catch { /* silent */ }
       finally { if (!cancelled) setLoading(false); }
@@ -64,7 +55,7 @@ export default function EventsPage() {
     <div className="min-h-screen transition-colors">
       {/* Hero */}
       <section data-rota="hero" className="min-h-[60vh] flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
+       <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/40 to-black/80 shadow-[0_10px_40px_rgba(0,0,0,0.8)]" />
         <div className="relative z-10 text-center px-6 max-w-4xl py-20">
           <AnimatedSection>
             <p className="text-accent font-semibold tracking-wider uppercase text-sm mb-4">
@@ -83,29 +74,24 @@ export default function EventsPage() {
       {/* Events List */}
       <section data-rota="events" className="py-20 px-6 md:px-12 lg:px-16">
         <div className="max-w-5xl mx-auto w-full">
-          {/* Toggle */}
-          <div className="flex gap-2 mb-8">
-            <button
-              onClick={() => setView('upcoming')}
-              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                view === 'upcoming'
-                  ? 'bg-accent text-white'
-                  : 'bg-black/5 dark:bg-white/5 text-dark/50 dark:text-white/50 hover:text-dark dark:hover:text-white'
-              }`}
-            >
-              Upcoming ({upcoming.length})
-            </button>
-            <button
-              onClick={() => setView('past')}
-              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                view === 'past'
-                  ? 'bg-accent text-white'
-                  : 'bg-black/5 dark:bg-white/5 text-dark/50 dark:text-white/50 hover:text-dark dark:hover:text-white'
-              }`}
-            >
-              Past ({past.length})
-            </button>
-          </div>
+          {/* Filter pills */}
+          <AnimatedSection>
+            <div className="flex flex-wrap gap-3 mb-8">
+              {(['upcoming', 'past'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setView(tab)}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                    view === tab
+                      ? 'bg-accent text-white'
+                      : 'bg-black/5 dark:bg-white/5 text-dark/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10'
+                  }`}
+                >
+                  {tab === 'upcoming' ? `Upcoming (${upcoming.length})` : `Past (${past.length})`}
+                </button>
+              ))}
+            </div>
+          </AnimatedSection>
 
           {loading && (
             <div className="flex justify-center py-20">
@@ -204,16 +190,6 @@ export default function EventsPage() {
                           </span>
                         )}
                       </div>
-                      {isGarbaWorkshop(event.event_name) && (
-                        <div className="mt-4">
-                          <Link href={GARBA_PATH}
-                            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-accent hover:bg-accent-light active:bg-accent-light text-white rounded-xl text-sm font-semibold transition-colors duration-300 group/cta">
-                            {registrationsClosed() ? 'View event' : 'Register Now'}
-                            <ArrowRight size={14} className="group-hover/cta:translate-x-1 transition-transform" />
-                          </Link>
-                        </div>
-                      )}
-
                       {event.best_member && (
                         <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
                           <Award size={16} className="text-yellow-500 flex-shrink-0" />
