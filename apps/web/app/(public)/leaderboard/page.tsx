@@ -112,12 +112,12 @@ export default function LeaderboardPage() {
                     >
                       {team.team_name}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    {/* <div className="flex items-center gap-1.5 mt-0.5">
                       <Music size={10} style={{ color: '#B98255' }} />
                       <span className="text-[11px] truncate" style={{ color: '#A9A095' }}>
                         {team.assigned_song}
                       </span>
-                    </div>
+                    </div> */}
                   </div>
 
                   {/* Members */}
