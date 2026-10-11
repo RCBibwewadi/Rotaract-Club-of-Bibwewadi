@@ -440,8 +440,13 @@ export default function TeamRevelPage() {
                           onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = 'rgba(185,130,85,0.6)'; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.35)'; }}
                         >
-                          {uploading ? <Loader2 size={16} className="animate-spin" /> : 'Submit Reel'}
+                          {uploading ? <><Loader2 size={16} className="animate-spin" /> <span>Uploading...</span></> : 'Submit Reel'}
                         </button>
+                        {uploading && (
+                          <p className="text-[10px] tracking-wider animate-pulse" style={{ color: '#B98255' }}>
+                            This might take a while, please don&apos;t close the page
+                          </p>
+                        )}
                         <div className="flex items-center gap-1.5">
                           <AlertTriangle size={10} style={{ color: '#A9A095' }} />
                           <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
