@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Check, Music, Loader2, Lock } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Check, Music, Loader2, Lock, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 
 interface ReelTeam {
@@ -23,9 +23,6 @@ export default function VotingPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [carouselOffset, setCarouselOffset] = useState(0);
-  const touchStartX = useRef(0);
-  const activeVideoRef = useRef<HTMLVideoElement>(null);
-
   const isLoggedIn = token !== null;
 
   // Fetch teams with reels
@@ -46,11 +43,6 @@ export default function VotingPage() {
       })
       .catch(() => {});
   }, [token]);
-
-  // Play active video
-  useEffect(() => {
-    activeVideoRef.current?.play().catch(() => {});
-  }, [activeIdx]);
 
   const activeTeam = teams[activeIdx];
   const otherTeams = teams.filter((_, i) => i !== activeIdx);
@@ -110,15 +102,6 @@ export default function VotingPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  // Touch handlers for mobile swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) navigate(diff > 0 ? 1 : -1);
   };
 
   // Carousel card depth styling
@@ -193,10 +176,9 @@ export default function VotingPage() {
           {/* Active card */}
           <div
             className="relative rounded-2xl overflow-hidden transition-all duration-700"
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
             style={{
               aspectRatio: '9/16',
+              background: 'linear-gradient(170deg, rgba(21,18,14,0.9) 0%, rgba(11,10,8,0.95) 100%)',
               border: isSelected(activeTeam?.team_id)
                 ? '2px solid rgba(185,130,85,0.7)'
                 : '1px solid rgba(90,81,70,0.3)',
@@ -205,23 +187,19 @@ export default function VotingPage() {
                 : '0 20px 60px rgba(0,0,0,0.5)',
             }}
           >
-            {/* Video */}
-            <video
-              ref={activeVideoRef}
-              key={activeTeam?.team_id}
-              src={activeTeam?.reel_video_url}
-              muted
-              loop
-              playsInline
-              autoPlay
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-
-            {/* Grain */}
-            <div
-              className="absolute inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay z-10"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
-            />
+            {/* Center: Watch on Drive button */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 gap-4 px-6">
+              <a
+                href={activeTeam?.reel_video_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 px-6 py-3 rounded-xl transition-all duration-300"
+                style={{ background: 'rgba(185,130,85,0.15)', border: '1px solid rgba(185,130,85,0.4)', color: '#E8DFD2' }}
+              >
+                <ExternalLink size={16} style={{ color: '#B98255' }} />
+                <span className="text-sm font-display font-medium tracking-wide">Watch Reel</span>
+              </a>
+            </div>
 
             {/* Selected badge */}
             {isSelected(activeTeam?.team_id) && (
@@ -238,13 +216,10 @@ export default function VotingPage() {
                 </p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <Music size={12} style={{ color: '#B98255' }} />
-                  <span className="text-xs" style={{ color: '#A9A095' }}>{activeTeam?.assigned_song}</span>
+                  <span className="text-xs" style={{ color: '#A9A095' }}>{(() => { try { return JSON.parse(activeTeam?.assigned_song || '{}').headline; } catch { return activeTeam?.assigned_song; } })()}</span>
                 </div>
               </div>
             </div>
-
-            {/* Instagram-style top gradient */}
-            <div className="absolute inset-x-0 top-0 h-20 z-10" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)' }} />
           </div>
 
           {/* Vote button below active card */}
@@ -327,6 +302,7 @@ export default function VotingPage() {
                   style={{
                     width: '120px',
                     aspectRatio: '9/16',
+                    background: 'linear-gradient(170deg, rgba(21,18,14,0.9) 0%, rgba(11,10,8,0.95) 100%)',
                     ...style,
                     border: isSelected(team.team_id)
                       ? '2px solid rgba(185,130,85,0.6)'
@@ -336,8 +312,6 @@ export default function VotingPage() {
                       : '0 10px 30px rgba(0,0,0,0.4)',
                   }}
                 >
-                  <video src={team.reel_video_url} muted loop playsInline className="absolute inset-0 w-full h-full object-cover" />
-
                   {/* Selected badge */}
                   {isSelected(team.team_id) && (
                     <div className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'rgba(185,130,85,0.9)' }}>
@@ -348,7 +322,7 @@ export default function VotingPage() {
                   {/* Bottom info */}
                   <div className="absolute inset-x-0 bottom-0 z-10 px-2 pb-2 pt-8" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
                     <p className="font-display text-[10px] font-medium tracking-wider truncate" style={{ color: '#E8DFD2' }}>{team.team_name}</p>
-                    <p className="text-[8px] truncate" style={{ color: '#A9A095' }}>{team.assigned_song}</p>
+                    {/* <p className="text-[8px] truncate" style={{ color: '#A9A095' }}>{team.assigned_song}</p> */}
                   </div>
 
                   {/* Hover overlay */}
@@ -370,6 +344,7 @@ export default function VotingPage() {
                 style={{
                   width: '90px',
                   aspectRatio: '9/16',
+                  background: 'linear-gradient(170deg, rgba(21,18,14,0.9) 0%, rgba(11,10,8,0.95) 100%)',
                   border: isSelected(team.team_id)
                     ? '2px solid rgba(185,130,85,0.6)'
                     : '1px solid rgba(90,81,70,0.2)',
@@ -378,7 +353,6 @@ export default function VotingPage() {
                     : '0 8px 20px rgba(0,0,0,0.3)',
                 }}
               >
-                <video src={team.reel_video_url} muted loop playsInline className="absolute inset-0 w-full h-full object-cover" />
                 {isSelected(team.team_id) && (
                   <div className="absolute top-1.5 right-1.5 z-10 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(185,130,85,0.9)' }}>
                     <Check size={8} className="text-white" />

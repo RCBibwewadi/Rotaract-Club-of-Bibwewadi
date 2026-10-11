@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Music, Pencil, Check, Upload, Loader2, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Music, Pencil, Check, Loader2, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 
 function initialsName(players: { name: string }[]) {
@@ -20,15 +20,13 @@ export default function TeamRevelPage() {
   const [editValue, setEditValue] = useState(teamName);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
-  const [reelFile, setReelFile] = useState<File | null>(null);
-  const [reelPreview, setReelPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [driveLink, setDriveLink] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [reelSubmitted, setReelSubmitted] = useState(false);
   const [reelUrl, setReelUrl] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [vh, setVh] = useState(8);
@@ -74,10 +72,6 @@ export default function TeamRevelPage() {
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
-
-  useEffect(() => {
-    return () => { if (reelPreview) URL.revokeObjectURL(reelPreview); };
-  }, [reelPreview]);
 
   const scrollVh = vh > 0 ? scrollY / vh : 0;
 
@@ -141,72 +135,27 @@ export default function TeamRevelPage() {
     setHoveredCard(null);
   }, []);
 
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const handleReelFile = (file: File) => {
-    setUploadError(null);
-    if (!file.type.startsWith('video/')) { setUploadError('Only video files allowed'); return; }
-    if (file.size > 200 * 1024 * 1024) { setUploadError('Video must be under 200MB'); return; }
-    setReelFile(file);
-    setReelPreview(URL.createObjectURL(file));
-  };
-
   const handleReelSubmit = async () => {
-    if (!reelFile || !token || reelSubmitted) return;
-    setUploading(true);
+    if (!driveLink.trim() || !token || reelSubmitted) return;
+    setSubmitting(true);
     setUploadError(null);
-    setUploadProgress(0);
     try {
-      // Step 1: Get signed upload URL
-      const ext = reelFile.name.lastIndexOf('.') >= 0
-        ? reelFile.name.slice(reelFile.name.lastIndexOf('.')).toLowerCase()
-        : '.mp4';
-      const signRes = await fetch(`/api/reel-the-vibe/upload-reel?ext=${encodeURIComponent(ext)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const signData = await signRes.json();
-      if (!signRes.ok) {
-        setUploadError(signData.error?.message || signData.message || 'Failed to get upload URL');
-        return;
-      }
-
-      const { signedUrl, filePath, teamId } = signData.data;
-
-      // Step 2: Upload directly to Supabase Storage with progress
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', signedUrl);
-        xhr.setRequestHeader('Content-Type', reelFile.type);
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Upload failed (${xhr.status})`));
-        };
-        xhr.onerror = () => reject(new Error('Upload failed'));
-        xhr.send(reelFile);
-      });
-
-      // Step 3: Confirm upload
-      const confirmRes = await fetch('/api/reel-the-vibe/upload-reel', {
+      const res = await fetch('/api/reel-the-vibe/upload-reel', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filePath, teamId }),
+        body: JSON.stringify({ driveLink: driveLink.trim() }),
       });
-      const confirmData = await confirmRes.json();
-      if (!confirmRes.ok) {
-        setUploadError(confirmData.error?.message || confirmData.message || 'Upload confirmation failed');
+      const data = await res.json();
+      if (!res.ok) {
+        setUploadError(data.error?.message || data.message || 'Submission failed');
         return;
       }
-
       setReelSubmitted(true);
-      setReelUrl(confirmData.data?.url || reelPreview);
+      setReelUrl(data.data?.url || driveLink.trim());
     } catch {
-      setUploadError('Upload failed. Try again.');
+      setUploadError('Submission failed. Try again.');
     } finally {
-      setUploading(false);
-      setUploadProgress(0);
+      setSubmitting(false);
     }
   };
 
@@ -440,53 +389,47 @@ export default function TeamRevelPage() {
                     </span>
 
                     {reelSubmitted && reelUrl ? (
-                      <div className="flex justify-center">
-                        <div className="overflow-hidden" style={{ width: '100px', aspectRatio: '9/16', borderRadius: '12px', border: '1px solid rgba(90,81,70,0.3)' }}>
-                          <video src={reelUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                        </div>
-                      </div>
-                    ) : !reelFile ? (
-                      <>
-                        <button
-                          onClick={() => fileRef.current?.click()}
-                          className="flex items-center gap-2.5 px-5 py-3 rounded-xl transition-all duration-300 mx-auto"
-                          style={{ background: 'rgba(21,18,14,0.8)', border: '1px solid rgba(90,81,70,0.3)', color: '#E8DFD2' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.5)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(90,81,70,0.3)'; }}
+                      <div className="flex flex-col items-center gap-3">
+                        <Check size={24} style={{ color: '#B98255' }} />
+                        <p className="text-sm font-medium" style={{ color: '#E8DFD2' }}>Reel link submitted!</p>
+                        <a
+                          href={reelUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs underline"
+                          style={{ color: '#B98255' }}
                         >
-                          <Upload size={16} style={{ color: '#B98255' }} />
-                          <span className="text-sm font-medium tracking-wide">Upload Reel</span>
-                        </button>
-                        <div className="flex items-center justify-center gap-1.5 mt-2.5">
-                          <AlertTriangle size={10} style={{ color: '#A9A095' }} />
-                          <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
-                        </div>
-                      </>
+                          View on Google Drive
+                        </a>
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-14 h-14 rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(90,81,70,0.3)' }}>
-                          <video src={reelPreview!} muted className="w-full h-full object-cover" />
-                        </div>
+                        <input
+                          type="url"
+                          placeholder="Paste Google Drive link..."
+                          value={driveLink}
+                          onChange={e => setDriveLink(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                          style={{
+                            background: 'rgba(21,18,14,0.8)',
+                            border: '1px solid rgba(90,81,70,0.3)',
+                            color: '#E8DFD2',
+                            caretColor: '#B98255',
+                          }}
+                        />
                         <button
                           onClick={handleReelSubmit}
-                          disabled={uploading}
+                          disabled={submitting || !driveLink.trim()}
                           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-display font-medium tracking-wide transition-all duration-300"
-                          style={{ background: 'linear-gradient(135deg, #1A1611, #2A2118)', border: '1px solid rgba(185,130,85,0.35)', color: '#E8DFD2' }}
-                          onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = 'rgba(185,130,85,0.6)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.35)'; }}
+                          style={{
+                            background: driveLink.trim() ? 'linear-gradient(135deg, #1A1611, #2A2118)' : 'rgba(255,255,255,0.02)',
+                            border: `1px solid ${driveLink.trim() ? 'rgba(185,130,85,0.35)' : 'rgba(255,255,255,0.05)'}`,
+                            color: driveLink.trim() ? '#E8DFD2' : 'rgba(255,255,255,0.2)',
+                            cursor: !driveLink.trim() ? 'not-allowed' : 'pointer',
+                          }}
                         >
-                          {uploading ? <><Loader2 size={16} className="animate-spin" /> <span>{uploadProgress > 0 ? `${uploadProgress}%` : 'Preparing...'}</span></> : 'Submit Reel'}
+                          {submitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : 'Submit Reel Link'}
                         </button>
-                        {uploading && (
-                          <>
-                            <div className="w-full rounded-full overflow-hidden h-1.5" style={{ background: 'rgba(90,81,70,0.3)' }}>
-                              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, background: 'linear-gradient(90deg, #B98255, #D4A574)' }} />
-                            </div>
-                            <p className="text-[10px] tracking-wider animate-pulse" style={{ color: '#B98255' }}>
-                              This might take a while, please don&apos;t close the page
-                            </p>
-                          </>
-                        )}
                         <div className="flex items-center gap-1.5">
                           <AlertTriangle size={10} style={{ color: '#A9A095' }} />
                           <span className="text-[9px] tracking-wider" style={{ color: '#A9A095' }}>You can submit only once</span>
@@ -501,7 +444,6 @@ export default function TeamRevelPage() {
             </div>
           </div>
 
-          <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleReelFile(f); }} />
         </div>
       </div>
     </div>
