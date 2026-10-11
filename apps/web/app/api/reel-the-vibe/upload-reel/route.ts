@@ -3,15 +3,19 @@ import { supabaseAdmin } from '../../lib/supabase';
 import { json, authenticate, requireApproved, handleError } from '../../lib/middleware';
 import { successResponse, errorResponse } from '@rcb-2.0/shared';
 import crypto from 'crypto';
-import path from 'path';
 
 const ALLOWED_EXTS = ['.mp4', '.webm', '.mov'];
-const MAX_SIZE = 100 * 1024 * 1024; // 100MB
 
-export async function POST(request: NextRequest) {
+// Step 1: Generate a signed upload URL (client uploads directly to Supabase Storage)
+export async function GET(request: NextRequest) {
   try {
     const user = authenticate(request);
     requireApproved(user);
+
+    const ext = request.nextUrl.searchParams.get('ext')?.toLowerCase();
+    if (!ext || !ALLOWED_EXTS.includes(ext)) {
+      return json(errorResponse('INVALID_EXT', `Only ${ALLOWED_EXTS.join(', ')} allowed`), 400);
+    }
 
     // Find user's registration
     const { data: reg } = await supabaseAdmin
@@ -39,50 +43,78 @@ export async function POST(request: NextRequest) {
       return json(errorResponse('ALREADY_UPLOADED', 'Your team has already uploaded a reel'), 409);
     }
 
-    const formData = await request.formData();
-    const file = formData.get('video') as File | null;
+    const filePath = `reel-the-vibe/reels/${crypto.randomUUID()}${ext}`;
 
-    if (!file) {
-      return json(errorResponse('NO_FILE', 'Video file is required'), 400);
-    }
-
-    const ext = path.extname(file.name).toLowerCase();
-
-    if (!ALLOWED_EXTS.includes(ext)) {
-      return json(errorResponse('INVALID_FILE', `Only ${ALLOWED_EXTS.join(', ')} allowed`), 400);
-    }
-
-    if (file.size > MAX_SIZE) {
-      return json(errorResponse('FILE_TOO_LARGE', 'Video must be under 100MB'), 413);
-    }
-
-    // Upload video to Supabase Storage
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = `reel-the-vibe/reels/${crypto.randomUUID()}${ext}`;
-
-    const { error: uploadError } = await supabaseAdmin.storage
+    const { data: signedData, error: signError } = await supabaseAdmin.storage
       .from('media')
-      .upload(filename, buffer, {
-        contentType: file.type,
-        upsert: false,
-      });
+      .createSignedUploadUrl(filePath);
 
-    if (uploadError) {
-      return json(errorResponse('UPLOAD_ERROR', uploadError.message), 500);
+    if (signError || !signedData) {
+      return json(errorResponse('SIGNED_URL_ERROR', signError?.message || 'Failed to create upload URL'), 500);
+    }
+
+    return json(successResponse({
+      signedUrl: signedData.signedUrl,
+      token: signedData.token,
+      path: signedData.path,
+      filePath,
+      teamId: team.team_id,
+    }));
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+// Step 2: Confirm upload — client calls this after uploading directly to Supabase
+export async function POST(request: NextRequest) {
+  try {
+    const user = authenticate(request);
+    requireApproved(user);
+
+    const body = await request.json();
+    const { filePath, teamId } = body;
+
+    if (!filePath || !teamId) {
+      return json(errorResponse('MISSING_FIELDS', 'filePath and teamId are required'), 400);
+    }
+
+    // Verify user belongs to this team
+    const { data: reg } = await supabaseAdmin
+      .from('reel_the_vibe')
+      .select('id')
+      .eq('member_id', user.member_id)
+      .maybeSingle();
+
+    if (!reg) {
+      return json(errorResponse('NOT_REGISTERED', 'You are not registered for Reel the Vibe'), 400);
+    }
+
+    const { data: team } = await supabaseAdmin
+      .from('reel_the_vibe_teams')
+      .select('team_id, reel_video_url')
+      .eq('team_id', teamId)
+      .or(`member1_id.eq.${reg.id},member2_id.eq.${reg.id},member3_id.eq.${reg.id}`)
+      .maybeSingle();
+
+    if (!team) {
+      return json(errorResponse('NO_TEAM', 'You are not assigned to this team'), 400);
+    }
+
+    if (team.reel_video_url) {
+      return json(errorResponse('ALREADY_UPLOADED', 'Your team has already uploaded a reel'), 409);
     }
 
     const { data: urlData } = supabaseAdmin.storage
       .from('media')
-      .getPublicUrl(filename);
+      .getPublicUrl(filePath);
 
-    // Update team with reel URL
     const { error: updateError } = await supabaseAdmin
       .from('reel_the_vibe_teams')
       .update({
         reel_video_url: urlData.publicUrl,
         reel_uploaded_at: new Date().toISOString(),
       })
-      .eq('team_id', team.team_id);
+      .eq('team_id', teamId);
 
     if (updateError) {
       return json(errorResponse('DB_ERROR', updateError.message), 500);

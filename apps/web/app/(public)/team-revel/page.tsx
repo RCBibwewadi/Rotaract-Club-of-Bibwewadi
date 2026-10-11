@@ -141,10 +141,12 @@ export default function TeamRevelPage() {
     setHoveredCard(null);
   }, []);
 
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const handleReelFile = (file: File) => {
     setUploadError(null);
     if (!file.type.startsWith('video/')) { setUploadError('Only video files allowed'); return; }
-    if (file.size > 100 * 1024 * 1024) { setUploadError('Video must be under 100MB'); return; }
+    if (file.size > 200 * 1024 * 1024) { setUploadError('Video must be under 200MB'); return; }
     setReelFile(file);
     setReelPreview(URL.createObjectURL(file));
   };
@@ -153,25 +155,58 @@ export default function TeamRevelPage() {
     if (!reelFile || !token || reelSubmitted) return;
     setUploading(true);
     setUploadError(null);
+    setUploadProgress(0);
     try {
-      const formData = new FormData();
-      formData.append('video', reelFile);
-      const res = await fetch('/api/reel-the-vibe/upload-reel', {
-        method: 'POST',
+      // Step 1: Get signed upload URL
+      const ext = reelFile.name.lastIndexOf('.') >= 0
+        ? reelFile.name.slice(reelFile.name.lastIndexOf('.')).toLowerCase()
+        : '.mp4';
+      const signRes = await fetch(`/api/reel-the-vibe/upload-reel?ext=${encodeURIComponent(ext)}`, {
         headers: { Authorization: `Bearer ${token}` },
-        body: formData,
       });
-      const d = await res.json();
-      if (!res.ok) {
-        setUploadError(d.error?.message || d.message || 'Upload failed');
+      const signData = await signRes.json();
+      if (!signRes.ok) {
+        setUploadError(signData.error?.message || signData.message || 'Failed to get upload URL');
         return;
       }
+
+      const { signedUrl, filePath, teamId } = signData.data;
+
+      // Step 2: Upload directly to Supabase Storage with progress
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', signedUrl);
+        xhr.setRequestHeader('Content-Type', reelFile.type);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload failed (${xhr.status})`));
+        };
+        xhr.onerror = () => reject(new Error('Upload failed'));
+        xhr.send(reelFile);
+      });
+
+      // Step 3: Confirm upload
+      const confirmRes = await fetch('/api/reel-the-vibe/upload-reel', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath, teamId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) {
+        setUploadError(confirmData.error?.message || confirmData.message || 'Upload confirmation failed');
+        return;
+      }
+
       setReelSubmitted(true);
-      setReelUrl(d.data?.url || reelPreview);
+      setReelUrl(confirmData.data?.url || reelPreview);
     } catch {
       setUploadError('Upload failed. Try again.');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -440,12 +475,17 @@ export default function TeamRevelPage() {
                           onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = 'rgba(185,130,85,0.6)'; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(185,130,85,0.35)'; }}
                         >
-                          {uploading ? <><Loader2 size={16} className="animate-spin" /> <span>Uploading...</span></> : 'Submit Reel'}
+                          {uploading ? <><Loader2 size={16} className="animate-spin" /> <span>{uploadProgress > 0 ? `${uploadProgress}%` : 'Preparing...'}</span></> : 'Submit Reel'}
                         </button>
                         {uploading && (
-                          <p className="text-[10px] tracking-wider animate-pulse" style={{ color: '#B98255' }}>
-                            This might take a while, please don&apos;t close the page
-                          </p>
+                          <>
+                            <div className="w-full rounded-full overflow-hidden h-1.5" style={{ background: 'rgba(90,81,70,0.3)' }}>
+                              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, background: 'linear-gradient(90deg, #B98255, #D4A574)' }} />
+                            </div>
+                            <p className="text-[10px] tracking-wider animate-pulse" style={{ color: '#B98255' }}>
+                              This might take a while, please don&apos;t close the page
+                            </p>
+                          </>
                         )}
                         <div className="flex items-center gap-1.5">
                           <AlertTriangle size={10} style={{ color: '#A9A095' }} />
