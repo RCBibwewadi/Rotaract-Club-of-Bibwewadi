@@ -2788,6 +2788,27 @@ function ReelTab() {
         )}
       </div>
 
+      {/* Uploaded Reels */}
+      {(() => {
+        const teamsWithReels = (reelData?.teams || []).filter(t => t.reel_video_url);
+        return teamsWithReels.length > 0 && (
+          <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Video size={18} /> Uploaded Reels ({teamsWithReels.length})</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {teamsWithReels.map(team => (
+                <div key={team.team_id} className="rounded-xl bg-dark-surface border border-white/5 overflow-hidden">
+                  <video src={team.reel_video_url} controls playsInline className="w-full aspect-[9/16] object-cover bg-black" />
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-medium">{team.team_name}</p>
+                    <p className="text-xs text-white/40 mt-0.5">{team.members.map(m => m.members?.full_name?.split(' ')[0]).filter(Boolean).join(', ')}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Registrations */}
       <div className="bg-dark-card rounded-2xl border border-white/5 p-6">
         <h3 className="text-lg font-semibold mb-4">Registrations ({reelData?.registrations.length || 0})</h3>

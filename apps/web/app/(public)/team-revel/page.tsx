@@ -156,9 +156,18 @@ export default function TeamRevelPage() {
     try {
       const formData = new FormData();
       formData.append('video', reelFile);
-      await new Promise(r => setTimeout(r, 2000));
+      const res = await fetch('/api/reel-the-vibe/upload-reel', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setUploadError(d.error?.message || d.message || 'Upload failed');
+        return;
+      }
       setReelSubmitted(true);
-      setReelUrl(reelPreview);
+      setReelUrl(d.data?.url || reelPreview);
     } catch {
       setUploadError('Upload failed. Try again.');
     } finally {
