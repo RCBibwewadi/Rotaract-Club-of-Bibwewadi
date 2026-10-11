@@ -67,9 +67,9 @@ function getReelTheVibeChildren(phase: string): { label: string; path: string }[
     items.push({ label: 'Team', path: '/team-revel' });
   }
 
-  // if (phase === 'voting') {
+  if (phase === 'voting') {
     items.push({ label: 'Voting', path: '/voting' });
-  // }
+  }
 
   return items;
 }
