@@ -154,6 +154,11 @@ export async function POST(request: NextRequest) {
         return json(successResponse(null, 'Voting phase started'));
       }
 
+      case 'declare_winners': {
+        await supabaseAdmin.from('reel_config').upsert({ key: 'phase', value: 'winners' }, { onConflict: 'key' });
+        return json(successResponse(null, 'Winners declared! Voting stopped.'));
+      }
+
       case 'disqualify': {
         if (!team_id) return json(errorResponse('MISSING_FIELD', 'team_id required'), 400);
 

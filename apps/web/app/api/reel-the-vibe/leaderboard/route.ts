@@ -7,7 +7,7 @@ export async function GET() {
     // Get all teams with members and vote counts
     const { data: teams, error } = await supabaseAdmin
       .from('reel_the_vibe_teams')
-      .select('team_id, team_name, assigned_song, member1_id, member2_id, member3_id, status')
+      .select('team_id, team_name, assigned_song, member1_id, member2_id, member3_id, status, reel_video_url')
       .neq('status', 'disqualified')
       .order('created_at');
 
@@ -34,13 +34,14 @@ export async function GET() {
       regMap.set(r.id, m?.full_name || 'Unknown');
     });
 
-    const enriched = (teams || []).map((t: { team_id: string; team_name: string; assigned_song: string; member1_id: string; member2_id: string; member3_id: string }) => {
+    const enriched = (teams || []).map((t: { team_id: string; team_name: string; assigned_song: string; member1_id: string; member2_id: string; member3_id: string; reel_video_url?: string }) => {
       const memberIds = [t.member1_id, t.member2_id, t.member3_id].filter(Boolean);
       const members = memberIds.map(id => regMap.get(id) || 'Unknown');
       return {
         team_id: t.team_id,
         team_name: t.team_name,
         assigned_song: t.assigned_song,
+        reel_video_url: t.reel_video_url,
         members,
         votes: voteMap[t.team_id] || 0,
       };

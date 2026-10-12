@@ -8,7 +8,7 @@ import {
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
   Handshake, HeartHandshake, Globe, Brain, Award,
-  Lock, UserPlus, Shuffle, Ban, Music,
+  Lock, UserPlus, Shuffle, Ban, Music, Trophy,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 
@@ -2559,12 +2559,14 @@ const PHASE_LABELS: Record<string, string> = {
   stimulated: 'Teams Created (Hidden)',
   revealed: 'Teams Revealed',
   voting: 'Voting Active',
+  winners: 'Winners Declared',
 };
 const PHASE_COLORS: Record<string, string> = {
   registration: '#22c55e',
   stimulated: '#eab308',
   revealed: '#3b82f6',
   voting: '#a855f7',
+  winners: '#f59e0b',
 };
 
 function ReelTab() {
@@ -2674,7 +2676,7 @@ function ReelTab() {
             <button onClick={() => fetchReel(storedReelPass)} className="p-1.5 text-white/40 hover:text-white"><RefreshCw size={14} className={reelLoading ? 'animate-spin' : ''} /></button>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <button onClick={() => doReelAction('open_registrations')} disabled={reelAction !== null || phase === 'registration'}
             className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
             style={{ background: phase === 'registration' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'registration' ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.05)' }}>
@@ -2698,6 +2700,12 @@ function ReelTab() {
             style={{ background: phase === 'voting' ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'voting' ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.05)' }}>
             <Award size={18} style={{ color: phase === 'voting' ? '#a855f7' : '#666' }} />
             <span className="text-xs font-medium">{reelAction === 'voting' ? 'Starting...' : 'Voting'}</span>
+          </button>
+          <button onClick={() => setConfirmModal({ message: 'Declare winners? This will stop voting and show results publicly.', onConfirm: () => doReelAction('declare_winners') })} disabled={reelAction !== null || phase !== 'voting'}
+            className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl border transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+            style={{ background: phase === 'winners' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.02)', borderColor: phase === 'winners' ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.05)' }}>
+            <Trophy size={18} style={{ color: phase === 'winners' ? '#f59e0b' : '#666' }} />
+            <span className="text-xs font-medium">{reelAction === 'declare_winners' ? 'Declaring...' : 'Winners'}</span>
           </button>
         </div>
       </div>
