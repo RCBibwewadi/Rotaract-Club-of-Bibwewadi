@@ -64,6 +64,9 @@ function getReelTheVibeChildren(phase: string): { label: string; path: string }[
 
   if (phase === 'revealed' || phase === 'voting') {
     items.push({ label: 'Leaderboard', path: '/leaderboard' });
+  }
+
+  if (phase === 'revealed') {
     items.push({ label: 'Team', path: '/team-revel' });
   }
 
