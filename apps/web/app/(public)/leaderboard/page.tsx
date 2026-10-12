@@ -72,8 +72,9 @@ export default function LeaderboardPage() {
             >
               <span>Rank</span>
               <span>Team</span>
-              <span>Members</span>
-              <span className="text-right">Votes</span>
+              <span className="text-center">Votes</span>
+              <span className="text-right">Members</span>
+             
             </div>
 
             {/* Rows */}
@@ -120,16 +121,9 @@ export default function LeaderboardPage() {
                     </div> */}
                   </div>
 
-                  {/* Members */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Users size={12} style={{ color: '#5A5146' }} className="flex-shrink-0" />
-                    <span className="text-xs truncate" style={{ color: '#A9A095' }}>
-                      {team.members.join(', ')}
-                    </span>
-                  </div>
 
                   {/* Votes */}
-                  <div className="text-right">
+                  <div className="text-center">
                     <span
                       className="font-display text-lg sm:text-xl font-medium"
                       style={{ color: rank === 0 ? '#B98255' : '#E8DFD2' }}
@@ -137,6 +131,15 @@ export default function LeaderboardPage() {
                       {team.votes}
                     </span>
                   </div>
+
+                  {/* Members */}
+                  <div className="flex items-center gap-1.5 justify-end">
+                    <Users size={12} style={{ color: '#5A5146' }} className="flex-shrink-0" />
+                    <span className="text-xs text-right" style={{ color: '#A9A095' }}>
+                      {team.members.map(m => m.split(' ')[0]).join(', ')}
+                    </span>
+                  </div>
+
                 </div>
               );
             })}
