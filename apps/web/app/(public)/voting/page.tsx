@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Check, Music, Loader2, Lock, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Music, Loader2, Lock, ExternalLink, Trophy } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 
 interface ReelTeam {
@@ -10,6 +10,15 @@ interface ReelTeam {
   assigned_song: string;
   reel_video_url: string;
   reel_thumbnail_url?: string;
+}
+
+interface WinnerTeam {
+  team_id: string;
+  team_name: string;
+  assigned_song: string;
+  reel_video_url?: string;
+  members: string[];
+  votes: number;
 }
 
 const MAX_VOTES = 2;
@@ -23,11 +32,38 @@ export default function VotingPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [carouselOffset] = useState(0);
+  const [phase, setPhase] = useState<string | null>(null);
+  const [winners, setWinners] = useState<WinnerTeam[]>([]);
   const isLoggedIn = token !== null;
 
-  // Fetch teams with reels
+  // Fetch phase first
   useEffect(() => {
-    if (!token) return;
+    fetch('/api/reel-the-vibe/state')
+      .then(r => r.json())
+      .then(d => {
+        const p = d.data?.phase || 'registration';
+        setPhase(p);
+        if (p === 'winners') {
+          // Fetch leaderboard for winners
+          fetch('/api/reel-the-vibe/leaderboard')
+            .then(r => r.json())
+            .then(lb => {
+              if (lb.data?.length) {
+                // Winners = teams with highest votes (top vote count)
+                const topVotes = lb.data[0].votes;
+                const winnerTeams = lb.data.filter((t: WinnerTeam) => t.votes === topVotes && t.votes > 0);
+                setWinners(winnerTeams);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch teams with reels (only when voting phase)
+  useEffect(() => {
+    if (!token || phase !== 'voting') return;
     fetch('/api/reel-the-vibe/vote', {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -42,7 +78,7 @@ export default function VotingPage() {
         }
       })
       .catch(() => {});
-  }, [token]);
+  }, [token, phase]);
 
   const activeTeam = teams[activeIdx];
   const otherTeams = teams.filter((_, i) => i !== activeIdx);
@@ -127,12 +163,136 @@ export default function VotingPage() {
   const isSelected = (id: string) => selectedIds.has(id);
   const canSelect = selectedIds.size < MAX_VOTES;
 
+  const parseSongHeadline = (song: string) => {
+    try { return JSON.parse(song || '{}').headline; } catch { return song; }
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <Lock size={32} className="mx-auto mb-4" style={{ color: '#B98255' }} />
           <p style={{ color: '#E8DFD2' }} className="font-display text-xl">Login to vote</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Winners view
+  if (phase === 'winners') {
+    return (
+      <div className="min-h-screen bg-black overflow-hidden">
+        <div className="pt-28 pb-6 text-center relative z-10">
+          <span className="text-[11px] uppercase tracking-[4px] font-medium" style={{ color: '#B98255' }}>
+            Reel the Vibe
+          </span>
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <Trophy size={28} style={{ color: '#f59e0b' }} />
+            <h1 className="font-display text-2xl sm:text-3xl font-medium" style={{ color: '#E8DFD2' }}>
+              Winners
+            </h1>
+            <Trophy size={28} style={{ color: '#f59e0b' }} />
+          </div>
+          <p className="text-sm mt-2 font-mono" style={{ color: '#A9A095' }}>
+            Voting has ended. Congratulations to the winners!
+          </p>
+        </div>
+
+        <div className="relative z-10 px-4 pb-12 max-w-2xl mx-auto space-y-6">
+          {winners.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm" style={{ color: '#A9A095' }}>No winners yet.</p>
+            </div>
+          ) : (
+            winners.map((team, i) => (
+              <div
+                key={team.team_id}
+                className="relative rounded-2xl overflow-hidden"
+                style={{
+                  background: 'linear-gradient(170deg, rgba(21,18,14,0.9) 0%, rgba(11,10,8,0.95) 100%)',
+                  border: '2px solid rgba(245,158,11,0.5)',
+                  boxShadow: '0 0 60px rgba(245,158,11,0.1), 0 20px 60px rgba(0,0,0,0.5)',
+                }}
+              >
+                {/* Winner badge */}
+                <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)' }}>
+                  <Trophy size={14} style={{ color: '#f59e0b' }} />
+                  <span className="text-xs font-display font-medium" style={{ color: '#f59e0b' }}>
+                    {winners.length === 1 ? 'Winner' : `Winner #${i + 1}`}
+                  </span>
+                </div>
+
+                {/* Votes badge */}
+                <div className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-full" style={{ background: 'rgba(185,130,85,0.15)', border: '1px solid rgba(185,130,85,0.3)' }}>
+                  <span className="text-xs font-mono" style={{ color: '#B98255' }}>{team.votes} votes</span>
+                </div>
+
+                {/* Reel preview area */}
+                <div className="pt-16 px-6 pb-6">
+                  <div className="text-center mb-4">
+                    <h2 className="font-display text-xl font-medium tracking-wider" style={{ color: '#E8DFD2' }}>
+                      {team.team_name}
+                    </h2>
+                    <div className="flex items-center justify-center gap-1.5 mt-2">
+                      <Music size={12} style={{ color: '#B98255' }} />
+                      <span className="text-xs" style={{ color: '#A9A095' }}>
+                        {parseSongHeadline(team.assigned_song)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                      {team.members.map((name, j) => (
+                        <span key={j} className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'rgba(185,130,85,0.1)', border: '1px solid rgba(185,130,85,0.2)', color: '#B98255' }}>
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Watch Reel button */}
+                  {team.reel_video_url && (
+                    <div className="flex justify-center mt-4">
+                      <a
+                        href={team.reel_video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2.5 px-8 py-3.5 rounded-xl transition-all duration-300"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(185,130,85,0.15))',
+                          border: '1px solid rgba(245,158,11,0.4)',
+                          color: '#E8DFD2',
+                        }}
+                      >
+                        <ExternalLink size={16} style={{ color: '#f59e0b' }} />
+                        <span className="text-sm font-display font-medium tracking-wide">Watch Winner&apos;s Reel</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (phase === null) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin" style={{ color: '#B98255' }} />
+      </div>
+    );
+  }
+
+  // Not in voting phase
+  if (phase !== 'voting') {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <Music size={32} className="mx-auto mb-4" style={{ color: '#B98255' }} />
+          <p style={{ color: '#E8DFD2' }} className="font-display text-xl">Voting hasn&apos;t started yet</p>
+          <p className="text-sm mt-2" style={{ color: '#A9A095' }}>Check back soon!</p>
         </div>
       </div>
     );
@@ -199,7 +359,7 @@ export default function VotingPage() {
                 </p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <Music size={12} style={{ color: '#B98255' }} />
-                  <span className="text-xs" style={{ color: '#A9A095' }}>{(() => { try { return JSON.parse(activeTeam?.assigned_song || '{}').headline; } catch { return activeTeam?.assigned_song; } })()}</span>
+                  <span className="text-xs" style={{ color: '#A9A095' }}>{parseSongHeadline(activeTeam?.assigned_song)}</span>
                 </div>
               </div>
             </div>
@@ -321,7 +481,7 @@ export default function VotingPage() {
                   {/* Hover description overlay */}
                   <div className="absolute inset-0 z-10 flex items-center justify-center px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'rgba(0,0,0,0.75)' }}>
                     <p className="text-[9px] text-center leading-snug" style={{ color: '#E8DFD2' }}>
-                      {(() => { try { return JSON.parse(team.assigned_song || '{}').headline; } catch { return team.assigned_song; } })()}
+                      {parseSongHeadline(team.assigned_song)}
                     </p>
                   </div>
 
@@ -363,7 +523,7 @@ export default function VotingPage() {
                 {/* Hover description overlay */}
                 <div className="absolute inset-0 z-10 flex items-center justify-center px-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'rgba(0,0,0,0.75)' }}>
                   <p className="text-[8px] text-center leading-snug" style={{ color: '#E8DFD2' }}>
-                    {(() => { try { return JSON.parse(team.assigned_song || '{}').headline; } catch { return team.assigned_song; } })()}
+                    {parseSongHeadline(team.assigned_song)}
                   </p>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 z-10 px-1.5 pb-1.5 pt-6" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
