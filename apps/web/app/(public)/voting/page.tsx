@@ -22,7 +22,7 @@ export default function VotingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [carouselOffset, setCarouselOffset] = useState(0);
+  const [carouselOffset] = useState(0);
   const isLoggedIn = token !== null;
 
   // Fetch teams with reels
@@ -49,7 +49,6 @@ export default function VotingPage() {
 
   // Visible carousel range
   const visibleCount = 5;
-  const maxOffset = Math.max(0, otherTeams.length - visibleCount);
 
   const navigate = useCallback((dir: -1 | 1) => {
     setActiveIdx(prev => {
@@ -157,22 +156,6 @@ export default function VotingPage() {
       {/* Active reel — top center */}
       <div className="relative z-10 flex justify-center px-4 mb-6">
         <div className="relative" style={{ width: 'min(320px, 75vw)' }}>
-          {/* Navigation arrows */}
-          <button
-            onClick={() => navigate(-1)}
-            className="absolute -left-2 top-1/2 -translate-y-1/2 -translate-x-full mr-2 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all hidden sm:flex"
-            style={{ background: 'rgba(11,10,8,0.6)', border: '1px solid rgba(90,81,70,0.3)', color: '#A9A095' }}
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            onClick={() => navigate(1)}
-            className="absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full ml-2 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-all hidden sm:flex"
-            style={{ background: 'rgba(11,10,8,0.6)', border: '1px solid rgba(90,81,70,0.3)', color: '#A9A095' }}
-          >
-            <ChevronRight size={20} />
-          </button>
-
           {/* Active card */}
           <div
             className="relative rounded-2xl overflow-hidden transition-all duration-700"
@@ -223,7 +206,24 @@ export default function VotingPage() {
           </div>
 
           {/* Vote button below active card */}
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex items-center justify-center gap-4">
+            {/* Left arrow */}
+            <button
+              onClick={() => navigate(-1)}
+              disabled={activeIdx === 0}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+              style={{
+                background: 'rgba(11,10,8,0.6)',
+                border: '1px solid rgba(90,81,70,0.3)',
+                color: '#A9A095',
+                opacity: activeIdx === 0 ? 0.3 : 1,
+                cursor: activeIdx === 0 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <ChevronLeft size={20} />
+            </button>
+
+            <div className="flex justify-center">
             {submitted ? (
               <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl" style={{ background: 'rgba(185,130,85,0.1)', border: '1px solid rgba(185,130,85,0.2)' }}>
                 <Check size={14} style={{ color: '#B98255' }} />
@@ -262,6 +262,23 @@ export default function VotingPage() {
                 )}
               </button>
             )}
+            </div>
+
+            {/* Right arrow */}
+            <button
+              onClick={() => navigate(1)}
+              disabled={activeIdx === teams.length - 1}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+              style={{
+                background: 'rgba(11,10,8,0.6)',
+                border: '1px solid rgba(90,81,70,0.3)',
+                color: '#A9A095',
+                opacity: activeIdx === teams.length - 1 ? 0.3 : 1,
+                cursor: activeIdx === teams.length - 1 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
         </div>
       </div>
@@ -270,24 +287,6 @@ export default function VotingPage() {
       <div className="relative z-10 px-4 pb-6">
         {/* Desktop: show with arrows */}
         <div className="hidden sm:block relative max-w-4xl mx-auto">
-          {carouselOffset > 0 && (
-            <button
-              onClick={() => setCarouselOffset(prev => Math.max(0, prev - 1))}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-20 w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(11,10,8,0.7)', border: '1px solid rgba(90,81,70,0.3)', color: '#A9A095' }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-          )}
-          {carouselOffset < maxOffset && (
-            <button
-              onClick={() => setCarouselOffset(prev => Math.min(maxOffset, prev + 1))}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-20 w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(11,10,8,0.7)', border: '1px solid rgba(90,81,70,0.3)', color: '#A9A095' }}
-            >
-              <ChevronRight size={16} />
-            </button>
-          )}
 
           <div className="flex justify-center gap-3" style={{ perspective: '1000px' }}>
             {otherTeams.map((team, idx) => {
@@ -312,21 +311,24 @@ export default function VotingPage() {
                       : '0 10px 30px rgba(0,0,0,0.4)',
                   }}
                 >
-                  {/* Selected badge */}
+                {/* Selected badge */}
                   {isSelected(team.team_id) && (
                     <div className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'rgba(185,130,85,0.9)' }}>
                       <Check size={10} className="text-white" />
                     </div>
                   )}
 
+                  {/* Hover description overlay */}
+                  <div className="absolute inset-0 z-10 flex items-center justify-center px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'rgba(0,0,0,0.75)' }}>
+                    <p className="text-[9px] text-center leading-snug" style={{ color: '#E8DFD2' }}>
+                      {(() => { try { return JSON.parse(team.assigned_song || '{}').headline; } catch { return team.assigned_song; } })()}
+                    </p>
+                  </div>
+
                   {/* Bottom info */}
                   <div className="absolute inset-x-0 bottom-0 z-10 px-2 pb-2 pt-8" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
                     <p className="font-display text-[10px] font-medium tracking-wider truncate" style={{ color: '#E8DFD2' }}>{team.team_name}</p>
-                    {/* <p className="text-[8px] truncate" style={{ color: '#A9A095' }}>{team.assigned_song}</p> */}
                   </div>
-
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors z-5" />
                 </button>
               );
             })}
@@ -340,7 +342,7 @@ export default function VotingPage() {
               <button
                 key={team.team_id}
                 onClick={() => selectTeamFromCarousel(team.team_id)}
-                className="relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-500"
+                className="relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-500 group"
                 style={{
                   width: '90px',
                   aspectRatio: '9/16',
@@ -358,6 +360,12 @@ export default function VotingPage() {
                     <Check size={8} className="text-white" />
                   </div>
                 )}
+                {/* Hover description overlay */}
+                <div className="absolute inset-0 z-10 flex items-center justify-center px-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'rgba(0,0,0,0.75)' }}>
+                  <p className="text-[8px] text-center leading-snug" style={{ color: '#E8DFD2' }}>
+                    {(() => { try { return JSON.parse(team.assigned_song || '{}').headline; } catch { return team.assigned_song; } })()}
+                  </p>
+                </div>
                 <div className="absolute inset-x-0 bottom-0 z-10 px-1.5 pb-1.5 pt-6" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }}>
                   <p className="font-display text-[9px] font-medium truncate" style={{ color: '#E8DFD2' }}>{team.team_name}</p>
                 </div>
