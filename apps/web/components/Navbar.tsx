@@ -8,7 +8,6 @@ import { Sun, Moon, User, LogOut, ChevronDown, Lock } from 'lucide-react';
 import { FaInstagram, FaLinkedinIn, FaFacebookF } from 'react-icons/fa';
 import { useStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
-import ReelTheVibeRegisterModal from './ReelTheVibeRegisterModal';
 
 interface NavItem {
   label: string;
@@ -54,34 +53,6 @@ const navStructure: NavItem[] = [
   },
 ];
 
-// Phase-aware children for Reel the Vibe (built dynamically)
-function getReelTheVibeChildren(phase: string): { label: string; path: string }[] {
-  const items: { label: string; path: string }[] = [];
-
-  if (phase === 'registration') {
-    items.push({ label: 'Register', path: '__register__' });
-  }
-
-  if (phase === 'revealed' || phase === 'voting') {
-    items.push({ label: 'Leaderboard', path: '/leaderboard' });
-  }
-
-  if (phase === 'revealed') {
-    items.push({ label: 'Team', path: '/team-revel' });
-  }
-
-  if (phase === 'voting') {
-    items.push({ label: 'Voting', path: '/voting' });
-  }
-
-  if (phase === 'winners') {
-    items.push({ label: 'Leaderboard', path: '/leaderboard' });
-    items.push({ label: 'Winners', path: '/voting' });
-  }
-
-  return items;
-}
-
 // Easter egg: memberships are closed, so /join is now a notice page. Tapping
 // "Join Us" ten times inside fifteen seconds opens the real registration form.
 const SECRET_JOIN_PATH = '/join/tereliyeopenhai';
@@ -92,19 +63,14 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [reelPhase, setReelPhase] = useState('registration');
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [openSubDropdown, setOpenSubDropdown] = useState<string | null>(null);
   const [expandedMobile, setExpandedMobile] = useState<string | null>(null);
-  const [expandedMobileSub, setExpandedMobileSub] = useState<string | null>(null);
-  const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { isDark, toggleDark } = useStore();
   const { token, member, logout } = useAuthStore();
   const isLoggedIn = token !== null;
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const subDropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const memberInitials = member?.full_name
     ?.split(' ')
@@ -131,27 +97,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
-  // Fetch reel phase
-  useEffect(() => {
-    fetch('/api/reel-the-vibe/state')
-      .then(r => r.json())
-      .then(d => { if (d.data?.phase) setReelPhase(d.data.phase); })
-      .catch(() => {});
-  }, []);
-
-  const reelTheVibeChildren = getReelTheVibeChildren(reelPhase);
-
-  // Build full nav with dynamic Reel the Vibe
-  const fullNavStructure: NavItem[] = [
-    ...navStructure,
-    ...(reelTheVibeChildren.length > 0 ? [{
-      label: 'Reel the Vibe',
-      num: '05',
-      requiresAuth: true,
-      children: reelTheVibeChildren,
-    }] : []),
-  ];
-
   // Apply dark class to html
   useEffect(() => {
     if (isDark) {
@@ -168,7 +113,6 @@ export default function Navbar() {
       prevPathname.current = pathname;
       setMenuOpen(false);
       setOpenDropdown(null);
-      setOpenSubDropdown(null);
     }
   }, [pathname]);
 
@@ -197,7 +141,6 @@ export default function Navbar() {
     }
     setMenuOpen(false);
     setOpenDropdown(null);
-    setOpenSubDropdown(null);
     if (path !== pathname) {
       router.push(path);
     }
@@ -211,18 +154,6 @@ export default function Navbar() {
   const handleDropdownLeave = useCallback(() => {
     dropdownTimeoutRef.current = setTimeout(() => {
       setOpenDropdown(null);
-      setOpenSubDropdown(null);
-    }, 150);
-  }, []);
-
-  const handleSubDropdownEnter = useCallback((label: string) => {
-    if (subDropdownTimeoutRef.current) clearTimeout(subDropdownTimeoutRef.current);
-    setOpenSubDropdown(label);
-  }, []);
-
-  const handleSubDropdownLeave = useCallback(() => {
-    subDropdownTimeoutRef.current = setTimeout(() => {
-      setOpenSubDropdown(null);
     }, 150);
   }, []);
 
@@ -230,31 +161,18 @@ export default function Navbar() {
     return item.children?.some(c => pathname === c.path) || false;
   };
 
-  const isTeamRevel = pathname === '/team-revel';
-
-  // On /team-revel: always visible but transparent, solid bg only near footer
-  const teamRevelAtFooter = isTeamRevel && scrollProgress > 0.85;
-
-  const bg = isTeamRevel
-    ? teamRevelAtFooter
-      ? isDark
-        ? 'bg-dark/80 backdrop-blur-2xl border-b border-white/5'
-        : 'bg-white/80 backdrop-blur-2xl border-b border-black/5'
-      : 'bg-transparent'
-    : scrolled
-      ? isDark
-        ? 'bg-dark/80 backdrop-blur-2xl border-b border-white/5'
-        : 'bg-white/80 backdrop-blur-2xl border-b border-black/5'
-      : 'bg-transparent';
+  const bg = scrolled
+    ? isDark
+      ? 'bg-dark/80 backdrop-blur-2xl border-b border-white/5'
+      : 'bg-white/80 backdrop-blur-2xl border-b border-black/5'
+    : 'bg-transparent';
 
   return (
     <>
       {/* Top bar */}
       <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${bg}`}>
         {/* Scroll progress bar */}
-        {!isTeamRevel && (
-          <div className="absolute bottom-0 left-0 h-[2px] bg-accent/80 transition-none" style={{ width: `${scrollProgress * 100}%` }} />
-        )}
+        <div className="absolute bottom-0 left-0 h-[2px] bg-accent/80 transition-none" style={{ width: `${scrollProgress * 100}%` }} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20 md:h-24">
@@ -273,7 +191,7 @@ export default function Navbar() {
 
             {/* Desktop dropdown links */}
             <div className="hidden lg:flex items-center gap-1">
-              {fullNavStructure.map((item) => {
+              {navStructure.map((item) => {
                 const isLocked = item.requiresAuth && !isLoggedIn;
                 const isOpen = openDropdown === item.label;
                 const active = isChildActive(item);
@@ -316,85 +234,6 @@ export default function Navbar() {
                           : 'bg-white/95 backdrop-blur-xl border-black/10'
                       }`}>
                         {item.children?.map((child) => {
-                          const isReelTheVibe = child.label === 'Reel the Vibe';
-                          const isSubOpen = openSubDropdown === child.label;
-
-                          if (isReelTheVibe) {
-                            return (
-                              <div
-                                key={child.path}
-                                className="relative"
-                                onMouseEnter={() => handleSubDropdownEnter(child.label)}
-                                onMouseLeave={handleSubDropdownLeave}
-                              >
-                                <button
-                                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-all duration-200 ${
-                                    pathname === child.path || reelTheVibeChildren.some(r => pathname === r.path)
-                                      ? 'text-accent bg-accent/10'
-                                      : isDark
-                                        ? 'text-white/70 hover:text-white hover:bg-white/5'
-                                        : 'text-dark/70 hover:text-dark hover:bg-dark/5'
-                                  }`}
-                                >
-                                  {child.label}
-                                  <ChevronDown size={12} className={`transition-transform duration-200 -rotate-90 ${isSubOpen ? '!rotate-0' : ''}`} />
-                                </button>
-
-                                {isSubOpen && (
-                                  <div className={`absolute left-full top-0 ml-1 min-w-[160px] rounded-xl border shadow-xl py-1.5 ${
-                                    isDark
-                                      ? 'bg-dark/95 backdrop-blur-xl border-white/10'
-                                      : 'bg-white/95 backdrop-blur-xl border-black/10'
-                                  }`}>
-                                    {reelTheVibeChildren.map((sub) =>
-                                      sub.path === '__register__' ? (
-                                        <button
-                                          key={sub.path}
-                                          onClick={() => {
-                                            setOpenDropdown(null);
-                                            setOpenSubDropdown(null);
-                                            setRegisterModalOpen(true);
-                                          }}
-                                          className={`block w-full text-left px-4 py-2.5 text-sm font-semibold transition-all duration-200 text-accent hover:bg-accent/10`}
-                                        >
-                                          {sub.label}
-                                        </button>
-                                      ) : (
-                                        <Link
-                                          key={sub.path}
-                                          href={sub.path}
-                                          className={`block px-4 py-2.5 text-sm transition-all duration-200 ${
-                                            pathname === sub.path
-                                              ? 'text-accent bg-accent/10'
-                                              : isDark
-                                                ? 'text-white/70 hover:text-white hover:bg-white/5'
-                                                : 'text-dark/70 hover:text-dark hover:bg-dark/5'
-                                          }`}
-                                        >
-                                          {sub.label}
-                                        </Link>
-                                      )
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          if (child.path === '__register__') {
-                            return (
-                              <button
-                                key={child.path}
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  setRegisterModalOpen(true);
-                                }}
-                                className="block w-full text-left px-4 py-2.5 text-sm font-semibold transition-all duration-200 text-accent hover:bg-accent/10"
-                              >
-                                {child.label}
-                              </button>
-                            );
-                          }
 
                           return (
                             <Link
@@ -530,7 +369,7 @@ export default function Navbar() {
                     </button>
                   </li>
 
-                  {fullNavStructure.map((item, i) => {
+                  {navStructure.map((item, i) => {
                     const isExpanded = expandedMobile === item.label;
                     const isLocked = item.requiresAuth && !isLoggedIn;
                     const active = isChildActive(item);
@@ -548,7 +387,6 @@ export default function Navbar() {
                               return;
                             }
                             setExpandedMobile(isExpanded ? null : item.label);
-                            setExpandedMobileSub(null);
                           }}
                           className={`group flex items-center gap-4 md:gap-6 transition-all duration-300 ${isLocked ? 'opacity-40' : ''}`}
                         >
@@ -567,77 +405,18 @@ export default function Navbar() {
                         {/* Mobile submenu */}
                         <div className={`overflow-hidden transition-all duration-500 ${isExpanded ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
                           <div className="pl-12 md:pl-16 space-y-1">
-                            {item.children?.map((child) => {
-                              const isReelTheVibe = child.label === 'Reel the Vibe';
-                              const isSubExpanded = expandedMobileSub === child.label;
-
-                              if (isReelTheVibe) {
-                                return (
-                                  <div key={child.path}>
-                                    <button
-                                      onClick={() => setExpandedMobileSub(isSubExpanded ? null : child.label)}
-                                      className={`flex items-center gap-3 py-2 text-lg sm:text-xl md:text-2xl transition-all duration-300 ${
-                                        pathname === child.path || reelTheVibeChildren.some(r => pathname === r.path)
-                                          ? 'text-accent'
-                                          : 'text-white/50 hover:text-white/80'
-                                      }`}
-                                    >
-                                      <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                      {child.label}
-                                      <ChevronDown size={16} className={`text-white/30 transition-transform duration-300 ${isSubExpanded ? 'rotate-180' : ''}`} />
-                                    </button>
-
-                                    <div className={`overflow-hidden transition-all duration-400 ${isSubExpanded ? 'max-h-[200px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                                      <div className="pl-8 space-y-1">
-                                        {reelTheVibeChildren.map((sub) => (
-                                          <button
-                                            key={sub.path}
-                                            onClick={() => {
-                                              if (sub.path === '__register__') {
-                                                setMenuOpen(false);
-                                                setRegisterModalOpen(true);
-                                              } else {
-                                                handleNavClick(sub.path);
-                                              }
-                                            }}
-                                            className={`flex items-center gap-3 py-1.5 text-base sm:text-lg transition-all duration-300 ${
-                                              sub.path === '__register__'
-                                                ? 'text-accent font-semibold'
-                                                : pathname === sub.path ? 'text-accent' : 'text-white/40 hover:text-white/70'
-                                            }`}
-                                          >
-                                            <span className="w-1 h-1 rounded-full bg-white/15" />
-                                            {sub.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <button
-                                  key={child.path}
-                                  onClick={() => {
-                                    if (child.path === '__register__') {
-                                      setMenuOpen(false);
-                                      setRegisterModalOpen(true);
-                                    } else {
-                                      handleNavClick(child.path);
-                                    }
-                                  }}
-                                  className={`flex items-center gap-3 py-2 text-lg sm:text-xl md:text-2xl transition-all duration-300 ${
-                                    child.path === '__register__'
-                                      ? 'text-accent font-semibold'
-                                      : pathname === child.path ? 'text-accent' : 'text-white/50 hover:text-white/80'
-                                  }`}
-                                >
-                                  <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                  {child.label}
-                                </button>
-                              );
-                            })}
+                            {item.children?.map((child) => (
+                              <button
+                                key={child.path}
+                                onClick={() => handleNavClick(child.path)}
+                                className={`flex items-center gap-3 py-2 text-lg sm:text-xl md:text-2xl transition-all duration-300 ${
+                                  pathname === child.path ? 'text-accent' : 'text-white/50 hover:text-white/80'
+                                }`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                                {child.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </li>
@@ -651,7 +430,7 @@ export default function Navbar() {
                     className={`mt-6 pt-4 border-t border-white/10 flex items-center gap-4 transition-all duration-700 ${
                       menuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
                     }`}
-                    style={{ transitionDelay: menuOpen ? `${150 + (fullNavStructure.length + 1) * 60}ms` : '0ms' }}
+                    style={{ transitionDelay: menuOpen ? `${150 + (navStructure.length + 1) * 60}ms` : '0ms' }}
                   >
                     <Link href="/profile" onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 text-white/60 hover:text-white transition-colors">
@@ -705,12 +484,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-
-      {/* Reel the Vibe Registration Modal */}
-      <ReelTheVibeRegisterModal
-        open={registerModalOpen}
-        onClose={() => setRegisterModalOpen(false)}
-      />
     </>
   );
 }
