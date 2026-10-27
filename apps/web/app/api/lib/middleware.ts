@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { verifyToken, type JWTPayload } from './auth';
 import { errorResponse } from '@rcb-2.0/shared';
 
@@ -42,6 +43,18 @@ export function requireAdminPassword(request: NextRequest): void {
   } catch (err) {
     if (err instanceof AuthError) throw err;
     throw new AuthError(401, 'Invalid or expired admin token');
+  }
+}
+
+// Second factor for the admin Registrations tab: the X-Registration-Password
+// header must match REGISTERATION_PASSWORD. Fails closed when the env is unset.
+export function requireRegistrationPassword(request: NextRequest): void {
+  const expected = process.env.REGISTERATION_PASSWORD;
+  if (!expected) throw new AuthError(503, 'REGISTERATION_PASSWORD is not configured');
+  const given = request.headers.get('x-registration-password') || '';
+  const digest = (v: string) => crypto.createHash('sha256').update(v).digest();
+  if (!crypto.timingSafeEqual(digest(given), digest(expected))) {
+    throw new AuthError(403, 'Incorrect registrations password');
   }
 }
 

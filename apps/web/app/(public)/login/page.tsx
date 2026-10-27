@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AnimatedSection from '@/components/AnimatedSection';
 import { useAuthStore } from '@/lib/auth-store';
+import { safeNextPath } from '@/lib/registration';
 import { Lock, User, AlertCircle, ArrowRight, X, KeyRound, CheckCircle, Mail } from 'lucide-react';
+
+// Where to go after login, e.g. /login?next=/register from the offer card.
+const nextPath = () => safeNextPath(new URLSearchParams(window.location.search).get('next'));
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -22,7 +26,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (_hydrated && isLoggedIn()) {
-      router.replace('/profile');
+      router.replace(nextPath() || '/profile');
     }
   }, [_hydrated, isLoggedIn, router]);
 
@@ -35,7 +39,7 @@ export default function LoginPage() {
     const result = await login(identifier, password);
 
     if (result.success) {
-      router.push('/directory');
+      router.push(nextPath() || '/directory');
     } else {
       setError(result.message);
     }

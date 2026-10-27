@@ -7,9 +7,10 @@ import {
   CalendarDays, FileText, Sliders, CheckCircle, RefreshCw,
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
-  Handshake, HeartHandshake, Globe, Brain, Award,
+  Handshake, HeartHandshake, Globe, Brain, Award, ClipboardList,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
+import { QUESTION_TYPES, type PublicRegistrationForm, type RegistrationQuestion } from '@/lib/registration';
 
 
 // ── Pillar Icon Options ──────────────────────────────────────
@@ -2517,8 +2518,521 @@ function ReimbursementsTab() {
   );
 }
 
+// ── Registrations Tab ────────────────────────────────────────
+interface AdminRegistrationForm extends Omit<PublicRegistrationForm, 'questions'> {
+  questions: RegistrationQuestion[];
+  is_active: boolean;
+  created_at: string;
+  registrations?: { count: number }[];
+}
+
+interface AdminRegistration {
+  registration_id: string;
+  form_id: string;
+  full_name: string | null;
+  email: string;
+  phone: string | null;
+  answers: { question_id: string; label: string; type: string; value: string | string[] }[];
+  payment_status: 'not_required' | 'submitted' | 'verified';
+  payment_proof_url: string | null;
+  payment_proof_path: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
+type FormDraft = Omit<AdminRegistrationForm, 'form_id' | 'is_active' | 'created_at' | 'registrations'>;
+
+const EMPTY_REG_FORM: FormDraft = {
+  title: '', description: '', offer_title: '', offer_description: '',
+  image_url: null, video_url: null,
+  payment_enabled: false, payment_amount: null, payment_original_amount: null, payment_qr_url: null,
+  auth_required: false, questions: [],
+};
+
+const REG_STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-500/15 text-yellow-400',
+  approved: 'bg-green-500/15 text-green-400',
+  rejected: 'bg-red-500/15 text-red-400',
+  submitted: 'bg-blue-500/15 text-blue-400',
+  verified: 'bg-green-500/15 text-green-400',
+  not_required: 'bg-white/5 text-white/40',
+};
+
+function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="flex items-center justify-between gap-4 text-sm font-medium text-white/70 cursor-pointer">
+      {label}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={() => onChange(!on)}
+        className={`w-12 h-6 rounded-full relative transition-colors flex-shrink-0 ${on ? 'bg-accent' : 'bg-white/20'}`}
+      >
+        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${on ? 'left-6' : 'left-0.5'}`} />
+      </button>
+    </label>
+  );
+}
+
+function RegistrationFormEditor({ initial, onSave, onCancel }: {
+  initial: FormDraft;
+  onSave: (draft: FormDraft) => Promise<string | null>;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState<FormDraft>(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const set = <K extends keyof FormDraft>(key: K, val: FormDraft[K]) => setDraft(d => ({ ...d, [key]: val }));
+  const setQ = (i: number, patch: Partial<RegistrationQuestion>) =>
+    set('questions', draft.questions.map((q, j) => (j === i ? { ...q, ...patch } : q)));
+
+  const inputClass = "w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors text-sm";
+  const labelClass = "block text-sm font-medium text-white/70 mb-2";
+
+  const save = async () => {
+    // Options are edited one per line; tidy them before validating.
+    const clean: FormDraft = {
+      ...draft,
+      questions: draft.questions.map(q => ({
+        ...q,
+        options: ['dropdown', 'checkbox'].includes(q.type)
+          ? (q.options || []).map(o => o.trim()).filter(Boolean)
+          : undefined,
+      })),
+    };
+    if (!clean.title.trim() || !clean.offer_title.trim()) return setError('Form title and offer card title are required');
+    if (clean.questions.some(q => !q.label.trim())) return setError('Every question needs a label');
+    if (clean.questions.some(q => q.options && q.options.length === 0)) return setError('Dropdown and checkbox questions need at least one option');
+    if (clean.payment_enabled && (!clean.payment_amount || !clean.payment_qr_url)) return setError('Payment needs an amount and a QR image');
+    if (clean.payment_original_amount && clean.payment_amount && clean.payment_original_amount <= clean.payment_amount) {
+      return setError('Original price must be higher than the payment amount');
+    }
+    setSaving(true);
+    setError((await onSave(clean)) || '');
+    setSaving(false);
+  };
+
+  const mediaField = (label: string, key: 'image_url' | 'video_url' | 'payment_qr_url', folder: 'avatars' | 'videos') => (
+    <div>
+      <FileUploadField label={label} value={draft[key] || ''} folder={folder} onUploaded={url => set(key, url)} />
+      {draft[key] && (
+        <button type="button" onClick={() => set(key, null)} className="mt-1 text-xs text-white/40 hover:text-red-400">Remove</button>
+      )}
+    </div>
+  );
+
+  const amount = (v: number | null) => (v === null ? '' : String(v));
+  const toAmount = (s: string) => (s === '' ? null : Number(s));
+
+  return (
+    <div className="bg-dark-card rounded-2xl border border-white/5 p-6 space-y-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><label className={labelClass}>Form Title *</label><input value={draft.title} onChange={e => set('title', e.target.value)} className={inputClass} /></div>
+        <div><label className={labelClass}>Offer Card Title *</label><input value={draft.offer_title} onChange={e => set('offer_title', e.target.value)} className={inputClass} /></div>
+        <div><label className={labelClass}>Form Description</label><textarea rows={3} value={draft.description} onChange={e => set('description', e.target.value)} className={`${inputClass} resize-none`} /></div>
+        <div><label className={labelClass}>Offer Card Description</label><textarea rows={3} value={draft.offer_description} onChange={e => set('offer_description', e.target.value)} className={`${inputClass} resize-none`} /></div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {mediaField('Image (offer card + page fallback)', 'image_url', 'avatars')}
+        {mediaField('Video (page background, takes precedence)', 'video_url', 'videos')}
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-white/5 p-4">
+        <Toggle label="Authentication required" on={draft.auth_required} onChange={v => set('auth_required', v)} />
+        <Toggle label="Payment" on={draft.payment_enabled} onChange={v => set('payment_enabled', v)} />
+        {draft.payment_enabled && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div><label className={labelClass}>Amount (₹) *</label><input type="number" min="1" value={amount(draft.payment_amount)} onChange={e => set('payment_amount', toAmount(e.target.value))} className={inputClass} /></div>
+            <div><label className={labelClass}>Original Price (₹, struck through)</label><input type="number" min="1" value={amount(draft.payment_original_amount)} onChange={e => set('payment_original_amount', toAmount(e.target.value))} className={inputClass} /></div>
+            {mediaField('Payment QR *', 'payment_qr_url', 'avatars')}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-white/80">Questions</h4>
+          <button
+            type="button"
+            onClick={() => set('questions', [...draft.questions, { id: crypto.randomUUID(), label: '', type: 'text', required: false }])}
+            className="px-3 py-1.5 bg-accent/20 text-accent rounded-lg text-xs font-medium flex items-center gap-1"
+          >
+            <Plus size={12} /> Add Question
+          </button>
+        </div>
+        <p className="text-xs text-white/30">Email is always asked. Add a text question with “name” in its label to capture names (members&apos; profile names fill in otherwise).</p>
+        {draft.questions.map((q, i) => (
+          <div key={q.id} className="rounded-xl border border-white/5 p-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_auto_auto] gap-3 items-center">
+              <input value={q.label} onChange={e => setQ(i, { label: e.target.value })} placeholder="Question" className={inputClass} />
+              <select value={q.type} onChange={e => setQ(i, { type: e.target.value as RegistrationQuestion['type'] })} className={inputClass}>
+                {QUESTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                <input type="checkbox" checked={q.required} onChange={e => setQ(i, { required: e.target.checked })} className="accent-accent" /> Required
+              </label>
+              <button type="button" onClick={() => set('questions', draft.questions.filter((_, j) => j !== i))} className="p-2 text-white/40 hover:text-red-400" aria-label="Remove question">
+                <Trash2 size={16} />
+              </button>
+            </div>
+            {(q.type === 'dropdown' || q.type === 'checkbox') && (
+              <textarea
+                rows={3}
+                value={(q.options || []).join('\n')}
+                onChange={e => setQ(i, { options: e.target.value.split('\n') })}
+                placeholder="One option per line"
+                className={`${inputClass} resize-none`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {error && <p className="text-red-400 text-sm flex items-center gap-2"><AlertCircle size={14} /> {error}</p>}
+      <div className="flex gap-2">
+        <button onClick={save} disabled={saving} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+          {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />} Save
+        </button>
+        <button onClick={onCancel} className="px-4 py-2 bg-dark-surface text-white/50 rounded-lg text-sm">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// Registrations sit behind a second password (REGISTERATION_PASSWORD), checked
+// by the server on every call via the X-Registration-Password header.
+const REG_PASSWORD_KEY = 'rcb-registration-password';
+
+function regHeaders(): Record<string, string> {
+  return { ...adminHeaders(), 'X-Registration-Password': sessionStorage.getItem(REG_PASSWORD_KEY) || '' };
+}
+
+function RegistrationsTab() {
+  const [authed, setAuthed] = useState(() =>
+    typeof window !== 'undefined' && !!sessionStorage.getItem(REG_PASSWORD_KEY));
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [checking, setChecking] = useState(false);
+
+  const unlock = async () => {
+    setChecking(true);
+    setAuthError('');
+    try {
+      const res = await fetch('/api/admin/registration-forms', {
+        headers: { ...adminHeaders(), 'X-Registration-Password': password },
+      });
+      if (res.ok) {
+        sessionStorage.setItem(REG_PASSWORD_KEY, password);
+        setPassword('');
+        setAuthed(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAuthError(data.message || 'Incorrect registrations password');
+      }
+    } catch { setAuthError('Network error'); }
+    finally { setChecking(false); }
+  };
+
+  const lock = () => { sessionStorage.removeItem(REG_PASSWORD_KEY); setAuthed(false); };
+
+  if (authed) return <RegistrationsPanel onLock={lock} />;
+
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-full max-w-sm space-y-4">
+        <div className="text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-light flex items-center justify-center mx-auto mb-3">
+            <ClipboardList size={24} className="text-white" />
+          </div>
+          <h2 className="font-display text-xl text-white">Registrations</h2>
+          <p className="text-white/50 text-sm mt-1">Enter registrations password</p>
+        </div>
+        {authError && (
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+            <AlertCircle size={14} /> {authError}
+          </div>
+        )}
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && unlock()}
+          placeholder="Registrations password"
+          className="w-full px-4 py-3 rounded-xl bg-dark-surface border border-white/10 text-white placeholder:text-white/30 outline-none focus:border-accent transition-colors"
+        />
+        <button
+          onClick={unlock}
+          disabled={checking || !password}
+          className="w-full py-3 bg-accent hover:bg-accent-light text-white rounded-xl font-semibold transition-colors disabled:opacity-50"
+        >
+          {checking ? 'Checking...' : 'Unlock'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RegistrationsPanel({ onLock }: { onLock: () => void }) {
+  const [view, setView] = useState<'forms' | 'registered'>('forms');
+  const [forms, setForms] = useState<AdminRegistrationForm[]>([]);
+  const [regs, setRegs] = useState<AdminRegistration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | 'new' | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const showMsg = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 4000);
+  };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [f, r] = await Promise.all([
+        fetch('/api/admin/registration-forms', { headers: regHeaders() }).then(res => res.json()),
+        fetch('/api/admin/registrations', { headers: regHeaders() }).then(res => res.json()),
+      ]);
+      if (f.code === 'AUTH_ERROR') return onLock();
+      setForms(f.data || []);
+      setRegs(r.data || []);
+    } catch { showMsg('Failed to load registrations', 'error'); }
+    finally { setLoading(false); }
+  }, [onLock]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [f, r] = await Promise.all([
+          fetch('/api/admin/registration-forms', { headers: regHeaders() }).then(res => res.json()),
+          fetch('/api/admin/registrations', { headers: regHeaders() }).then(res => res.json()),
+        ]);
+        if (!cancelled) { setForms(f.data || []); setRegs(r.data || []); }
+      } catch { if (!cancelled) showMsg('Failed to load registrations', 'error'); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const errText = (data: { message?: string; issues?: { message: string }[] }) =>
+    data.issues?.[0]?.message || data.message || 'Request failed';
+
+  const saveForm = async (id: string | 'new', draft: FormDraft): Promise<string | null> => {
+    try {
+      const res = await fetch(id === 'new' ? '/api/admin/registration-forms' : `/api/admin/registration-forms/${id}`, {
+        method: id === 'new' ? 'POST' : 'PATCH', headers: regHeaders(), body: JSON.stringify(draft),
+      });
+      const data = await res.json();
+      if (!res.ok) return errText(data);
+      showMsg(data.message || 'Saved', 'success');
+      setEditing(null);
+      load();
+      return null;
+    } catch { return 'Network error'; }
+  };
+
+  const setActive = async (id: string, isActive: boolean) => {
+    setBusy(id);
+    try {
+      const res = await fetch(`/api/admin/registration-forms/${id}`, {
+        method: 'PATCH', headers: regHeaders(), body: JSON.stringify({ is_active: isActive }),
+      });
+      const data = await res.json();
+      showMsg(res.ok ? data.message : errText(data), res.ok ? 'success' : 'error');
+      if (res.ok) load();
+    } catch { showMsg('Network error', 'error'); }
+    finally { setBusy(null); }
+  };
+
+  const deleteForm = async (id: string) => {
+    if (!confirm('Delete this form? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`/api/admin/registration-forms/${id}`, { method: 'DELETE', headers: regHeaders() });
+      const data = await res.json();
+      showMsg(res.ok ? data.message : errText(data), res.ok ? 'success' : 'error');
+      if (res.ok) load();
+    } catch { showMsg('Network error', 'error'); }
+  };
+
+  const act = async (id: string, action: 'approve' | 'reject') => {
+    setBusy(id);
+    try {
+      const res = await fetch(`/api/admin/registrations/${id}`, {
+        method: 'PATCH', headers: regHeaders(), body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      showMsg(res.ok ? data.message : errText(data), res.ok ? 'success' : 'error');
+      load();
+    } catch { showMsg('Network error', 'error'); }
+    finally { setBusy(null); }
+  };
+
+  const badge = (value: string, label?: string) => (
+    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${REG_STATUS_COLORS[value] || 'bg-white/5 text-white/50'}`}>
+      {label ? `${label}: ` : ''}{value.replace('_', ' ')}
+    </span>
+  );
+
+  const editingForm = editing && editing !== 'new' ? forms.find(f => f.form_id === editing) : null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-1 bg-dark-card rounded-xl p-1 border border-white/5">
+          {([['forms', 'Forms'], ['registered', 'Registered Users']] as const).map(([id, label]) => (
+            <button key={id} onClick={() => setView(id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${view === id ? 'bg-accent text-white' : 'text-white/50 hover:text-white'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={load} className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5" aria-label="Refresh">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={onLock} className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/5" aria-label="Lock registrations">
+            <LogOut size={16} />
+          </button>
+          {view === 'forms' && !editing && (
+            <button onClick={() => setEditing('new')} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium flex items-center gap-2">
+              <Plus size={14} /> New Form
+            </button>
+          )}
+        </div>
+      </div>
+
+      {message && (
+        <div className={`p-3 rounded-xl text-sm ${message.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+          {message.text}
+        </div>
+      )}
+
+      {view === 'forms' && editing && (
+        <RegistrationFormEditor
+          key={editing}
+          initial={editingForm ? {
+            title: editingForm.title, description: editingForm.description,
+            offer_title: editingForm.offer_title, offer_description: editingForm.offer_description,
+            image_url: editingForm.image_url, video_url: editingForm.video_url,
+            payment_enabled: editingForm.payment_enabled, payment_amount: editingForm.payment_amount,
+            payment_original_amount: editingForm.payment_original_amount, payment_qr_url: editingForm.payment_qr_url,
+            auth_required: editingForm.auth_required, questions: editingForm.questions,
+          } : EMPTY_REG_FORM}
+          onSave={draft => saveForm(editing, draft)}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+
+      {view === 'forms' && !editing && (
+        <div className="space-y-3">
+          {!loading && forms.length === 0 && <p className="text-white/40 text-sm">No registration forms yet.</p>}
+          {forms.map(f => (
+            <div key={f.form_id} className="bg-dark-card rounded-2xl border border-white/5 p-5 flex flex-col md:flex-row md:items-center gap-4">
+              {f.image_url && <img src={f.image_url} alt="" className="w-20 h-14 rounded-lg object-cover flex-shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-semibold truncate">{f.title}</h4>
+                  {f.is_active ? <span className="px-2 py-0.5 rounded-full text-[11px] bg-green-500/15 text-green-400">Live</span>
+                    : <span className="px-2 py-0.5 rounded-full text-[11px] bg-white/5 text-white/40">Disabled</span>}
+                </div>
+                <p className="text-xs text-white/40 mt-1">
+                  {f.registrations?.[0]?.count ?? 0} registrations · {f.questions.length} questions
+                  {f.payment_enabled && ` · ₹${f.payment_amount}`}
+                  {f.auth_required && ' · login required'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Toggle label="Live" on={f.is_active} onChange={v => busy !== f.form_id && setActive(f.form_id, v)} />
+                <button onClick={() => setEditing(f.form_id)} className="p-2 text-white/50 hover:text-white" aria-label="Edit"><Edit3 size={16} /></button>
+                <button onClick={() => deleteForm(f.form_id)} className="p-2 text-white/50 hover:text-red-400" aria-label="Delete"><Trash2 size={16} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view === 'registered' && (
+        <div className="space-y-8">
+          {!loading && regs.length === 0 && <p className="text-white/40 text-sm">No registrations yet.</p>}
+          {forms.filter(f => regs.some(r => r.form_id === f.form_id)).map(f => (
+            <div key={f.form_id} className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                {f.title}
+                <span className="text-xs text-white/40 font-normal">{regs.filter(r => r.form_id === f.form_id).length} registrations</span>
+              </h4>
+              {regs.filter(r => r.form_id === f.form_id).map(r => {
+                const open = expanded === r.registration_id;
+                const isPdf = r.payment_proof_path?.toLowerCase().endsWith('.pdf');
+                return (
+                  <div key={r.registration_id} className="bg-dark-card rounded-2xl border border-white/5">
+                    <button onClick={() => setExpanded(open ? null : r.registration_id)} className="w-full p-4 flex flex-col md:flex-row md:items-center gap-3 text-left">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{r.full_name || r.email}</p>
+                        <p className="text-sm text-white/70 truncate flex items-center gap-1.5"><Mail size={12} className="text-white/40 flex-shrink-0" /> {r.email}</p>
+                        <p className="text-xs text-white/40 truncate">{[r.phone, new Date(r.created_at).toLocaleString('en-IN')].filter(Boolean).join(' · ')}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {badge(r.status)}
+                        {r.payment_status !== 'not_required' && badge(r.payment_status, 'payment')}
+                      </div>
+                    </button>
+                    {open && (
+                      <div className="px-4 pb-4 space-y-4 border-t border-white/5 pt-4">
+                        {r.answers.length > 0 && (
+                          <dl className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {r.answers.map(a => (
+                              <div key={a.question_id}>
+                                <dt className="text-xs text-white/40">{a.label}</dt>
+                                <dd className="text-sm whitespace-pre-line break-words">{(Array.isArray(a.value) ? a.value.join(', ') : a.value) || '—'}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                        {r.payment_proof_url && (
+                          <div>
+                            <p className="text-xs text-white/40 mb-2">Payment proof</p>
+                            {isPdf ? (
+                              <a href={r.payment_proof_url} target="_blank" rel="noreferrer" className="text-accent text-sm flex items-center gap-1"><ExternalLink size={14} /> Open PDF</a>
+                            ) : (
+                              <a href={r.payment_proof_url} target="_blank" rel="noreferrer">
+                                <img src={r.payment_proof_url} alt="Payment proof" className="max-h-64 rounded-lg border border-white/10" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex gap-2 flex-wrap">
+                          {r.status === 'pending' && (
+                            <>
+                              <button disabled={busy === r.registration_id} onClick={() => act(r.registration_id, 'approve')}
+                                className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium flex items-center gap-1 disabled:opacity-50">
+                                <UserCheck size={14} /> Approve
+                              </button>
+                              <button disabled={busy === r.registration_id} onClick={() => act(r.registration_id, 'reject')}
+                                className="px-4 py-2 bg-red-600/80 hover:bg-red-500 text-white rounded-lg text-sm font-medium flex items-center gap-1 disabled:opacity-50">
+                                <UserX size={14} /> Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Admin Dashboard ─────────────────────────────────────
-type Tab = 'members' | 'reimbursements' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings';
+type Tab = 'members' | 'registrations' | 'reimbursements' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings';
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const store = useStore();
@@ -2532,6 +3046,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'members', label: 'Members', icon: <Users size={16} /> },
+    { id: 'registrations', label: 'Registrations', icon: <ClipboardList size={16} /> },
     { id: 'reimbursements', label: 'Reimburse', icon: <IndianRupee size={16} /> },
     { id: 'content', label: 'Content', icon: <FileText size={16} /> },
     { id: 'board', label: 'Board', icon: <Users size={16} /> },
@@ -2593,6 +3108,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <div className="flex-1 min-w-0">
             {/* === MEMBERS TAB === */}
             {tab === 'members' && <MembersTab />}
+
+            {/* === REGISTRATIONS TAB === */}
+            {tab === 'registrations' && <RegistrationsTab />}
 
             {/* === REIMBURSEMENTS TAB === */}
             {tab === 'reimbursements' && <ReimbursementsTab />}

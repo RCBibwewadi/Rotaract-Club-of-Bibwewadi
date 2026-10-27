@@ -8,6 +8,7 @@ import { Sun, Moon, User, LogOut, ChevronDown, Lock } from 'lucide-react';
 import { FaInstagram, FaLinkedinIn, FaFacebookF } from 'react-icons/fa';
 import { useStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
+import { useActiveRegistration } from '@/hooks/useActiveRegistration';
 
 interface NavItem {
   label: string;
@@ -71,6 +72,18 @@ export default function Navbar() {
   const { token, member, logout } = useAuthStore();
   const isLoggedIn = token !== null;
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeForm = useActiveRegistration();
+
+  // Live registration form gets its own menu entry, locked like Exclusive when it needs login.
+  const navItems: NavItem[] = activeForm
+    ? [...navStructure, {
+        label: 'Register',
+        num: '05',
+        requiresAuth: activeForm.auth_required,
+        children: [{ label: activeForm.title, path: '/register' }],
+      }]
+    : navStructure;
+  const loginFor = (item: NavItem) => `/login?next=${encodeURIComponent(item.children?.[0]?.path || '/')}`;
 
   const memberInitials = member?.full_name
     ?.split(' ')
@@ -191,7 +204,7 @@ export default function Navbar() {
 
             {/* Desktop dropdown links */}
             <div className="hidden lg:flex items-center gap-1">
-              {navStructure.map((item) => {
+              {navItems.map((item) => {
                 const isLocked = item.requiresAuth && !isLoggedIn;
                 const isOpen = openDropdown === item.label;
                 const active = isChildActive(item);
@@ -215,7 +228,7 @@ export default function Navbar() {
                       }`}
                       onClick={() => {
                         if (isLocked) {
-                          router.push('/login');
+                          router.push(loginFor(item));
                           return;
                         }
                         setOpenDropdown(isOpen ? null : item.label);
@@ -369,7 +382,7 @@ export default function Navbar() {
                     </button>
                   </li>
 
-                  {navStructure.map((item, i) => {
+                  {navItems.map((item, i) => {
                     const isExpanded = expandedMobile === item.label;
                     const isLocked = item.requiresAuth && !isLoggedIn;
                     const active = isChildActive(item);
@@ -383,7 +396,7 @@ export default function Navbar() {
                         <button
                           onClick={() => {
                             if (isLocked) {
-                              handleNavClick('/login');
+                              handleNavClick(loginFor(item));
                               return;
                             }
                             setExpandedMobile(isExpanded ? null : item.label);
@@ -430,7 +443,7 @@ export default function Navbar() {
                     className={`mt-6 pt-4 border-t border-white/10 flex items-center gap-4 transition-all duration-700 ${
                       menuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
                     }`}
-                    style={{ transitionDelay: menuOpen ? `${150 + (navStructure.length + 1) * 60}ms` : '0ms' }}
+                    style={{ transitionDelay: menuOpen ? `${150 + (navItems.length + 1) * 60}ms` : '0ms' }}
                   >
                     <Link href="/profile" onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 text-white/60 hover:text-white transition-colors">

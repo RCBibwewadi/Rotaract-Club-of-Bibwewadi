@@ -10,6 +10,7 @@ const pillarIconMap: Record<string, React.ElementType> = {
 import { useStore } from '@/lib/store';
 import { useScrollY } from '@/hooks/useScrollY';
 import AnimatedSection from '@/components/AnimatedSection';
+import OfferCard from '@/components/OfferCard';
 
 
 /* Rotary gear — barely visible, slowly spinning */
@@ -55,6 +56,8 @@ export default function HomePage() {
 
   return (
     <div className={`relative ${text}`}>
+      <OfferCard />
+
       {/* ═══════════════════════════════════════
           HERO — The motto introduces everything
           ═══════════════════════════════════════ */}
