@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowRight, CheckCircle, IndianRupee, Upload } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle, Download, IndianRupee, Upload } from 'lucide-react';
 import { useActiveRegistration } from '@/hooks/useActiveRegistration';
 import { useAuthStore } from '@/lib/auth-store';
 import {
@@ -218,7 +218,13 @@ export default function RegisterPage() {
                       </span>
                     </div>
                     {form.payment_qr_url && (
-                      <img src={form.payment_qr_url} alt="Payment QR code" className="w-56 max-w-full mx-auto rounded-xl bg-white p-2" />
+                      <div className="text-center space-y-2">
+                        <img src={form.payment_qr_url} alt="Payment QR code" className="w-56 max-w-full mx-auto rounded-xl bg-white p-2" />
+                        {/* cross-origin Supabase URL ignores <a download>; ?download makes storage send it as attachment */}
+                        <a href={`${form.payment_qr_url}?download`} download className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline">
+                          <Download size={14} /> Download QR
+                        </a>
+                      </div>
                     )}
                     <div>
                       <label htmlFor="payment_proof" className={labelClass}>Payment screenshot *</label>
