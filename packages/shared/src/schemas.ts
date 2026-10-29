@@ -233,3 +233,20 @@ export const EventRegistrationSchema = z.object({
 });
 
 export type EventRegistrationInput = z.infer<typeof EventRegistrationSchema>;
+
+export const TRIVIA_PHASES = ['quick', 'image', 'video', 'song'] as const;
+
+export const TriviaQuestionSchema = z.object({
+  phase: z.enum(TRIVIA_PHASES),
+  position: z.number().int().min(0).default(0),
+  prompt: z.string().trim().min(1, 'Question text is required').max(500),
+  media_url: z.string().trim().max(1000).nullable().optional(),
+  media_start: z.number().int().min(0).nullable().optional(),
+  media_end: z.number().int().min(0).nullable().optional(),
+  options: z.array(z.string().trim().min(1, 'Options cannot be empty').max(200)).length(4),
+  answer_index: z.number().int().min(0).max(3),
+  points: z.number().int().min(0).max(1000).default(10),
+});
+
+export type TriviaQuestionInput = z.infer<typeof TriviaQuestionSchema>;
+export type TriviaPhase = (typeof TRIVIA_PHASES)[number];

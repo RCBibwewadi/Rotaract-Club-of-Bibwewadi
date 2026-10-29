@@ -18,6 +18,7 @@ const baseNavLinks = [
   { label: 'Legacy', path: '/legacy', num: '06' },
   { label: 'Join Us', path: '/join', num: '07' },
   { label: 'Contact', path: '/contact', num: '08' },
+  { label: 'Trivia Proto', path: '/trivia', num: '10' },
 ];
 
 const directoryLink = { label: 'Directory', path: '/directory', num: '09' };
