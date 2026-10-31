@@ -34,7 +34,6 @@ const navStructure: NavItem[] = [
     children: [
       { label: 'FOMO', path: '/projects' },
       { label: 'Events', path: '/events' },
-      { label: 'Trivia Proto', path: '/trivia' },
     ],
   },
   {

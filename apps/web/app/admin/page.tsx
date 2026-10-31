@@ -7,11 +7,10 @@ import {
   CalendarDays, FileText, Sliders, CheckCircle, RefreshCw,
   Clock, UserCheck, UserX, AlertCircle, Search, Shield, Video, History, Phone,
   Mail, ExternalLink, Upload, IndianRupee, X, Cake, ArrowUp, ArrowDown,
-  Handshake, HeartHandshake, Globe, Brain, Award, ClipboardList, Music,
+  Handshake, HeartHandshake, Globe, Brain, Award, ClipboardList,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { QUESTION_TYPES, type PublicRegistrationForm, type RegistrationQuestion } from '@/lib/registration';
-import TriviaAdminTab from '@/components/trivia/TriviaAdminTab';
 
 
 // ── Pillar Icon Options ──────────────────────────────────────
@@ -3033,7 +3032,7 @@ function RegistrationsPanel({ onLock }: { onLock: () => void }) {
 }
 
 // ── Main Admin Dashboard ─────────────────────────────────────
-type Tab = 'members' | 'registrations' | 'reimbursements' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'trivia' | 'settings';
+type Tab = 'members' | 'registrations' | 'reimbursements' | 'content' | 'board' | 'legacy' | 'fomo' | 'events' | 'settings';
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const store = useStore();
@@ -3054,7 +3053,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'legacy', label: 'Legacy', icon: <History size={16} /> },
     { id: 'fomo', label: 'FOMO', icon: <FolderOpen size={16} /> },
     { id: 'events', label: 'Events', icon: <CalendarDays size={16} /> },
-    { id: 'trivia', label: 'Trivia', icon: <Music size={16} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={16} /> },
   ];
 
@@ -3132,8 +3130,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             {/* === EVENTS TAB === */}
             {tab === 'events' && <EventsTab />}
 
-            {/* === TRIVIA TAB === */}
-            {tab === 'trivia' && <TriviaAdminTab headers={adminHeaders} />}
 
             {/* === SETTINGS TAB === */}
             {tab === 'settings' && (
