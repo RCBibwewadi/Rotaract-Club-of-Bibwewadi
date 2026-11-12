@@ -17,6 +17,14 @@
   --color-light-border: #e5e5e5;
   --font-display: 'DM Sans', system-ui, sans-serif;
   --font-sans: 'DM Sans', system-ui, sans-serif;
+
+  /* Mobile app (/app) palette — deep plum text on an off-white canvas, with a
+     pink call to action against the burgundy hero. Website colours unchanged. */
+  --color-app-plum: #2a1118;
+  --color-app-pink: #e8456f;
+  --color-app-pink-dark: #cf3860;
+  --color-app-canvas: #faf7f5;
+  --color-app-panel: #fdfbfa;
 }
 
 /* Dark mode */
