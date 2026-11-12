@@ -6,6 +6,7 @@ import { useResource, ApiError } from '@/lib/app/client';
 import { adminFetch } from '@/lib/app/admin';
 import { Loading, ErrorState, EmptyState } from '@/components/app/Screen';
 import AdminScreen, { NoticeBanner, useNotice } from '@/components/app/AdminScreen';
+import { EVENT_CATEGORIES, DEFAULT_EVENT_CATEGORY } from '@/app/api/lib/events';
 
 interface AdminEvent {
   event_id: string;
@@ -16,6 +17,7 @@ interface AdminEvent {
   event_avenue: string | null;
   event_description: string | null;
   open_to_all: boolean;
+  registration_enabled: boolean;
 }
 
 type EventDraft = Omit<AdminEvent, 'event_id'>;
@@ -25,9 +27,11 @@ const EMPTY_DRAFT: EventDraft = {
   event_date: '',
   event_time: '',
   event_place: '',
-  event_avenue: '',
   event_description: '',
   open_to_all: false,
+  registration_enabled: false,
+  // Events are club service unless the admin says otherwise.
+  event_avenue: DEFAULT_EVENT_CATEGORY,
 };
 
 const fieldClass =
@@ -98,6 +102,18 @@ export default function AdminEventsPage() {
                     {event.event_place}
                   </p>
                 )}
+                <p className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {event.event_avenue && (
+                    <span className="rounded-full bg-app-plum/5 px-2.5 py-1 text-[11px] font-semibold text-app-plum/60">
+                      {event.event_avenue}
+                    </span>
+                  )}
+                  {event.registration_enabled && (
+                    <span className="rounded-full bg-accent/8 px-2.5 py-1 text-[11px] font-semibold text-accent">
+                      Registration open
+                    </span>
+                  )}
+                </p>
               </div>
 
               <div className="flex shrink-0 gap-1.5">
@@ -168,6 +184,7 @@ function EventSheet({
           event_avenue: event.event_avenue ?? '',
           event_description: event.event_description ?? '',
           open_to_all: event.open_to_all,
+          registration_enabled: event.registration_enabled ?? false,
         }
       : EMPTY_DRAFT,
   );
@@ -197,7 +214,6 @@ function EventSheet({
           event_date: draft.event_date || undefined,
           event_time: draft.event_time || undefined,
           event_place: draft.event_place || undefined,
-          event_avenue: draft.event_avenue || undefined,
           event_description: draft.event_description || undefined,
         }),
       });
@@ -277,15 +293,25 @@ function EventSheet({
         />
 
         <label htmlFor="event_avenue" className="mt-4 mb-1.5 block text-sm font-medium text-app-plum/70">
-          Avenue
+          Category
         </label>
-        <input
+        <select
           id="event_avenue"
-          value={draft.event_avenue ?? ''}
+          value={draft.event_avenue ?? DEFAULT_EVENT_CATEGORY}
           onChange={(e) => set('event_avenue', e.target.value)}
-          placeholder="Community Service"
           className={fieldClass}
-        />
+        >
+          {EVENT_CATEGORIES.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+          {/* An event created on the website may carry an older avenue. */}
+          {draft.event_avenue &&
+            !EVENT_CATEGORIES.includes(
+              draft.event_avenue as (typeof EVENT_CATEGORIES)[number],
+            ) && <option value={draft.event_avenue}>{draft.event_avenue}</option>}
+        </select>
 
         <label
           htmlFor="event_description"
@@ -309,6 +335,21 @@ function EventSheet({
             className="h-5 w-5 accent-[#e8456f]"
           />
           <span className="text-[15px] text-app-plum/75">Open to all</span>
+        </label>
+
+        <label className="mt-3 flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
+          <input
+            type="checkbox"
+            checked={draft.registration_enabled}
+            onChange={(e) => set('registration_enabled', e.target.checked)}
+            className="h-5 w-5 accent-[#8b1a2b]"
+          />
+          <span className="text-[15px] text-app-plum/75">
+            Registration enabled
+            <span className="block text-xs text-app-plum/45">
+              Shows a Register button on the event in the app.
+            </span>
+          </span>
         </label>
 
         {error && (
