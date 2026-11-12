@@ -43,17 +43,36 @@ export function installOfflineGuard(win: GuardWindow, onBlocked?: () => void): (
   if (existing[GUARDED]) return existing[GUARDED].uninstall;
 
   const realFetch = win.fetch;
+  const inFlight = new Map<string, Promise<Response>>();
 
   const guarded = ((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : (input as Request).url ?? String(input);
+    const isApi = isApiRequest(url, win.location.origin);
 
     // Read onLine per call: the same wrapper serves both states.
-    if (!win.navigator.onLine && isApiRequest(url, win.location.origin)) {
+    if (!win.navigator.onLine && isApi) {
       onBlocked?.();
       return Promise.resolve(offlineResponse());
     }
 
-    return realFetch(input, init);
+    // Collapse a double-submitted mutation — a double-tapped button, a form
+    // posted twice — into one request, so the server never sees duplicates.
+    // shortcut: only string bodies are keyed; reading a FormData or stream
+    // body to key it would consume it, so those pass straight through.
+    // Upgrade when an upload form starts double-submitting in practice.
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const body = init?.body;
+    const keyable = isApi && method !== 'GET' && (typeof body === 'string' || body == null);
+    if (!keyable) return realFetch(input, init);
+
+    const key = `${method} ${url} ${body ?? ''}`;
+    const pending = inFlight.get(key);
+    if (pending) return pending.then((response) => response.clone());
+
+    const request = realFetch(input, init).finally(() => inFlight.delete(key));
+    inFlight.set(key, request);
+    // Each caller reads its own copy: a Response body can only be read once.
+    return request.then((response) => response.clone());
   }) as GuardedFetch;
 
   const uninstall = () => {
