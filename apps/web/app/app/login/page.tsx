@@ -69,9 +69,9 @@ export default function AppLoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-accent">
+    <div className="relative flex min-h-[100dvh] flex-col bg-accent">
       <div
-        className="flex flex-col items-center px-6 pb-16 text-center"
+        className="flex flex-1 flex-col items-center justify-center px-6 pb-10 text-center"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 3rem)' }}
       >
         <Image
@@ -87,8 +87,8 @@ export default function AppLoginPage() {
       </div>
 
       <div
-        className="min-h-[62vh] rounded-t-[2.5rem] bg-app-panel px-6 pt-8 shadow-[0_-10px_40px_rgba(0,0,0,0.25)]"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)' }}
+        className="shrink-0 rounded-t-[2.5rem] bg-app-panel px-6 pt-8 shadow-[0_-10px_40px_rgba(0,0,0,0.25)]"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)' }}
       >
         <h2 className="text-[26px] font-bold tracking-tight text-app-plum">Welcome back</h2>
         <p className="mt-1 text-sm text-app-plum/55">
@@ -176,7 +176,7 @@ export default function AppLoginPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-app-plum/55">
+        <p className="mt-5 text-center text-sm text-app-plum/55">
           New to the club?{' '}
           <Link href={JOIN_URL} className="font-semibold text-app-pink underline-offset-4 hover:underline">
             Join us

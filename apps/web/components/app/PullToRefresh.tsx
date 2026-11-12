@@ -25,17 +25,27 @@ export function refreshApp() {
  * own — without this there is no way for a member to ask for fresh data short
  * of switching tabs.
  */
-export default function PullToRefresh({ children }: { children: React.ReactNode }) {
+export default function PullToRefresh({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  /** The app shell passes the scroll-area classes; this div is the scroller. */
+  className?: string;
+}) {
+  const scroller = useRef<HTMLDivElement>(null);
   const [pull, setPull] = useState(0);
   // Mirrors startY as state: render needs to know whether the finger is still
   // down, and a ref cannot be read while rendering.
   const [dragging, setDragging] = useState(false);
   const startY = useRef<number | null>(null);
 
+  const atTop = () => (scroller.current?.scrollTop ?? 0) <= 0;
+
   const start = (e: React.TouchEvent) => {
     // Only from the very top, and never inside an open sheet, which does its
     // own scrolling.
-    if (window.scrollY > 0) return;
+    if (!atTop()) return;
     if ((e.target as HTMLElement).closest('[role="dialog"]')) return;
     startY.current = e.touches[0].clientY;
     setDragging(true);
@@ -47,7 +57,7 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
 
     // An upward move, or a page that has scrolled, means this is an ordinary
     // scroll after all.
-    if (distance <= 0 || window.scrollY > 0) {
+    if (distance <= 0 || !atTop()) {
       startY.current = null;
       setDragging(false);
       setPull(0);
@@ -67,7 +77,14 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
   const armed = pull >= THRESHOLD;
 
   return (
-    <div onTouchStart={start} onTouchMove={move} onTouchEnd={end} onTouchCancel={end}>
+    <div
+      ref={scroller}
+      className={className}
+      onTouchStart={start}
+      onTouchMove={move}
+      onTouchEnd={end}
+      onTouchCancel={end}
+    >
       <div
         aria-hidden
         className="pointer-events-none flex items-end justify-center overflow-hidden"
