@@ -9,7 +9,8 @@
  * 'dev' locally, so the updater stays out of the way during development.
  */
 export const BUILD_ID =
-  process.env.VERCEL_GIT_COMMIT_SHA ||
-  process.env.VERCEL_DEPLOYMENT_ID ||
-  process.env.NEXT_DEPLOYMENT_ID ||
-  'dev';
+  (process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.VERCEL_DEPLOYMENT_ID ||
+    process.env.NEXT_DEPLOYMENT_ID ||
+    'dev'
+  ).slice(0, 32); // Next rejects a deploymentId over 32 chars; a git SHA is 40
