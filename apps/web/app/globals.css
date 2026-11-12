@@ -306,6 +306,33 @@ body {
    App shell — no zoom
    ═══════════════════════════════════════════ */
 
+/* The site's scrollbar thumb is burgundy (see ::-webkit-scrollbar above), which
+   inside the app reads as a red bar struck across the screen — under the
+   sideways filter row, beside a list. The app is a phone UI: no scrollbars. */
+.app-shell,
+.app-shell * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.app-shell::-webkit-scrollbar,
+.app-shell *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Named as well as inherited: the sideways category row is the one place a
+   horizontal bar would sit right across the screen. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 /* iOS Safari ignores user-scalable=no. It zooms on a double tap, which
    `manipulation` disables, and on focusing a field whose text is under 16px. */
 .app-shell {
