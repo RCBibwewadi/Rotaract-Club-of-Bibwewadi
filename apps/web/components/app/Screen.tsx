@@ -19,10 +19,10 @@ export function Screen({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const body = (
+  const shell = (
     <>
       <header
-        className="sticky top-0 z-30 border-b border-black/5 bg-app-canvas/90 px-5 pb-3 backdrop-blur-lg"
+        className="shrink-0 border-b border-black/5 bg-app-canvas/90 px-5 pb-3 backdrop-blur-lg"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
       >
         <div className="flex items-end justify-between gap-2">
@@ -44,17 +44,21 @@ export function Screen({
         </div>
       </header>
 
-      {/* 5.5rem clears the fixed bottom nav plus the home indicator. */}
-      <main className="px-4 pt-4" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
-        {children}
-      </main>
+      <PullToRefresh className="flex-1 overflow-y-auto overscroll-contain">
+        {/* 5.5rem clears the fixed bottom nav plus the home indicator. */}
+        <main className="px-4 pt-4" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
+          {children}
+        </main>
+      </PullToRefresh>
     </>
   );
 
+  // The shell is exactly one viewport tall and never scrolls: the title bar
+  // and the tab bar are outside the scroll area, so neither can be scrolled
+  // away. `sticky` cannot be trusted here — iOS repaints it late inside a
+  // standalone PWA, and any ancestor that scrolls or clips breaks it outright.
   return (
-    <div className="min-h-screen bg-app-canvas">
-      <PullToRefresh>{body}</PullToRefresh>
-    </div>
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-app-canvas">{shell}</div>
   );
 }
 

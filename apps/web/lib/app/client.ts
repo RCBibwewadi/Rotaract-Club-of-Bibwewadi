@@ -29,7 +29,10 @@ export async function appFetch<T>(path: string, init: RequestInit = {}): Promise
     res = await fetch(path, {
       ...init,
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        // FormData sets its own multipart boundary; naming a type here breaks it.
+        ...(init.body && !(init.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init.headers,
       },

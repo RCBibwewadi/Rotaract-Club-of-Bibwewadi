@@ -174,7 +174,9 @@ html {
 }
 
 body {
-  overflow-x: hidden;
+  /* clip, not hidden: `hidden` turns body into a scroll container, and
+     `position: sticky` headers inside it then never stick. */
+  overflow-x: clip;
 }
 
 /* ═══════════════════════════════════════════
