@@ -2,12 +2,13 @@
 
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, RefreshCw, Send } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Pencil, RefreshCw, Send, X } from 'lucide-react';
 import { appFetch, timeAgo, useResource, ApiError } from '@/lib/app/client';
 import type { Idea, IdeaComment } from '@/lib/app/types';
 import { Loading, ErrorState, Avatar } from '@/components/app/Screen';
 import PullToRefresh, { refreshApp } from '@/components/app/PullToRefresh';
 import { VoteControls } from '@/components/app/IdeaCard';
+import { useAuthStore } from '@/lib/auth-store';
 
 export default function IdeaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -15,6 +16,32 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
 
   const idea = useResource<Idea>(`/api/ideas/${id}`);
   const comments = useResource<IdeaComment[]>(`/api/ideas/${id}/comments`);
+
+  const myId = useAuthStore((state) => state.member?.member_id);
+  const isAuthor = !!myId && idea.data?.author?.member_id === myId;
+
+  // null = not editing; a string is the description being rewritten.
+  const [edit, setEdit] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const saveDescription = async () => {
+    if (edit === null || savingEdit) return;
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      const updated = await appFetch<Idea>(`/api/ideas/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ description: edit }),
+      });
+      idea.set(updated);
+      setEdit(null);
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : 'Could not save your changes');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
@@ -43,7 +70,7 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
   };
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-app-canvas">
+    <div className="flex h-[100svh] flex-col overflow-hidden bg-app-canvas">
       <header
         className="shrink-0 flex items-center gap-3 border-b border-black/5 bg-app-canvas/90 px-4 pb-3 backdrop-blur-lg"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
@@ -56,7 +83,7 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
         >
           <ArrowLeft size={22} aria-hidden />
         </button>
-        <span className="flex-1 text-base font-semibold text-app-plum">Idea</span>
+        <span className="flex-1 text-base font-semibold text-app-plum">IdeaVerse</span>
         <button
           type="button"
           onClick={refreshApp}
@@ -87,16 +114,71 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
                     </p>
                     <p className="text-xs text-app-plum/40">{timeAgo(idea.data.created_at)}</p>
                   </div>
-                  <span className="rounded-full bg-accent/8 px-2.5 py-1 text-[11px] font-semibold text-accent">
-                    {idea.data.tag}
-                  </span>
                 </div>
 
                 <h1 className="mt-4 text-xl leading-snug font-bold text-app-plum">{idea.data.title}</h1>
-                {idea.data.description && (
-                  <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line text-app-plum/70">
-                    {idea.data.description}
-                  </p>
+
+                {edit !== null ? (
+                  <>
+                    <label htmlFor="description" className="sr-only">
+                      Description
+                    </label>
+                    <textarea
+                      id="description"
+                      rows={6}
+                      value={edit}
+                      maxLength={5000}
+                      onChange={(e) => setEdit(e.target.value)}
+                      placeholder="What is the idea, who does it help, and what would it take?"
+                      className="mt-3 w-full resize-none rounded-2xl border border-app-plum/10 bg-app-canvas px-4 py-3 text-[15px] text-app-plum outline-none focus:border-app-pink"
+                    />
+                    {editError && (
+                      <p role="alert" className="mt-2 text-sm text-accent">
+                        {editError}
+                      </p>
+                    )}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={saveDescription}
+                        disabled={savingEdit}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-accent transition-colors hover:bg-accent-light py-3 text-sm font-semibold text-white disabled:opacity-60"
+                      >
+                        {savingEdit ? (
+                          <Loader2 size={15} className="animate-spin" aria-hidden />
+                        ) : (
+                          <Check size={15} aria-hidden />
+                        )}
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEdit(null)}
+                        className="flex items-center justify-center gap-1.5 rounded-2xl bg-app-plum/5 px-5 text-sm font-medium text-app-plum/60"
+                      >
+                        <X size={14} aria-hidden />
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {idea.data.description && (
+                      <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line text-app-plum/70">
+                        {idea.data.description}
+                      </p>
+                    )}
+                    {isAuthor && (
+                      <button
+                        type="button"
+                        onClick={() => setEdit(idea.data?.description ?? '')}
+                        className="mt-3 flex items-center gap-1.5 rounded-full bg-app-plum/5 px-3.5 py-2 text-sm font-medium text-app-plum/60"
+                      >
+                        <Pencil size={14} aria-hidden />
+                        {idea.data.description ? 'Edit description' : 'Add a description'}
+                      </button>
+                    )}
+                  </>
                 )}
                 {idea.data.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -177,7 +259,7 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
               type="submit"
               disabled={posting || !draft.trim()}
               aria-label="Post comment"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-app-pink text-white disabled:opacity-40"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent transition-colors hover:bg-accent-light text-white disabled:opacity-40"
             >
               {posting ? (
                 <Loader2 size={18} className="animate-spin" aria-hidden />

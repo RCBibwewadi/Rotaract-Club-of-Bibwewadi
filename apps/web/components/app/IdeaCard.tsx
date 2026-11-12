@@ -45,7 +45,7 @@ export function VoteControls({
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-full bg-app-plum/5 px-1 py-1">
+    <div className="flex items-center gap-1 rounded-full border border-accent bg-app-plum/5 px-1 py-1">
       <button
         type="button"
         onClick={() => cast(1)}
@@ -83,7 +83,7 @@ export default function IdeaCard({
   onChange: (next: Pick<Idea, 'score' | 'my_vote'>) => void;
 }) {
   return (
-    <article className="rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+    <article className="rounded-2xl border border-accent bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
       <div className="flex items-center gap-2.5">
         <Avatar name={idea.author?.full_name ?? 'Member'} src={idea.author?.avatar_url} size={32} />
         <div className="min-w-0 flex-1">
@@ -92,15 +92,12 @@ export default function IdeaCard({
           </p>
           <p className="text-xs text-app-plum/40">{timeAgo(idea.created_at)}</p>
         </div>
-        <span className="rounded-full bg-accent/8 px-2.5 py-1 text-[11px] font-semibold text-accent">
-          {idea.tag}
-        </span>
       </div>
 
       <Link href={`/app/ideas/${idea.idea_id}`} className="mt-3 block">
         <h2 className="text-[17px] leading-snug font-bold text-app-plum">{idea.title}</h2>
         {idea.description && (
-          <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-app-plum/60">
+          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-app-plum/60">
             {idea.description}
           </p>
         )}
@@ -119,7 +116,7 @@ export default function IdeaCard({
         <VoteControls idea={idea} onChange={onChange} />
         <Link
           href={`/app/ideas/${idea.idea_id}`}
-          className="flex items-center gap-1.5 rounded-full bg-app-plum/5 px-3 py-2 text-sm font-medium text-app-plum/60"
+          className="flex items-center gap-1.5 rounded-full border border-accent bg-app-plum/5 px-3 py-2 text-sm font-medium text-app-plum/60"
         >
           <MessageSquare size={16} aria-hidden />
           {idea.comment_count}

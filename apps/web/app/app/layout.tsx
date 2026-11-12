@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import AppGate from '@/components/app/AppGate';
 import AppUpdater from '@/components/app/AppUpdater';
 
@@ -9,9 +9,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// The app is a native-feeling shell, not a document: pinch and double-tap
+// zoom would drag its fixed chrome around. The website keeps normal zoom.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-app-canvas text-app-plum">
+    <div className="app-shell bg-app-canvas text-app-plum">
       <AppUpdater />
       <AppGate>{children}</AppGate>
     </div>

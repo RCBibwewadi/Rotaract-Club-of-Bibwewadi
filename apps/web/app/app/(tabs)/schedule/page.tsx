@@ -24,7 +24,10 @@ export default function SchedulePage() {
   const events = useResource<AppEvent[]>(`/api/events/${tab}`);
 
   return (
-    <Screen title="Schedule" subtitle="Club events and projects">
+    <Screen
+      title="The Calendar"
+      subtitle="Stay in sync with everything happening around us."
+    >
       <div
         role="tablist"
         aria-label="Event timeframe"
