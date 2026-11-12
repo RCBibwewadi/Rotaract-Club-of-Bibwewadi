@@ -3,6 +3,8 @@
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { initials } from '@/lib/app/format';
 import PullToRefresh, { refreshApp } from './PullToRefresh';
+import AppOffline from './AppOffline';
+import { useOffline } from '@/lib/app/offline';
 
 /**
  * Page chrome for every tab: a title bar that clears the status bar, and a
@@ -19,6 +21,8 @@ export function Screen({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const offline = useOffline();
+
   const shell = (
     <>
       <header
@@ -45,20 +49,28 @@ export function Screen({
       </header>
 
       <PullToRefresh className="flex-1 overflow-y-auto overscroll-contain">
-        {/* 5.5rem clears the fixed bottom nav plus the home indicator. */}
-        <main className="px-4 pt-4" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
-          {children}
-        </main>
+        {offline ? (
+          <AppOffline />
+        ) : (
+          /* 5.5rem clears the fixed bottom nav plus the home indicator. */
+          <main className="px-4 pt-4" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
+            {children}
+          </main>
+        )}
       </PullToRefresh>
     </>
   );
 
+  // svh, not dvh: in a browser tab dvh re-measures as the URL bar collapses,
+  // which slides the whole shell mid-scroll. svh is a fixed number, and in the
+  // installed app (no browser chrome) the two are identical anyway.
+  //
   // The shell is exactly one viewport tall and never scrolls: the title bar
   // and the tab bar are outside the scroll area, so neither can be scrolled
   // away. `sticky` cannot be trusted here — iOS repaints it late inside a
   // standalone PWA, and any ancestor that scrolls or clips breaks it outright.
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-app-canvas">{shell}</div>
+    <div className="flex h-[100svh] flex-col overflow-hidden bg-app-canvas">{shell}</div>
   );
 }
 

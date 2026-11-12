@@ -7,27 +7,12 @@ import {
   requireAdminPassword,
   handleError,
 } from '../lib/middleware';
+import {
+  ANNOUNCEMENT_SELECT,
+  CreateAnnouncementSchema,
+} from '../lib/announcements';
 import { successResponse, errorResponse, fromZodError } from '@rcb-2.0/shared';
-import { z, ZodError } from 'zod';
-
-const CreateAnnouncementSchema = z.object({
-  title: z.string().trim().min(1, 'Title is required').max(200),
-  body: z.string().trim().max(5000).default(''),
-  image_url: z.string().url().max(1000).nullable().optional(),
-});
-
-const SELECT = `
-  announcement_id,
-  title,
-  body,
-  image_url,
-  created_at,
-  members (
-    member_id,
-    full_name,
-    avatar_url
-  )
-`;
+import { ZodError } from 'zod';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('announcements')
-      .select(SELECT)
+      .select(ANNOUNCEMENT_SELECT)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -75,7 +60,7 @@ export async function POST(request: NextRequest) {
         body: body.body,
         image_url: body.image_url || null,
       })
-      .select(SELECT)
+      .select(ANNOUNCEMENT_SELECT)
       .single();
 
     if (error) {

@@ -43,7 +43,7 @@ export default function NewIdeaPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-app-canvas">
+    <div className="flex h-[100svh] flex-col overflow-hidden bg-app-canvas">
       <header
         className="shrink-0 flex items-center gap-3 border-b border-black/5 bg-app-canvas/90 px-4 pb-3 backdrop-blur-lg"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
@@ -90,27 +90,6 @@ export default function NewIdeaPage() {
           className={`${fieldClass} resize-none`}
         />
 
-        <fieldset className="mt-5">
-          <legend className="mb-2 text-sm font-medium text-app-plum/70">Topic</legend>
-          <div className="flex flex-wrap gap-2">
-            {IDEA_TAGS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setTag(option)}
-                aria-pressed={tag === option}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  tag === option
-                    ? 'bg-app-plum text-white'
-                    : 'bg-white text-app-plum/60 border border-app-plum/10'
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
         {error && (
           <p role="alert" className="mt-5 text-sm text-accent">
             {error}
@@ -120,7 +99,7 @@ export default function NewIdeaPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-pink py-4 text-base font-semibold text-white disabled:opacity-60"
+          className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-accent transition-colors hover:bg-accent-light py-4 text-base font-semibold text-white disabled:opacity-60"
         >
           {submitting && <Loader2 size={18} className="animate-spin" aria-hidden />}
           {submitting ? 'Posting' : 'Post idea'}

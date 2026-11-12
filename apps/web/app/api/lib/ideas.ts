@@ -17,6 +17,11 @@ export const CreateIdeaSchema = z.object({
   tag: z.enum(IDEA_TAGS).default('General'),
 });
 
+/** Only the body text is editable; the title and topic stay as posted. */
+export const UpdateIdeaSchema = z.object({
+  description: z.string().trim().max(5000),
+});
+
 export const VoteSchema = z.object({
   // 0 clears the member's vote; the app sends it when a vote is tapped twice.
   value: z.union([z.literal(-1), z.literal(0), z.literal(1)]),

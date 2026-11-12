@@ -8,7 +8,10 @@ export default function AnnouncementsPage() {
   const notices = useResource<Announcement[]>('/api/announcements');
 
   return (
-    <Screen title="Announcements" subtitle="Notices from the board">
+    <Screen
+      title="The Bulletin"
+      subtitle="Important updates straight from the board."
+    >
       {notices.loading && <Loading label="Loading announcements" />}
       {notices.error && <ErrorState message={notices.error} onRetry={notices.reload} />}
 

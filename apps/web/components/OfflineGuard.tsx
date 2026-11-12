@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { usePathname } from 'next/navigation';
 import { WifiOff } from 'lucide-react';
 import { installOfflineGuard } from '@/lib/offline';
 
@@ -15,6 +16,8 @@ function subscribeToConnection(onChange: () => void) {
 
 export default function OfflineGuard() {
   const blockedWhileOffline = useRef(false);
+  // The app has its own offline screen, which keeps its chrome usable.
+  const inApp = usePathname()?.startsWith('/app') ?? false;
 
   const offline = useSyncExternalStore(
     subscribeToConnection,
@@ -43,7 +46,7 @@ export default function OfflineGuard() {
     };
   }, []);
 
-  if (!offline) return null;
+  if (!offline || inApp) return null;
 
   return (
     <div

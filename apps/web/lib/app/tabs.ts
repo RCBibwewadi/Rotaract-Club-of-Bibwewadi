@@ -22,10 +22,10 @@ export interface Tab {
 
 /** The six bottom-bar destinations, in display order. */
 export const TABS: Tab[] = [
-  { href: '/app/ideas', label: 'Ideas', icon: Lightbulb },
-  { href: '/app/schedule', label: 'Schedule', icon: CalendarDays },
-  { href: '/app/announcements', label: 'Announcements', short: 'Notices', icon: Megaphone },
-  { href: '/app/referrals', label: 'Referrals', icon: Handshake },
+  { href: '/app/ideas', label: 'IdeaVerse', icon: Lightbulb },
+  { href: '/app/schedule', label: 'The Calendar', short: 'Calendar', icon: CalendarDays },
+  { href: '/app/announcements', label: 'The Bulletin', short: 'Bulletin', icon: Megaphone },
+  { href: '/app/referrals', label: 'The Connect', short: 'Connect', icon: Handshake },
   { href: '/app/members', label: 'Members', icon: Users },
   { href: '/app/profile', label: 'Profile', icon: CircleUser },
 ];
