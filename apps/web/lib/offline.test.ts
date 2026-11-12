@@ -130,6 +130,79 @@ async function main() {
     assert.equal(win.fetch, win.realFetch, 'uninstall restores the original fetch');
   }
 
+  // identical in-flight POSTs collapse into one network call
+  {
+    const win = fakeWindow({ online: true, hang: true });
+    installOfflineGuard(win);
+    const a = win.fetch('https://rcb.test/api/registrations', {
+      method: 'POST',
+      body: '{"id":1}',
+    });
+    const b = win.fetch('https://rcb.test/api/registrations', {
+      method: 'POST',
+      body: '{"id":1}',
+    });
+    assert.equal(win.realFetchCalls.length, 1, 'double submit hits the network once');
+
+    // Review Focus 2: a body can only be read once, so EVERY caller needs its
+    // own clone. Three callers, because with two a bug that hands one of them
+    // the original response still happens to work.
+    const c = win.fetch('https://rcb.test/api/registrations', {
+      method: 'POST',
+      body: '{"id":1}',
+    });
+    assert.equal(win.realFetchCalls.length, 1, 'still one network call');
+
+    win.resolveAll({ success: true });
+    const [resA, resB, resC] = await Promise.all([a, b, c]);
+
+    assert.deepEqual(await resA.json(), { success: true });
+    assert.deepEqual(await resB.json(), { success: true }, 'second caller can read the body');
+    assert.deepEqual(await resC.json(), { success: true }, 'third caller can read the body');
+  }
+
+  // different bodies are different submissions
+  {
+    const win = fakeWindow({ online: true, hang: true });
+    installOfflineGuard(win);
+    win.fetch('https://rcb.test/api/registrations', { method: 'POST', body: '{"id":1}' });
+    win.fetch('https://rcb.test/api/registrations', { method: 'POST', body: '{"id":2}' });
+    assert.equal(win.realFetchCalls.length, 2);
+  }
+
+  // GETs are never deduplicated, and a settled request no longer blocks a retry
+  {
+    const win = fakeWindow({ online: true });
+    installOfflineGuard(win);
+    await win.fetch('https://rcb.test/api/members/me');
+    await win.fetch('https://rcb.test/api/members/me');
+    assert.equal(win.realFetchCalls.length, 2, 'reads are not deduplicated');
+
+    await win.fetch('https://rcb.test/api/x', { method: 'POST', body: '{}' });
+    await win.fetch('https://rcb.test/api/x', { method: 'POST', body: '{}' });
+    assert.equal(win.realFetchCalls.length, 4, 'retry after completion is allowed');
+  }
+
+  // a failed submission clears its slot so the user can retry
+  {
+    const win = fakeWindow({ online: true, failWith: new TypeError('network') });
+    installOfflineGuard(win);
+    await assert.rejects(() => win.fetch('https://rcb.test/api/x', { method: 'POST', body: '{}' }));
+    await assert.rejects(() => win.fetch('https://rcb.test/api/x', { method: 'POST', body: '{}' }));
+    assert.equal(win.realFetchCalls.length, 2);
+  }
+
+  // a non-string body is passed straight through rather than keyed
+  {
+    const win = fakeWindow({ online: true, hang: true });
+    installOfflineGuard(win);
+    const form = new FormData();
+    form.append('file', 'x');
+    win.fetch('https://rcb.test/api/upload', { method: 'POST', body: form });
+    win.fetch('https://rcb.test/api/upload', { method: 'POST', body: form });
+    assert.equal(win.realFetchCalls.length, 2, 'reading a stream body to key it would consume it');
+  }
+
   console.log('offline guard: ok');
 }
 
