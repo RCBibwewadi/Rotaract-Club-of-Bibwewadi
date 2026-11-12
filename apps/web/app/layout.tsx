@@ -1,5 +1,7 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import OfflineGuard from '@/components/OfflineGuard';
 
 export const metadata: Metadata = {
   title: {
@@ -31,9 +33,15 @@ export const metadata: Metadata = {
     'NGO Pune',
   ],
   metadataBase: new URL('https://www.rcbibwewadipune.org'),
+  applicationName: 'RCB',
+  appleWebApp: {
+    capable: true,
+    title: 'RCB',
+    statusBarStyle: 'default',
+  },
   icons: {
     icon: '/logo.png',
-    apple: '/logo.png',
+    apple: '/icons/apple-touch-icon.png',
   },
   openGraph: {
     type: 'website',
@@ -52,6 +60,16 @@ export const metadata: Metadata = {
       'Official website of Rotaract Club of Bibwewadi, Pune. Community service, events & leadership. Make it Matter.',
     images: ['/logo.png'],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#8b1a2b' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -83,6 +101,8 @@ export default function RootLayout({
       </head>
       <body className="font-[DM_Sans] antialiased dark:text-white text-dark transition-colors duration-300 bg-transparent">
         {children}
+        <ServiceWorkerRegister />
+        <OfflineGuard />
       </body>
     </html>
   );
