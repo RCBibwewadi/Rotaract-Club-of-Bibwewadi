@@ -70,11 +70,11 @@ export default function InstallButton({ isDark, menuOpen }: Props) {
     <>
       <button
         onClick={install}
-        className={`p-2.5 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-white' : isDark ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-dark/70 hover:text-dark hover:bg-dark/10'}`}
-        aria-label="Install app"
-        title="Install app"
+        className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-medium transition-all ${menuOpen ? 'border-white/25 text-white/80 hover:border-accent hover:text-white' : isDark ? 'border-white/20 text-white/80 hover:border-accent hover:text-white' : 'border-dark/15 text-dark/80 hover:border-accent hover:text-dark'}`}
+        title="Install App"
       >
-        <Download size={22} />
+        <Download size={16} />
+        Install App
       </button>
 
       {iosHelp && (
