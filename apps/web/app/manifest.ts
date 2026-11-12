@@ -6,7 +6,9 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'RCB',
     description:
       'Rotaract Club of Bibwewadi (RCB), Pune — community service, events, and leadership. Make it Matter.',
-    start_url: '/',
+    // The installed app opens the members' app, not the website. Scope stays
+    // at '/' so the unlisted sign-up form still opens inside the app.
+    start_url: '/app',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
