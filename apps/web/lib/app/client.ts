@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from '@/lib/auth-store';
+import { useRefreshKey } from './refresh';
 
 export { timeAgo } from './format';
 
@@ -69,10 +70,12 @@ export function useResource<T>(
   fetcher: (path: string) => Promise<T> = appFetch,
 ): Resource<T> {
   const [nonce, setNonce] = useState(0);
+  // A global refresh re-runs every mounted resource.
+  const revision = useRefreshKey();
   // The settled result carries the request it belongs to, so "loading" is
   // derived rather than set at the top of the effect — switching paths shows
   // the spinner again without a second render pass.
-  const key = path === null ? null : `${nonce}:${path}`;
+  const key = path === null ? null : `${nonce}:${revision}:${path}`;
   const [settled, setSettled] = useState<{
     key: string;
     data: T | null;

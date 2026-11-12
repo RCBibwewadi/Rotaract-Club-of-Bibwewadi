@@ -4,17 +4,19 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Briefcase, GraduationCap, LogOut, Mail, Phone } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
+import { useRefreshKey } from '@/lib/app/refresh';
 import { Screen, Loading, Avatar } from '@/components/app/Screen';
 
 export default function ProfilePage() {
   const { member, fetchProfile, logout } = useAuthStore();
   const router = useRouter();
+  const revision = useRefreshKey();
 
   // The stored profile can be stale (or absent after a cold start), so refresh
   // it from the same endpoint the website uses.
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
+  }, [fetchProfile, revision]);
 
   const signOut = () => {
     logout();
