@@ -43,9 +43,9 @@ export default function NewIdeaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-app-canvas">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-app-canvas">
       <header
-        className="sticky top-0 z-30 flex items-center gap-3 border-b border-black/5 bg-app-canvas/90 px-4 pb-3 backdrop-blur-lg"
+        className="shrink-0 flex items-center gap-3 border-b border-black/5 bg-app-canvas/90 px-4 pb-3 backdrop-blur-lg"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
       >
         <button
@@ -61,7 +61,7 @@ export default function NewIdeaPage() {
 
       <form
         onSubmit={submit}
-        className="px-4 pt-5"
+        className="flex-1 overflow-y-auto overscroll-contain px-4 pt-5"
         style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
         noValidate
       >

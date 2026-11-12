@@ -43,31 +43,31 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
   };
 
   return (
-    <div className="min-h-screen bg-app-canvas">
-      <PullToRefresh>
-        <header
-          className="sticky top-0 z-30 flex items-center gap-3 border-b border-black/5 bg-app-canvas/90 px-4 pb-3 backdrop-blur-lg"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-app-canvas">
+      <header
+        className="shrink-0 flex items-center gap-3 border-b border-black/5 bg-app-canvas/90 px-4 pb-3 backdrop-blur-lg"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
+      >
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="Back"
+          className="-ml-1 rounded-full p-1.5 text-app-plum"
         >
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="Back"
-            className="-ml-1 rounded-full p-1.5 text-app-plum"
-          >
-            <ArrowLeft size={22} aria-hidden />
-          </button>
-          <span className="flex-1 text-base font-semibold text-app-plum">Idea</span>
-          <button
-            type="button"
-            onClick={refreshApp}
-            aria-label="Refresh"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-plum/5 text-app-plum/55"
-          >
-            <RefreshCw size={16} aria-hidden />
-          </button>
-        </header>
+          <ArrowLeft size={22} aria-hidden />
+        </button>
+        <span className="flex-1 text-base font-semibold text-app-plum">Idea</span>
+        <button
+          type="button"
+          onClick={refreshApp}
+          aria-label="Refresh"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-plum/5 text-app-plum/55"
+        >
+          <RefreshCw size={16} aria-hidden />
+        </button>
+      </header>
 
+      <PullToRefresh className="flex-1 overflow-y-auto overscroll-contain">
         <main className="px-4 pt-4" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
           {idea.loading && <Loading label="Loading idea" />}
           {idea.error && <ErrorState message={idea.error} onRetry={idea.reload} />}
