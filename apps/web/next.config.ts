@@ -4,10 +4,11 @@ import type { NextConfig } from "next";
 // this onto <html data-dpl-id> and onto asset URLs as ?dpl=, so a deploy can
 // never be served a mix of old and new chunks.
 const BUILD_ID =
-  process.env.VERCEL_GIT_COMMIT_SHA ||
-  process.env.VERCEL_DEPLOYMENT_ID ||
-  process.env.NEXT_DEPLOYMENT_ID ||
-  'dev';
+  (process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.VERCEL_DEPLOYMENT_ID ||
+    process.env.NEXT_DEPLOYMENT_ID ||
+    'dev'
+  ).slice(0, 32); // Next rejects a deploymentId over 32 chars; a git SHA is 40
 
 const nextConfig: NextConfig = {
   deploymentId: BUILD_ID,
