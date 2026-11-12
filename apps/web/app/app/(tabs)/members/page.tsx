@@ -20,8 +20,15 @@ export default function MembersPage() {
     );
   }, [members.data, query]);
 
+  // /api/members returns every approved, active member except the viewer —
+  // who is approved too, since the API refuses anyone who is not.
+  const total = members.data ? members.data.length + 1 : null;
+
   return (
-    <Screen title="Members" subtitle="The club directory">
+    <Screen
+      title="Members"
+      subtitle={total === null ? 'The club directory' : `The club directory of ${total}`}
+    >
       <div className="relative mb-4">
         <Search
           size={17}

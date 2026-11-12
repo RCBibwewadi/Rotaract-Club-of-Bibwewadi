@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { appFetch, useResource } from '@/lib/app/client';
 import type { Idea, IdeaFeed } from '@/lib/app/types';
 import { Screen, Loading, ErrorState, EmptyState } from '@/components/app/Screen';
 import IdeaCard from '@/components/app/IdeaCard';
+import Fab from '@/components/app/Fab';
 
 export default function IdeasPage() {
   const feed = useResource<IdeaFeed>('/api/ideas');
@@ -35,17 +36,8 @@ export default function IdeasPage() {
 
   return (
     <Screen
-      title="Ideas"
-      subtitle="What the club is thinking about"
-      action={
-        <Link
-          href="/app/ideas/new"
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-app-pink px-4 py-2 text-sm font-semibold text-white"
-        >
-          <Plus size={16} aria-hidden />
-          New
-        </Link>
-      }
+      title="IdeaVerse"
+      subtitle="Think it. Share it. Build it together."
     >
       {feed.loading && <Loading label="Loading ideas" />}
 
@@ -58,7 +50,7 @@ export default function IdeasPage() {
           action={
             <Link
               href="/app/ideas/new"
-              className="inline-flex rounded-full bg-app-pink px-5 py-2.5 text-sm font-semibold text-white"
+              className="inline-flex rounded-full border border-accent bg-accent transition-colors hover:bg-accent-light px-5 py-2.5 text-sm font-semibold text-white"
             >
               Share an idea
             </Link>
@@ -81,7 +73,7 @@ export default function IdeasPage() {
               type="button"
               onClick={loadMore}
               disabled={loadingMore}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-sm font-semibold text-app-plum/70 disabled:opacity-60"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-accent bg-white py-3.5 text-sm font-semibold text-app-plum/70 disabled:opacity-60"
             >
               {loadingMore && <Loader2 size={16} className="animate-spin" aria-hidden />}
               {loadingMore ? 'Loading' : 'Load older ideas'}
@@ -89,6 +81,7 @@ export default function IdeasPage() {
           )}
         </>
       )}
+      <Fab href="/app/ideas/new" label="Post an idea" />
     </Screen>
   );
 }

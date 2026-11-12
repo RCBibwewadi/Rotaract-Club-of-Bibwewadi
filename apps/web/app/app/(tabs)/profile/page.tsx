@@ -26,6 +26,7 @@ import {
   type Profession,
 } from '@/lib/auth-store';
 import { useRefreshKey } from '@/lib/app/refresh';
+import type { ReferralInterest } from '@/lib/app/types';
 import { appFetch, ApiError, useResource } from '@/lib/app/client';
 import { Screen, Loading, Avatar } from '@/components/app/Screen';
 import { NoticeBanner, type Notice } from '@/components/app/AdminScreen';
@@ -112,6 +113,7 @@ export default function ProfilePage() {
   }, [fetchProfile, revision]);
 
   const visibility = useResource<MemberVisibility>('/api/visibility/me');
+  const interests = useResource<ReferralInterest[]>('/api/referrals/interests');
 
   const say = (text: string, type: 'success' | 'error') => {
     setNotice({ text, type });
@@ -268,7 +270,7 @@ export default function ProfilePage() {
           className="relative rounded-full"
         >
           <Avatar name={member.full_name} src={member.avatar_url} size={84} />
-          <span className="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full bg-app-pink text-white shadow">
+          <span className="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full bg-accent transition-colors hover:bg-accent-light text-white shadow">
             {uploading ? (
               <Loader2 size={15} className="animate-spin" aria-hidden />
             ) : (
@@ -539,6 +541,48 @@ export default function ProfilePage() {
         ),
       )}
 
+      <SectionHeader icon={Handshake} title="Interested in your referrals" />
+
+      {interests.loading && <Loading label="Loading interest" />}
+
+      {interests.data?.length === 0 && (
+        <p className="rounded-2xl bg-white p-4 text-sm text-app-plum/40">
+          Nobody has expressed interest in your referrals yet.
+        </p>
+      )}
+
+      {!!interests.data?.length && (
+        <ul className="divide-y divide-black/5 overflow-hidden rounded-2xl bg-white">
+          {interests.data.map((entry) => (
+            <li
+              key={`${entry.referral?.referral_id}-${entry.member?.member_id}`}
+              className="flex items-center gap-3 px-4 py-3.5"
+            >
+              <Avatar
+                name={entry.member?.full_name ?? 'Member'}
+                src={entry.member?.avatar_url}
+                size={38}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-semibold text-app-plum">
+                  {entry.member?.full_name ?? 'Former member'}
+                </p>
+                <p className="truncate text-xs text-app-plum/45">{entry.referral?.title}</p>
+              </div>
+              {entry.member?.phone && (
+                <a
+                  href={`tel:${entry.member.phone}`}
+                  aria-label={`Call ${entry.member.full_name}`}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/5 text-accent"
+                >
+                  <Phone size={16} aria-hidden />
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <SectionHeader icon={Eye} title="Directory visibility" />
       <p className="-mt-1 mb-2 text-xs text-app-plum/40">
         What other members see about you in the directory.
@@ -606,7 +650,7 @@ function SectionHeader({
         <button
           type="button"
           onClick={onAdd}
-          className="flex items-center gap-1 rounded-full bg-app-pink/10 px-3 py-1.5 text-xs font-semibold text-app-pink"
+          className="flex items-center gap-1 rounded-full hover:bg-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent"
         >
           <Plus size={13} aria-hidden />
           Add
@@ -637,7 +681,7 @@ function RowActions({
         <p className="flex items-center gap-2 font-semibold text-app-plum">
           <span className="truncate">{title}</span>
           {badge && (
-            <span className="shrink-0 rounded-full bg-app-pink/10 px-2 py-0.5 text-[10px] font-semibold text-app-pink">
+            <span className="shrink-0 rounded-full hover:bg-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
               {badge}
             </span>
           )}
@@ -699,7 +743,7 @@ function FormCard({
         <button
           type="submit"
           disabled={saving}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-app-pink py-3.5 text-[15px] font-semibold text-white disabled:opacity-60"
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-accent transition-colors hover:bg-accent-light py-3.5 text-[15px] font-semibold text-white disabled:opacity-60"
         >
           {saving ? (
             <Loader2 size={16} className="animate-spin" aria-hidden />
@@ -905,7 +949,7 @@ function VisibilityRow({
         aria-label={label}
         onClick={onToggle}
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-          on ? 'bg-app-pink' : 'bg-app-plum/15'
+          on ? 'bg-accent transition-colors hover:bg-accent-light' : 'bg-app-plum/15'
         }`}
       >
         <span

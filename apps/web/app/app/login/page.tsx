@@ -17,7 +17,7 @@ const JOIN_URL = '/join/tereliyeopenhai';
 
 const fieldClass =
   'w-full rounded-2xl border border-app-plum/10 bg-white px-4 py-3.5 text-[15px] text-app-plum ' +
-  'placeholder-app-plum/30 outline-none transition-colors focus:border-app-pink';
+  'placeholder-app-plum/30 outline-none transition-colors focus:border-accent';
 
 export default function AppLoginPage() {
   const router = useRouter();
@@ -69,19 +69,21 @@ export default function AppLoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col bg-accent">
+    <div className="relative flex min-h-[100svh] flex-col bg-accent">
       <div
         className="flex flex-1 flex-col items-center justify-center px-6 pb-10 text-center"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 3rem)' }}
       >
-        <Image
-          src="/logo.png"
-          alt="Rotaract Club of Bibwewadi"
-          width={88}
-          height={88}
-          priority
-          className="h-22 w-22 object-contain drop-shadow"
-        />
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
+          <Image
+            src="/logo.png"
+            alt="Rotaract Club of Bibwewadi"
+            width={120}
+            height={120}
+            priority
+            className="h-25 w-25 object-contain"
+          />
+        </div>
         <h1 className="mt-5 text-3xl font-bold tracking-tight text-white">Make it Matter</h1>
         <p className="mt-1.5 text-sm text-white/70">Rotaract Club of Bibwewadi</p>
       </div>
@@ -91,9 +93,6 @@ export default function AppLoginPage() {
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)' }}
       >
         <h2 className="text-[26px] font-bold tracking-tight text-app-plum">Welcome back</h2>
-        <p className="mt-1 text-sm text-app-plum/55">
-          Sign in to pitch ideas, follow the club&apos;s schedule and stay close to your community.
-        </p>
 
         {sessionExpired && (
           <p className="mt-5 flex items-start gap-2 rounded-2xl bg-accent/5 p-3 text-sm text-accent">
@@ -169,7 +168,7 @@ export default function AppLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-app-pink py-4 text-base font-semibold text-white transition-colors active:bg-app-pink-dark disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent hover:bg-accent-light py-4 text-base font-semibold text-white transition-colors disabled:opacity-60"
           >
             {loading && <Loader2 size={18} className="animate-spin" aria-hidden />}
             {loading ? 'Signing in' : 'Log in'}
@@ -178,7 +177,7 @@ export default function AppLoginPage() {
 
         <p className="mt-5 text-center text-sm text-app-plum/55">
           New to the club?{' '}
-          <Link href={JOIN_URL} className="font-semibold text-app-pink underline-offset-4 hover:underline">
+          <Link href={JOIN_URL} className="font-semibold text-accent underline-offset-4 hover:underline">
             Join us
           </Link>
         </p>
@@ -263,7 +262,7 @@ function ForgotPasswordSheet({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={submit}
               disabled={sending}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-pink py-3.5 font-semibold text-white disabled:opacity-60"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-accent transition-colors hover:bg-accent-light py-3.5 font-semibold text-white disabled:opacity-60"
             >
               {sending && <Loader2 size={18} className="animate-spin" aria-hidden />}
               Send reset link

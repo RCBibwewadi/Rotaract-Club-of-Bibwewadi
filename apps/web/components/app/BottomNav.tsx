@@ -32,8 +32,8 @@ export default function BottomNav({ variant = 'member' }: { variant?: 'member' |
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
                 aria-label={tab.label}
-                className={`flex flex-col items-center gap-1 rounded-2xl px-0.5 pt-1 pb-1.5 transition-colors ${
-                  active ? 'text-app-plum' : 'text-neutral-400'
+                className={`flex flex-col items-center gap-1 rounded-2xl px-0.5 pt-1 pb-1.5 transition-colors hover:text-accent-light ${
+                  active ? 'text-accent' : 'text-neutral-400'
                 }`}
               >
                 <Icon size={21} strokeWidth={active ? 2.3 : 1.8} aria-hidden />
@@ -44,12 +44,7 @@ export default function BottomNav({ variant = 'member' }: { variant?: 'member' |
                 >
                   {tab.short ?? tab.label}
                 </span>
-                <span
-                  aria-hidden
-                  className={`h-1 w-1 rounded-full transition-colors ${
-                    active ? 'bg-accent' : 'bg-transparent'
-                  }`}
-                />
+                
               </Link>
             </li>
           );

@@ -64,7 +64,7 @@ export default function AdminEventsPage() {
       <button
         type="button"
         onClick={() => setEditor({ event: null })}
-        className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-pink py-3.5 text-[15px] font-semibold text-white"
+        className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-accent transition-colors hover:bg-accent-light py-3.5 text-[15px] font-semibold text-white"
       >
         <Plus size={18} aria-hidden />
         New event
@@ -320,7 +320,7 @@ function EventSheet({
         <button
           type="submit"
           disabled={saving}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-pink py-4 text-base font-semibold text-white disabled:opacity-60"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-accent transition-colors hover:bg-accent-light py-4 text-base font-semibold text-white disabled:opacity-60"
         >
           {saving && <Loader2 size={18} className="animate-spin" aria-hidden />}
           {saving ? 'Saving' : event ? 'Save changes' : 'Create event'}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import SplashVisual from '@/components/SplashVisual';
 
 export default function SplashScreen() {
   const [visible, setVisible] = useState(true);
@@ -24,28 +24,7 @@ export default function SplashScreen() {
         fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {/* Logo with pink spinning ring */}
-      <div className="relative w-28 h-28 sm:w-36 sm:h-36 mb-8">
-        {/* Pink spinner ring */}
-        <div className="absolute inset-0 rounded-full border-4 border-pink-200 dark:border-pink-900/40" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-pink-500 animate-spin" />
-        {/* Logo */}
-        <div className="absolute inset-2 rounded-full overflow-hidden flex items-center justify-center">
-          <Image
-            src="/logo.png"
-            alt="Rotaract Club of Bibwewadi"
-            width={128}
-            height={128}
-            className="w-full h-full object-contain"
-            priority
-          />
-        </div>
-      </div>
-
-      {/* Welcome text */}
-      <p className="text-lg sm:text-xl font-medium text-dark/80 dark:text-white/80 tracking-wide text-center px-4">
-        Welcome to Rotaract Club of Bibwewadi
-      </p>
+      <SplashVisual />
     </div>
   );
 }

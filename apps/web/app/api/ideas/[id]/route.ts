@@ -6,8 +6,9 @@ import {
   requireApproved,
   handleError,
 } from '../../lib/middleware';
-import { IDEA_SELECT, shapeIdea, type RawIdea } from '../../lib/ideas';
-import { successResponse, errorResponse } from '@rcb-2.0/shared';
+import { IDEA_SELECT, UpdateIdeaSchema, shapeIdea, type RawIdea } from '../../lib/ideas';
+import { successResponse, errorResponse, fromZodError } from '@rcb-2.0/shared';
+import { ZodError } from 'zod';
 
 export async function GET(
   request: NextRequest,
@@ -29,6 +30,49 @@ export async function GET(
     }
 
     return json(successResponse(shapeIdea(data as unknown as RawIdea, user.member_id)));
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = authenticate(request);
+    requireApproved(user);
+    const { id } = await params;
+
+    let body: { description: string };
+    try {
+      body = UpdateIdeaSchema.parse(await request.json());
+    } catch (err) {
+      if (err instanceof ZodError) {
+        return json(fromZodError(err), 400);
+      }
+      throw err;
+    }
+
+    // Scoped to the author, so another member's post cannot be rewritten.
+    const { data, error } = await supabase
+      .from('ideas')
+      .update(body)
+      .eq('idea_id', id)
+      .eq('member_id', user.member_id)
+      .select(IDEA_SELECT)
+      .maybeSingle();
+
+    if (error) {
+      return json(errorResponse('DB_ERROR', error.message), 500);
+    }
+    if (!data) {
+      return json(errorResponse('NOT_FOUND', 'Idea not found'), 404);
+    }
+
+    return json(
+      successResponse(shapeIdea(data as unknown as RawIdea, user.member_id), 'Idea updated'),
+    );
   } catch (err) {
     return handleError(err);
   }
