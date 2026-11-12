@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import OfflineGuard from '@/components/OfflineGuard';
 
 export const metadata: Metadata = {
   title: {
@@ -101,6 +102,7 @@ export default function RootLayout({
       <body className="font-[DM_Sans] antialiased dark:text-white text-dark transition-colors duration-300 bg-transparent">
         {children}
         <ServiceWorkerRegister />
+        <OfflineGuard />
       </body>
     </html>
   );
