@@ -134,8 +134,7 @@ export function pushSupported(): boolean {
     typeof window !== 'undefined' &&
     'serviceWorker' in navigator &&
     'PushManager' in window &&
-    'Notification' in window &&
-    VAPID_PUBLIC_KEY !== ''
+    'Notification' in window
   );
 }
 
@@ -144,11 +143,16 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
   return (await navigator.serviceWorker.getRegistration()) ?? null;
 }
 
-/** 'on' | 'off' | 'blocked' | 'unsupported' — what the settings row shows. */
-export type PushState = 'on' | 'off' | 'blocked' | 'unsupported';
+/**
+ * What the settings row shows. 'unsupported' is the device's doing;
+ * 'unconfigured' is ours — the deployment is missing its VAPID key, which
+ * looks identical to the member unless the two are told apart.
+ */
+export type PushState = 'on' | 'off' | 'blocked' | 'unsupported' | 'unconfigured';
 
 export async function pushState(): Promise<PushState> {
   if (!pushSupported()) return 'unsupported';
+  if (!VAPID_PUBLIC_KEY) return 'unconfigured';
   if (Notification.permission === 'denied') return 'blocked';
   const subscription = await (await registration())?.pushManager.getSubscription();
   return subscription ? 'on' : 'off';
@@ -162,6 +166,10 @@ export async function pushState(): Promise<PushState> {
  * cannot be undone from here and needs the OS settings.
  */
 export async function enablePush(): Promise<PushState> {
+  if (!VAPID_PUBLIC_KEY) return 'unconfigured';
+
+  // The service worker is registered in production only, so this is also the
+  // "you are on next dev" case.
   const reg = await registration();
   if (!reg) return 'unsupported';
 
