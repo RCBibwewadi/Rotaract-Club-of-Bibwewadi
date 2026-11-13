@@ -84,16 +84,13 @@ export async function DELETE(
 ) {
   try {
     const user = authenticate(request);
-    requireApproved(user);
+    const isAdmin = user.role === 'admin';
+    if (!isAdmin) requireApproved(user);
     const { id } = await params;
 
-    // Scoped to the author so a member can only delete their own post; admins
-    // manage content from the website's admin panel.
-    const { data, error } = await supabase
-      .from('ideas')
-      .delete()
-      .eq('idea_id', id)
-      .eq('member_id', user.member_id)
+    // A member may delete only their own post; an admin moderates any of them.
+    const query = supabase.from('ideas').delete().eq('idea_id', id);
+    const { data, error } = await (isAdmin ? query : query.eq('member_id', user.member_id))
       .select('idea_id')
       .maybeSingle();
 
