@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, after } from 'next/server';
 import { supabase } from '../lib/supabase';
 import {
   json,
@@ -12,6 +12,7 @@ import {
   shapeIdea,
   type RawIdea,
 } from '../lib/ideas';
+import { notifyMembers } from '../lib/push';
 import { successResponse, errorResponse, fromZodError } from '@rcb-2.0/shared';
 import { ZodError } from 'zod';
 
@@ -74,6 +75,19 @@ export async function POST(request: NextRequest) {
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);
     }
+
+    // After the response: a slow push service must not delay the poster.
+    after(() =>
+      notifyMembers(
+        {
+          title: 'New in IdeaVerse',
+          body: body.title,
+          tab: 'ideas',
+          url: '/app/ideas',
+        },
+        user.member_id,
+      ),
+    );
 
     return json(
       successResponse(shapeIdea(data as unknown as RawIdea, user.member_id), 'Idea posted'),

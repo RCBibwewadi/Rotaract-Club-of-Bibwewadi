@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  Bell,
   Building2,
   Calendar,
   Camera,
@@ -29,6 +30,7 @@ import { useRefreshKey } from '@/lib/app/refresh';
 import type { ReferralInterest } from '@/lib/app/types';
 import { appFetch, ApiError, useResource } from '@/lib/app/client';
 import { Screen, Loading, Avatar } from '@/components/app/Screen';
+import { disablePush, enablePush, pushState, type PushState } from '@/lib/app/notifications';
 import { NoticeBanner, type Notice } from '@/components/app/AdminScreen';
 
 const fieldClass =
@@ -136,7 +138,10 @@ export default function ProfilePage() {
     }
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    // Drop this device's subscription first: otherwise the next notification
+    // would show one member's club news to whoever signs in after them.
+    await disablePush().catch(() => {});
     logout();
     router.replace('/app/login');
   };
@@ -583,6 +588,9 @@ export default function ProfilePage() {
         </ul>
       )}
 
+      <SectionHeader icon={Bell} title="Notifications" />
+      <NotificationsCard />
+
       <SectionHeader icon={Eye} title="Directory visibility" />
       <p className="-mt-1 mb-2 text-xs text-app-plum/40">
         What other members see about you in the directory.
@@ -621,13 +629,94 @@ export default function ProfilePage() {
 
       <button
         type="button"
-        onClick={signOut}
+        onClick={() => void signOut()}
         className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-accent"
       >
         <LogOut size={17} aria-hidden />
         Log out
       </button>
     </Screen>
+  );
+}
+
+/**
+ * Push notifications for new ideas, referrals, bulletins and events.
+ *
+ * The switch is the only place permission is ever asked for: iOS shows the
+ * system prompt for a tap and nothing else, and a member who says no cannot be
+ * asked again from the app — hence the 'blocked' copy pointing at OS settings.
+ */
+function NotificationsCard() {
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void pushState().then(setState);
+  }, []);
+
+  if (state === null) {
+    return <Loading label="Loading settings" />;
+  }
+
+  if (state === 'unsupported') {
+    return (
+      <p className="rounded-2xl bg-white p-4 text-sm text-app-plum/40">
+        This device cannot show notifications from the app.
+      </p>
+    );
+  }
+
+  const toggle = async () => {
+    if (busy || state === 'blocked') return;
+    setBusy(true);
+    setError(null);
+    try {
+      setState(state === 'on' ? await disablePush() : await enablePush());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not change that setting');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <ul className="divide-y divide-black/5 overflow-hidden rounded-2xl bg-white">
+        <li className="flex items-center justify-between gap-3 px-4 py-3.5">
+          <span className="text-[15px] text-app-plum/75">
+            Push notifications
+            <span className="mt-0.5 block text-xs text-app-plum/40">
+              New ideas, referrals, bulletins and events.
+            </span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={state === 'on'}
+            aria-label="Push notifications"
+            disabled={busy || state === 'blocked'}
+            onClick={toggle}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+              state === 'on' ? 'bg-accent transition-colors hover:bg-accent-light' : 'bg-app-plum/15'
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                state === 'on' ? 'left-[1.375rem]' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </li>
+      </ul>
+      {state === 'blocked' && (
+        <p className="mt-2 text-xs text-app-plum/40">
+          Notifications are blocked for this app. Turn them back on in your device settings.
+        </p>
+      )}
+      {error && <p className="mt-2 text-xs text-accent">{error}</p>}
+    </>
   );
 }
 

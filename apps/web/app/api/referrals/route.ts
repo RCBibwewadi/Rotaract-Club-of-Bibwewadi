@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, after } from 'next/server';
 import { supabase } from '../lib/supabase';
 import {
   json,
@@ -12,6 +12,7 @@ import {
   shapeReferral,
   type RawReferral,
 } from '../lib/referrals';
+import { notifyMembers } from '../lib/push';
 import { successResponse, errorResponse, fromZodError } from '@rcb-2.0/shared';
 import { ZodError } from 'zod';
 
@@ -70,6 +71,18 @@ export async function POST(request: NextRequest) {
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);
     }
+
+    after(() =>
+      notifyMembers(
+        {
+          title: 'New on The Connect',
+          body: body.title,
+          tab: 'referrals',
+          url: '/app/referrals',
+        },
+        user.member_id,
+      ),
+    );
 
     return json(
       successResponse(shapeReferral(data as unknown as RawReferral, user.member_id), 'Referral posted'),
