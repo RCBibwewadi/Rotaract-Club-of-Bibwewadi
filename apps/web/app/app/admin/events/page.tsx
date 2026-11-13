@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarDays, Loader2, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { CalendarDays, Film, ImageIcon, Loader2, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useResource, ApiError } from '@/lib/app/client';
 import { adminFetch } from '@/lib/app/admin';
 import { Loading, ErrorState, EmptyState } from '@/components/app/Screen';
@@ -18,6 +18,8 @@ interface AdminEvent {
   event_description: string | null;
   open_to_all: boolean;
   registration_enabled: boolean;
+  event_images: string[] | null;
+  event_videos: string[] | null;
 }
 
 type EventDraft = Omit<AdminEvent, 'event_id'>;
@@ -32,6 +34,8 @@ const EMPTY_DRAFT: EventDraft = {
   registration_enabled: false,
   // Events are club service unless the admin says otherwise.
   event_avenue: DEFAULT_EVENT_CATEGORY,
+  event_images: [],
+  event_videos: [],
 };
 
 const fieldClass =
@@ -185,6 +189,8 @@ function EventSheet({
           event_description: event.event_description ?? '',
           open_to_all: event.open_to_all,
           registration_enabled: event.registration_enabled ?? false,
+          event_images: event.event_images ?? [],
+          event_videos: event.event_videos ?? [],
         }
       : EMPTY_DRAFT,
   );
@@ -327,6 +333,24 @@ function EventSheet({
           className={`${fieldClass} resize-none`}
         />
 
+        <MediaField
+          label="Banner image"
+          icon={ImageIcon}
+          accept="image/*"
+          folder="avatars"
+          value={draft.event_images?.[0] ?? ''}
+          onChange={(url) => set('event_images', url ? [url] : [])}
+        />
+
+        <MediaField
+          label="Video"
+          icon={Film}
+          accept="video/*"
+          folder="videos"
+          value={draft.event_videos?.[0] ?? ''}
+          onChange={(url) => set('event_videos', url ? [url] : [])}
+        />
+
         <label className="mt-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
           <input
             type="checkbox"
@@ -367,12 +391,107 @@ function EventSheet({
           {saving ? 'Saving' : event ? 'Save changes' : 'Create event'}
         </button>
 
-        {/* Images, videos, event lead and best member stay on the website's
-            admin panel: they need the upload flow this sheet does not carry. */}
+        {/* The event lead and the best-member award still live on the website's
+            admin panel: both need a member picker this sheet does not carry. */}
         <p className="mt-4 text-center text-xs text-app-plum/40">
-          Photos, videos and awards are managed on the website admin panel.
+          Event lead and awards are managed on the website admin panel.
         </p>
       </form>
+    </div>
+  );
+}
+
+/**
+ * One uploaded file — the event's banner or its video. The upload happens as
+ * soon as a file is picked, so the form only ever holds the stored URL.
+ */
+function MediaField({
+  label,
+  icon: Icon,
+  accept,
+  folder,
+  value,
+  onChange,
+}: {
+  label: string;
+  icon: typeof ImageIcon;
+  accept: string;
+  folder: string;
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    setError('');
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const { url } = await adminFetch<{ url: string }>(`/api/upload?folder=${folder}`, {
+        method: 'POST',
+        body,
+      });
+      onChange(url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Upload failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <p className="mb-1.5 text-sm font-medium text-app-plum/70">{label}</p>
+
+      {value && (
+        <div className="mb-2 flex items-center gap-2 rounded-2xl bg-white px-4 py-3">
+          <Icon size={16} className="shrink-0 text-app-plum/40" aria-hidden />
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 flex-1 truncate text-sm text-app-plum/60"
+          >
+            {value.split('/').pop()}
+          </a>
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            aria-label={`Remove ${label.toLowerCase()}`}
+            className="shrink-0 text-accent"
+          >
+            <X size={16} aria-hidden />
+          </button>
+        </div>
+      )}
+
+      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-app-plum/20 bg-white py-3.5 text-sm font-medium text-app-plum/60">
+        {busy ? (
+          <Loader2 size={16} className="animate-spin" aria-hidden />
+        ) : (
+          <Icon size={16} aria-hidden />
+        )}
+        {busy ? 'Uploading' : value ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
+        <input
+          type="file"
+          accept={accept}
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void upload(file);
+            e.target.value = '';
+          }}
+        />
+      </label>
+
+      {error && (
+        <p role="alert" className="mt-1.5 text-sm text-accent">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

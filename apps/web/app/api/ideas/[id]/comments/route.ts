@@ -27,7 +27,8 @@ export async function GET(
 ) {
   try {
     const user = authenticate(request);
-    requireApproved(user);
+    // Admin tokens carry no membership; the app's admin section reads this.
+    if (user.role !== 'admin') requireApproved(user);
     const { id } = await params;
 
     const { data, error } = await supabase
