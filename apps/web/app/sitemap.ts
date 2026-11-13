@@ -11,7 +11,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/events",
     "/join",
     "/legacy",
+    "/privacy-policy",
     "/projects",
+    "/terms-and-conditions",
   ];
 
   return routes.map((route) => ({

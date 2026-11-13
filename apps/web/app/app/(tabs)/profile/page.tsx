@@ -17,6 +17,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  ShieldCheck,
   Trash2,
   X,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ import {
 import { useRefreshKey } from '@/lib/app/refresh';
 import type { ReferralInterest } from '@/lib/app/types';
 import { appFetch, ApiError, useResource } from '@/lib/app/client';
+import type { ConsentStatus } from '@/lib/app/consent';
 import { Screen, Loading, Avatar } from '@/components/app/Screen';
 import { disablePush, enablePush, pushState, type PushState } from '@/lib/app/notifications';
 import { NoticeBanner, type Notice } from '@/components/app/AdminScreen';
@@ -116,6 +118,7 @@ export default function ProfilePage() {
 
   const visibility = useResource<MemberVisibility>('/api/visibility/me');
   const interests = useResource<ReferralInterest[]>('/api/referrals/interests');
+  const consent = useResource<ConsentStatus | null>('/api/consent');
 
   const say = (text: string, type: 'success' | 'error') => {
     setNotice({ text, type });
@@ -234,6 +237,32 @@ export default function ProfilePage() {
         body: JSON.stringify({ [key]: !current[key] }),
       });
       visibility.set(next);
+    } catch (err) {
+      say(err instanceof ApiError ? err.message : 'Could not save that setting', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * Granting or withdrawing the optional AI-training permission. Each tap
+   * writes a new consent record rather than editing the old one, so the
+   * history of what was agreed and when survives the change.
+   */
+  const toggleTraining = async () => {
+    const current = consent.data;
+    if (!current || saving) return;
+    setSaving(true);
+    try {
+      const next = await appFetch<ConsentStatus>('/api/consent', {
+        method: 'POST',
+        body: JSON.stringify({
+          personal_data_consent: true,
+          ai_training_consent: !current.ai_training_consent,
+        }),
+      });
+      consent.set(next);
+      say(next.ai_training_consent ? 'Permission granted' : 'Permission withdrawn', 'success');
     } catch (err) {
       say(err instanceof ApiError ? err.message : 'Could not save that setting', 'error');
     } finally {
@@ -626,6 +655,48 @@ export default function ProfilePage() {
           {visibility.error ?? 'Settings unavailable.'}
         </p>
       )}
+
+      <SectionHeader icon={ShieldCheck} title="Privacy" />
+      <p className="-mt-1 mb-2 text-xs text-app-plum/40">
+        Optional. Turning this off never removes your ideas or conversations, and never limits
+        what you can do in the app.
+      </p>
+
+      {consent.loading ? (
+        <Loading label="Loading settings" />
+      ) : consent.data ? (
+        <ul className="divide-y divide-black/5 overflow-hidden rounded-2xl bg-white">
+          <VisibilityRow
+            label="Use my ideas to train our future AI"
+            on={consent.data.ai_training_consent}
+            onToggle={() => void toggleTraining()}
+          />
+        </ul>
+      ) : (
+        <p className="rounded-2xl bg-white p-4 text-sm text-app-plum/40">
+          {consent.error ?? 'Settings unavailable.'}
+        </p>
+      )}
+
+      <p className="mt-2 text-xs text-app-plum/40">
+        <a
+          href="/privacy-policy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2"
+        >
+          Privacy Notice
+        </a>
+        {' · '}
+        <a
+          href="/terms-and-conditions"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2"
+        >
+          Terms &amp; Conditions
+        </a>
+      </p>
 
       <button
         type="button"

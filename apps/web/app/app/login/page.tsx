@@ -10,6 +10,7 @@ import { HOME_TAB } from '@/lib/app/tabs';
 import { ADMIN_HOME } from '@/lib/app/admin-tabs';
 import { ADMIN_USERNAME, adminLogin } from '@/lib/app/admin';
 import { ApiError } from '@/lib/app/client';
+import { ConsentNotice } from '@/components/app/ConsentGate';
 
 // The club's sign-up form lives on the website and is unlisted; the app sends
 // new members straight to it rather than keeping a second copy of the fields.
@@ -164,6 +165,8 @@ export default function AppLoginPage() {
               {error}
             </p>
           )}
+
+          <ConsentNotice className="pt-1" />
 
           <button
             type="submit"
