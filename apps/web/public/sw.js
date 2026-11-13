@@ -3,7 +3,7 @@
 // HTML documents and /api/* responses are NEVER cached: pages such as /profile,
 // /admin and /directory render member data, and the API carries JWT-authorised
 // payloads. Bump CACHE when the logic below changes.
-const CACHE = 'rcb-v2';
+const CACHE = 'rcb-v3';
 
 const PRECACHE = [
   '/offline',
@@ -91,4 +91,77 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/')) {
     event.respondWith(cacheFirst(request));
   }
+});
+
+// ── Push notifications ───────────────────────────────────────────────────────
+// Payload shape: { title, body, tab, url } — see app/api/lib/push.ts.
+
+async function appIsOpen() {
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  return windows.some((client) => client.visibilityState === 'visible');
+}
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    // A push with no (or non-JSON) data still deserves a notification: some
+    // browsers drop the subscription if we show nothing at all.
+  }
+
+  const title = payload.title || 'Rotaract Club of Bibwewadi';
+  const url = payload.url || '/app';
+
+  event.waitUntil(
+    (async () => {
+      // The member is looking at the app right now: tell it to refresh its
+      // badges instead of interrupting them with a banner.
+      if (await appIsOpen()) {
+        const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        windows.forEach((client) => client.postMessage({ type: 'rcb-unread' }));
+        return;
+      }
+
+      await self.registration.showNotification(title, {
+        body: payload.body || '',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        // One notification per section: a second idea replaces the first
+        // rather than stacking up while the app is closed.
+        tag: payload.tab || 'rcb',
+        renotify: true,
+        data: { url },
+      });
+
+      // shortcut: the home-screen number counts the notifications still on
+      // screen, not the server's unread total — the push is the same payload
+      // for every member, so it cannot carry a per-member count. The app
+      // corrects it from /api/notifications the moment it is opened.
+      if (self.navigator.setAppBadge) {
+        const shown = await self.registration.getNotifications();
+        await self.navigator.setAppBadge(shown.length).catch(() => {});
+      }
+    })(),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || '/app';
+
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      // Reuse the installed app's window if it is already running.
+      for (const client of windows) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          await client.focus();
+          if ('navigate' in client) await client.navigate(target).catch(() => {});
+          return;
+        }
+      }
+      await self.clients.openWindow(target);
+    })(),
+  );
 });

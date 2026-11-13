@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, after } from 'next/server';
 import { supabase } from '../lib/supabase';
 import {
   json,
@@ -11,6 +11,7 @@ import {
   ANNOUNCEMENT_SELECT,
   CreateAnnouncementSchema,
 } from '../lib/announcements';
+import { notifyMembers } from '../lib/push';
 import { successResponse, errorResponse, fromZodError } from '@rcb-2.0/shared';
 import { ZodError } from 'zod';
 
@@ -66,6 +67,15 @@ export async function POST(request: NextRequest) {
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);
     }
+
+    after(() =>
+      notifyMembers({
+        title: body.title,
+        body: body.body.slice(0, 120),
+        tab: 'announcements',
+        url: '/app/announcements',
+      }),
+    );
 
     return json(successResponse(data, 'Announcement posted'), 201);
   } catch (err) {

@@ -1,6 +1,7 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, after } from 'next/server';
 import { supabase } from '../lib/supabase';
 import { json, requireAdminPassword, handleError } from '../lib/middleware';
+import { notifyMembers } from '../lib/push';
 import {
   CreateEventSchema,
   successResponse,
@@ -81,6 +82,15 @@ export async function POST(request: NextRequest) {
     if (error) {
       return json(errorResponse('DB_ERROR', error.message), 500);
     }
+
+    after(() =>
+      notifyMembers({
+        title: 'New event',
+        body: [body.event_name, body.event_date].filter(Boolean).join(' · '),
+        tab: 'schedule',
+        url: '/app/schedule',
+      }),
+    );
 
     return json(successResponse(data, 'Event created successfully'), 201);
   } catch (err) {
