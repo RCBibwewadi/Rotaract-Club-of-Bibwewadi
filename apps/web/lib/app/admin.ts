@@ -85,7 +85,10 @@ export async function adminFetch<T>(path: string, init: RequestInit = {}): Promi
     res = await fetch(path, {
       ...init,
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        // FormData sets its own multipart boundary; naming a type here breaks it.
+        ...(init.body && !(init.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         Authorization: `Bearer ${getAdminToken()}`,
         ...init.headers,
       },

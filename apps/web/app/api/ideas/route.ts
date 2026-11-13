@@ -21,7 +21,9 @@ const PAGE_SIZE = 20;
 export async function GET(request: NextRequest) {
   try {
     const user = authenticate(request);
-    requireApproved(user);
+    // An admin token carries no membership, so it skips the approval check:
+    // the app's admin section moderates from this same list.
+    if (user.role !== 'admin') requireApproved(user);
 
     const page = Math.max(0, Number(request.nextUrl.searchParams.get('page') ?? 0) || 0);
     const from = page * PAGE_SIZE;
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
       return json(errorResponse('DB_ERROR', error.message), 500);
     }
 
-    const ideas = (data as unknown as RawIdea[]).map((row) => shapeIdea(row, user.member_id));
+    const ideas = (data as unknown as RawIdea[]).map((row) => shapeIdea(row, user.member_id ?? ''));
 
     return json(successResponse({ ideas, page, has_more: ideas.length === PAGE_SIZE }));
   } catch (err) {
