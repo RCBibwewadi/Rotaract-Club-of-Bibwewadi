@@ -8,6 +8,7 @@ import { HOME_TAB } from '@/lib/app/tabs';
 import { useAdminAuth } from '@/lib/app/admin';
 import { ADMIN_HOME } from '@/lib/app/admin-tabs';
 import AppSplash from './AppSplash';
+import ConsentGate from './ConsentGate';
 
 const PREVIEW_KEY = 'rcb-app-preview';
 
@@ -76,6 +77,11 @@ export default function AppGate({ children }: { children: React.ReactNode }) {
   // never flashes a logged-out screen at a member who is signed in.
   const settled = hydrated && (onAdmin ? isAdmin : onLogin ? !token && !isAdmin : !!token);
   if (!settled) return <AppSplash />;
+
+  // Members answer the DPDP consent before any screen that stores their data.
+  // The login screen has nobody to ask yet, and the admin area runs on the
+  // admin token rather than a member session.
+  if (token && !onLogin && !onAdmin) return <ConsentGate>{children}</ConsentGate>;
 
   return <>{children}</>;
 }
