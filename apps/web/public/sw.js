@@ -153,11 +153,18 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      // Reuse the installed app's window if it is already running.
+      // Only the installed app, never a website tab: every app screen lives
+      // under /app, so a same-origin tab on any other path is the website and
+      // focusing it would drop the member into the browser.
       for (const client of windows) {
-        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
-          await client.focus();
+        const url = new URL(client.url);
+        if (
+          url.origin === self.location.origin &&
+          url.pathname.startsWith('/app') &&
+          'focus' in client
+        ) {
           if ('navigate' in client) await client.navigate(target).catch(() => {});
+          await client.focus();
           return;
         }
       }
