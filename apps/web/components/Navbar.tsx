@@ -281,7 +281,7 @@ export default function Navbar() {
 
             {/* Right actions */}
             <div className="flex items-center gap-3 relative z-[110]">
-              <InstallButton isDark={isDark} menuOpen={menuOpen} />
+              {isLoggedIn && <InstallButton isDark={isDark} menuOpen={menuOpen} />}
 
               <button
                 onClick={toggleDark}
