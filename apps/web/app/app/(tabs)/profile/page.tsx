@@ -659,10 +659,12 @@ function NotificationsCard() {
     return <Loading label="Loading settings" />;
   }
 
-  if (state === 'unsupported') {
+  if (state === 'unsupported' || state === 'unconfigured') {
     return (
       <p className="rounded-2xl bg-white p-4 text-sm text-app-plum/40">
-        This device cannot show notifications from the app.
+        {state === 'unconfigured'
+          ? 'Notifications are not set up yet. Check back soon.'
+          : 'This device cannot show notifications from the app.'}
       </p>
     );
   }
