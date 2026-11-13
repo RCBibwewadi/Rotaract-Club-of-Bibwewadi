@@ -11,7 +11,7 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPage title="Privacy Notice" updated="13 November 2026">
       <p>
-        This notice explains what personal information [LEGAL ENTITY NAME] (&ldquo;the
+        This notice explains what personal information Rotaract Club of Bibwewadi (&ldquo;the
         Club&rdquo;, &ldquo;we&rdquo;) collects through its website and members app, why we
         collect it, and the choices you have. It is written for the Digital Personal Data
         Protection Act, 2023.
@@ -49,7 +49,7 @@ export default function PrivacyPolicyPage() {
       <LegalSection heading="How AI processing works">
         <p>
           When you ask the app to analyse or respond to something, your text is sent to an AI
-          service provider ([AI PROVIDER NAME]) which generates a response and returns it. This
+          service provider ([TBD]) which generates a response and returns it. This
           is called inference: the provider processes your text to answer you at that moment. The
           response and your message are then stored in your account the same way any other post
           is.
@@ -82,11 +82,11 @@ export default function PrivacyPolicyPage() {
 
       <LegalSection heading="How long we keep it">
         <p>
-          Account and profile data is kept while you are a member and for [RETENTION PERIOD]
+          Account and profile data is kept while you are a member and for 1 year
           after your account is closed, unless a law requires us to keep it longer. Ideas,
-          comments and conversations are kept for [RETENTION PERIOD]. Consent records are kept
-          for [RETENTION PERIOD] as proof of what was agreed. On deletion, your personal data is
-          removed from our live systems and from backups within [BACKUP RETENTION PERIOD].
+          comments and conversations are kept for 1 year. Consent records are kept
+          for 1 year as proof of what was agreed. On deletion, your personal data is
+          removed from our live systems and from backups within 1 year.
         </p>
       </LegalSection>
 
@@ -111,15 +111,14 @@ export default function PrivacyPolicyPage() {
         <p>
           You may ask us for a copy of the personal data we hold about you, ask us to correct or
           complete it, ask us to erase it, nominate someone to exercise your rights if you cannot,
-          and raise a grievance about how we handle it. We answer requests within [RESPONSE
-          PERIOD] of receiving them.
+          and raise a grievance about how we handle it. We answer requests within 1 week of receiving them.
         </p>
       </LegalSection>
 
       <LegalSection heading="Grievances and contact">
         <p>
-          Write to our Data Protection point of contact, [GRIEVANCE OFFICER NAME], at
-          [PRIVACY EMAIL ADDRESS] or [REGISTERED ADDRESS]. If you are not satisfied with our
+          Write to our Data Protection point of contact, our DEI, at
+          rotaractclubofbibwewadi@gmail.com. If you are not satisfied with our
           answer, you may complain to the Data Protection Board of India.
         </p>
       </LegalSection>
