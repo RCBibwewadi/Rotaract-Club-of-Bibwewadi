@@ -16,7 +16,9 @@ export default function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen px-6 pt-28 pb-20 md:px-12">
+    // relative z-10 keeps the text above BackgroundAmbient, which paints an
+    // opaque fixed layer at z-0 over anything unpositioned.
+    <div className="relative z-10 min-h-screen px-6 pt-28 pb-20 md:px-12">
       <article className="mx-auto w-full max-w-3xl">
         <h1 className="font-display text-4xl text-dark md:text-6xl dark:text-white">{title}</h1>
         <p className="mt-3 text-sm text-dark/50 dark:text-white/50">Last updated: {updated}</p>

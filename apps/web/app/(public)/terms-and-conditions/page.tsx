@@ -12,8 +12,7 @@ export default function TermsAndConditionsPage() {
   return (
     <LegalPage title="Terms & Conditions" updated="13 November 2026">
       <p>
-        These terms govern your use of the website and members app operated by [LEGAL ENTITY
-        NAME] (&ldquo;the Club&rdquo;, &ldquo;we&rdquo;). By creating an account or continuing to
+        These terms govern your use of the website and members app operated by Rotaract Club of Bibwewadi (&ldquo;the Club&rdquo;, &ldquo;we&rdquo;). By creating an account or continuing to
         use the app, you accept them.
       </p>
 
@@ -21,8 +20,7 @@ export default function TermsAndConditionsPage() {
         <p>
           The members app is for approved members of the Rotaract Club of Bibwewadi. Accounts are
           created by application and activated after the club approves them. You must give
-          accurate details, keep your password to yourself, and tell us at [CONTACT EMAIL
-          ADDRESS] if you believe someone else has used your account.
+          accurate details, keep your password to yourself, and tell us at rotaractclubofbibwewadi@gmail.com. if you believe someone else has used your account.
         </p>
       </LegalSection>
 
@@ -67,7 +65,7 @@ export default function TermsAndConditionsPage() {
 
       <LegalSection heading="Ending your account">
         <p>
-          You may close your account at any time by writing to [CONTACT EMAIL ADDRESS]. We may
+          You may close your account at any time by writing to rotaractclubofbibwewadi@gmail.com.. We may
           close or suspend an account that breaks these terms, or when club membership ends. Some
           records are kept after closure for the periods set out in the Privacy Notice.
         </p>
@@ -82,15 +80,14 @@ export default function TermsAndConditionsPage() {
 
       <LegalSection heading="Governing law">
         <p>
-          These terms are governed by the laws of India, and the courts at [JURISDICTION CITY]
+          These terms are governed by the laws of India, and the courts at Pune
           have exclusive jurisdiction over any dispute.
         </p>
       </LegalSection>
 
       <LegalSection heading="Contact">
         <p>
-          [LEGAL ENTITY NAME], [REGISTERED ADDRESS]. Questions about these terms: [CONTACT EMAIL
-          ADDRESS].
+          Rotaract Club of Bibwewadi, Bibwewadi Pune. Questions about these terms: rotaractclubofbibwewadi@gmail.com.
         </p>
       </LegalSection>
     </LegalPage>
