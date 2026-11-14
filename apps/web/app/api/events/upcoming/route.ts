@@ -1,8 +1,10 @@
+import { NextRequest } from 'next/server';
 import { supabase } from '../../lib/supabase';
-import { json, handleError } from '../../lib/middleware';
+import { json, handleError, optionalMember } from '../../lib/middleware';
+import { APP_EVENT_COLUMNS, shapeEventCounts } from '../../lib/events';
 import { successResponse, errorResponse } from '@rcb-2.0/shared';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const today = new Date().toISOString().split('T')[0];
 
@@ -19,6 +21,7 @@ export async function GET() {
         event_description,
         event_images,
         event_best_member,
+        ${APP_EVENT_COLUMNS},
         members!event_lead_id (
           member_id,
           full_name,
@@ -37,7 +40,8 @@ export async function GET() {
       return json(errorResponse('DB_ERROR', error.message), 500);
     }
 
-    return json(successResponse(data));
+    const viewer = optionalMember(request);
+    return json(successResponse((data ?? []).map((row) => shapeEventCounts(row, viewer))));
   } catch (err) {
     return handleError(err);
   }

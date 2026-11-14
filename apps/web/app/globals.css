@@ -17,6 +17,14 @@
   --color-light-border: #e5e5e5;
   --font-display: 'DM Sans', system-ui, sans-serif;
   --font-sans: 'DM Sans', system-ui, sans-serif;
+
+  /* Mobile app (/app) palette — deep plum text on an off-white canvas, with a
+     pink call to action against the burgundy hero. Website colours unchanged. */
+  --color-app-plum: #2a1118;
+  --color-app-pink: #e8456f;
+  --color-app-pink-dark: #cf3860;
+  --color-app-canvas: #faf7f5;
+  --color-app-panel: #fdfbfa;
 }
 
 /* Dark mode */
@@ -166,7 +174,9 @@ html {
 }
 
 body {
-  overflow-x: hidden;
+  /* clip, not hidden: `hidden` turns body into a scroll container, and
+     `position: sticky` headers inside it then never stick. */
+  overflow-x: clip;
 }
 
 /* ═══════════════════════════════════════════
@@ -290,4 +300,99 @@ body {
   .ambient-blob-2 { width: 250px; height: 250px; }
   .ambient-blob-3 { width: 200px; height: 200px; }
   .ambient-grain { display: none; }
+}
+
+/* ═══════════════════════════════════════════
+   App shell — no zoom
+   ═══════════════════════════════════════════ */
+
+/* The site's scrollbar thumb is burgundy (see ::-webkit-scrollbar above), which
+   inside the app reads as a red bar struck across the screen — under the
+   sideways filter row, beside a list. The app is a phone UI: no scrollbars. */
+.app-shell,
+.app-shell * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.app-shell::-webkit-scrollbar,
+.app-shell *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Named as well as inherited: the sideways category row is the one place a
+   horizontal bar would sit right across the screen. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* iOS Safari ignores user-scalable=no. It zooms on a double tap, which
+   `manipulation` disables, and on focusing a field whose text is under 16px. */
+.app-shell {
+  touch-action: manipulation;
+}
+.app-shell input,
+.app-shell textarea,
+.app-shell select {
+  font-size: 16px;
+}
+
+/* ═══════════════════════════════════════════
+   App offline screen
+   ═══════════════════════════════════════════ */
+
+/* The figure jumps on the spot; its shadow shrinks as it rises. */
+@keyframes rcb-jump {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  20% {
+    transform: translateY(0) scaleY(0.94);
+  }
+  50% {
+    transform: translateY(-16px) scaleY(1.03);
+  }
+  80% {
+    transform: translateY(0) scaleY(0.96);
+  }
+}
+
+@keyframes rcb-jump-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.12;
+  }
+  50% {
+    transform: scale(0.7);
+    opacity: 0.06;
+  }
+}
+
+.rcb-jumper {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: rcb-jump 1.1s ease-in-out infinite;
+}
+
+.rcb-jump-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0.12;
+  animation: rcb-jump-shadow 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rcb-jumper,
+  .rcb-jump-shadow {
+    animation: none;
+  }
 }

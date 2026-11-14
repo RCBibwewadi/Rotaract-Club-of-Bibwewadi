@@ -161,6 +161,7 @@ export const CreateEventSchema = z.object({
   event_images:      z.array(z.string()).optional(),
   event_videos:      z.array(z.string()).optional(),
   event_best_member: z.string().uuid('Invalid member ID').optional().or(z.literal('')),
+  registration_enabled: z.boolean().optional(),
 });
 
 export const UpdateEventSchema = CreateEventSchema.partial();

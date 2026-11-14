@@ -9,6 +9,7 @@ import { FaInstagram, FaLinkedinIn, FaFacebookF } from 'react-icons/fa';
 import { useStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
 import { useActiveRegistration } from '@/hooks/useActiveRegistration';
+import InstallButton from '@/components/InstallButton';
 
 interface NavItem {
   label: string;
@@ -280,6 +281,8 @@ export default function Navbar() {
 
             {/* Right actions */}
             <div className="flex items-center gap-3 relative z-[110]">
+              {isLoggedIn && <InstallButton isDark={isDark} menuOpen={menuOpen} />}
+
               <button
                 onClick={toggleDark}
                 className={`p-2.5 rounded-lg transition-all ${menuOpen ? 'text-white/70 hover:text-white' : isDark ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-dark/70 hover:text-dark hover:bg-dark/10'}`}

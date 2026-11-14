@@ -23,6 +23,19 @@ export function authenticate(request: NextRequest): JWTPayload {
   }
 }
 
+/**
+ * The member id behind the request, or null. Lists served to both the app and
+ * the signed-out website use this: a missing or stale token is an anonymous
+ * read, not a 401.
+ */
+export function optionalMember(request: NextRequest): string | null {
+  try {
+    return authenticate(request).member_id;
+  } catch {
+    return null;
+  }
+}
+
 export function requireApproved(user: JWTPayload): void {
   if (!user.is_approved) {
     throw new AuthError(403, 'Account pending admin approval');
