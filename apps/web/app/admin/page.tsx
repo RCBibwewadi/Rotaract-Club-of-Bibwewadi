@@ -1683,7 +1683,7 @@ function EventsTab() {
             <option value="Other">Other</option>
           </select>
         </div>
-        <div><label className={labelClass}>Expected Strength</label><input type="number" value={values.event_strength !== undefined && values.event_strength !== null ? String(values.event_strength) : ''} onChange={e => onChange('event_strength', e.target.value ? Number(e.target.value) : undefined)} className={inputClass} /></div>
+        <div><label className={labelClass}>Attended Strength</label><input type="number" value={values.event_strength !== undefined && values.event_strength !== null ? String(values.event_strength) : ''} onChange={e => onChange('event_strength', e.target.value ? Number(e.target.value) : undefined)} className={inputClass} /></div>
       </div>
       <div><label className={labelClass}>Description</label><textarea value={String(values.event_description || '')} onChange={e => onChange('event_description', e.target.value)} className={`${inputClass} resize-none`} rows={3} /></div>
       <div className="flex items-center gap-4">
