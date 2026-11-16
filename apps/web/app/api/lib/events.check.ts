@@ -23,7 +23,8 @@ assert.equal(shapeEventCounts(row(null), ME).attending_count, 0);
 const two = shapeEventCounts(row([{ member_id: ME }, { member_id: 'other' }], 40), ME);
 assert.equal(two.attending_count, 2);
 assert.equal(two.my_registration, true);
-assert.equal(two.capacity, 40);
+// event_strength passes through untouched: it is the attended headcount.
+assert.equal(two.event_strength, 40);
 
 // A signed-out website visit gets counts but never a personal state.
 assert.equal(shapeEventCounts(row([{ member_id: ME }]), null).my_registration, false);
@@ -32,8 +33,7 @@ assert.equal(shapeEventCounts(row([{ member_id: ME }]), null).my_registration, f
 assert.ok(!('event_registrations' in shapeEventCounts(row([{ member_id: ME }]), ME)));
 // Other fields survive untouched.
 assert.equal(shapeEventCounts(row([]), ME).event_id, 'e1');
-// No cap set means no cap, not zero.
-assert.equal(shapeEventCounts(row([]), ME).capacity, null);
+assert.equal(shapeEventCounts(row([]), ME).event_strength, null);
 
 assert.equal(EVENT_CATEGORIES.length, 4);
 assert.ok(EVENT_CATEGORIES.includes(DEFAULT_EVENT_CATEGORY));

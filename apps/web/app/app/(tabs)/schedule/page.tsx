@@ -18,7 +18,8 @@ interface AppEvent {
   registration_enabled: boolean;
   attending_count: number;
   my_registration: boolean;
-  capacity: number | null;
+  /** The admin's "Attended Strength" for an event that has happened. */
+  event_strength: number | null;
   members: { member_id: string; full_name: string; avatar_url: string | null } | null;
 }
 
@@ -130,8 +131,6 @@ function EventCard({
   const [error, setError] = useState('');
 
   const banner = event.event_images?.[0];
-  const full = !!event.capacity && event.attending_count >= event.capacity;
-
   const register = async () => {
     if (busy) return;
     setBusy(true);
@@ -189,8 +188,9 @@ function EventCard({
           <div className="flex items-center gap-2">
             <Users size={15} className="shrink-0 text-app-plum/35" aria-hidden />
             <dd>
-              {event.attending_count} {past ? 'attended' : 'attending'}
-              {event.capacity ? ` of ${event.capacity}` : ''}
+              {past && event.event_strength
+                ? `${event.event_strength} attended`
+                : `${event.attending_count} ${past ? 'attended' : 'attending'}`}
             </dd>
           </div>
         </dl>
@@ -219,7 +219,7 @@ function EventCard({
             <button
               type="button"
               onClick={register}
-              disabled={busy || event.my_registration || full}
+              disabled={busy || event.my_registration}
               className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 event.my_registration
                   ? 'bg-app-plum/5 text-app-plum/55'
@@ -228,7 +228,7 @@ function EventCard({
             >
               {busy && <Loader2 size={15} className="animate-spin" aria-hidden />}
               {event.my_registration && <Check size={15} aria-hidden />}
-              {event.my_registration ? 'Registered' : full ? 'Full' : 'Register'}
+              {event.my_registration ? 'Registered' : 'Register'}
             </button>
           )}
         </div>

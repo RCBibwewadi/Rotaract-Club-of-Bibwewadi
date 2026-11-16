@@ -32,12 +32,38 @@ export async function POST(
 
     const { data: idea } = await supabase
       .from('ideas')
-      .select('idea_id')
+      .select('idea_id, member_id')
       .eq('idea_id', id)
       .maybeSingle();
 
     if (!idea) {
       return json(errorResponse('NOT_FOUND', 'Idea not found'), 404);
+    }
+    if (idea.member_id === user.member_id) {
+      return json(errorResponse('FORBIDDEN', 'You cannot vote on your own idea'), 403);
+    }
+
+    const tally = async () => {
+      const { data, error } = await supabase.from('idea_votes').select('value').eq('idea_id', id);
+      if (error) throw error;
+      return (data ?? []).reduce((sum, v) => sum + (v.value as number), 0);
+    };
+
+    const { data: mine } = await supabase
+      .from('idea_votes')
+      .select('value')
+      .eq('idea_id', id)
+      .eq('member_id', user.member_id)
+      .maybeSingle();
+
+    // A score counts support, so it stops at zero: there is nothing left to
+    // take away. Checked here because the client's copy can be stale.
+    const before = await tally();
+    if (before - ((mine?.value as number) ?? 0) + body.value < 0) {
+      return json(
+        errorResponse('NO_VOTES', 'This idea has no upvotes left to take away'),
+        409,
+      );
     }
 
     const write =
@@ -57,18 +83,7 @@ export async function POST(
       return json(errorResponse('DB_ERROR', writeError.message), 500);
     }
 
-    const { data: votes, error: readError } = await supabase
-      .from('idea_votes')
-      .select('value')
-      .eq('idea_id', id);
-
-    if (readError) {
-      return json(errorResponse('DB_ERROR', readError.message), 500);
-    }
-
-    const score = (votes ?? []).reduce((sum, v) => sum + (v.value as number), 0);
-
-    return json(successResponse({ idea_id: id, score, my_vote: body.value }));
+    return json(successResponse({ idea_id: id, score: await tally(), my_vote: body.value }));
   } catch (err) {
     return handleError(err);
   }

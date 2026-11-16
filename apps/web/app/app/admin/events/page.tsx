@@ -20,6 +20,7 @@ interface AdminEvent {
   registration_enabled: boolean;
   event_images: string[] | null;
   event_videos: string[] | null;
+  event_strength: number | null;
 }
 
 type EventDraft = Omit<AdminEvent, 'event_id'>;
@@ -36,6 +37,7 @@ const EMPTY_DRAFT: EventDraft = {
   event_avenue: DEFAULT_EVENT_CATEGORY,
   event_images: [],
   event_videos: [],
+  event_strength: null,
 };
 
 const fieldClass =
@@ -191,6 +193,7 @@ function EventSheet({
           registration_enabled: event.registration_enabled ?? false,
           event_images: event.event_images ?? [],
           event_videos: event.event_videos ?? [],
+          event_strength: event.event_strength,
         }
       : EMPTY_DRAFT,
   );
@@ -221,6 +224,8 @@ function EventSheet({
           event_time: draft.event_time || undefined,
           event_place: draft.event_place || undefined,
           event_description: draft.event_description || undefined,
+          // The schema rejects 0 and null alike, so an unrecorded count is omitted.
+          event_strength: draft.event_strength || undefined,
         }),
       });
       onSaved(event ? 'Event updated' : 'Event created');
@@ -286,6 +291,23 @@ function EventSheet({
             />
           </div>
         </div>
+
+        <label
+          htmlFor="event_strength"
+          className="mt-4 mb-1.5 block text-sm font-medium text-app-plum/70"
+        >
+          Attended strength <span className="font-normal text-app-plum/35">(after the event)</span>
+        </label>
+        <input
+          id="event_strength"
+          type="number"
+          min={0}
+          inputMode="numeric"
+          value={draft.event_strength ?? ''}
+          onChange={(e) => set('event_strength', e.target.value ? Number(e.target.value) : null)}
+          placeholder="How many turned up"
+          className={fieldClass}
+        />
 
         <label htmlFor="event_place" className="mt-4 mb-1.5 block text-sm font-medium text-app-plum/70">
           Place

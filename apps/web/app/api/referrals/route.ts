@@ -19,7 +19,9 @@ import { ZodError } from 'zod';
 export async function GET(request: NextRequest) {
   try {
     const user = authenticate(request);
-    requireApproved(user);
+    // An admin token carries no membership, so it skips the approval check:
+    // the app's admin section moderates from this same list.
+    if (user.role !== 'admin') requireApproved(user);
 
     const { data, error } = await supabase
       .from('referrals')
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     const referrals = (data as unknown as RawReferral[]).map((row) =>
-      shapeReferral(row, user.member_id),
+      shapeReferral(row, user.member_id ?? ''),
     );
 
     return json(successResponse(referrals));

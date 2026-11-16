@@ -25,7 +25,7 @@ export async function POST(
 
     const { data: event, error: readError } = await supabase
       .from('events')
-      .select('event_id, registration_enabled, event_strength')
+      .select('event_id, registration_enabled')
       .eq('event_id', id)
       .single();
 
@@ -55,11 +55,6 @@ export async function POST(
       return json(
         successResponse({ attending_count: await countFor(), my_registration: true }),
       );
-    }
-
-    // event_strength doubles as the cap when the admin has set one.
-    if (event.event_strength && (await countFor()) >= event.event_strength) {
-      return json(errorResponse('FULL', 'This event is already full'), 409);
     }
 
     const { error: writeError } = await supabase

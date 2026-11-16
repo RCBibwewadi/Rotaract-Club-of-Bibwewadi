@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowBigDown, ArrowBigUp, MessageSquare } from 'lucide-react';
 import { appFetch, timeAgo } from '@/lib/app/client';
+import { useAuthStore } from '@/lib/auth-store';
 import type { Idea } from '@/lib/app/types';
 import { Avatar } from './Screen';
 
@@ -23,10 +24,16 @@ export function VoteControls({
 }) {
   const [busy, setBusy] = useState(false);
   const iconSize = size === 'lg' ? 24 : 20;
+  const myId = useAuthStore((state) => state.member?.member_id);
+  const isAuthor = !!myId && idea.author?.member_id === myId;
+
+  // Mirrors the server's rule: a vote may not push the score below zero.
+  const allowed = (value: -1 | 0 | 1) => idea.score - idea.my_vote + value >= 0;
 
   const cast = async (direction: -1 | 1) => {
-    if (busy) return;
+    if (busy || isAuthor) return;
     const value = idea.my_vote === direction ? 0 : direction;
+    if (!allowed(value)) return;
     const previous = { score: idea.score, my_vote: idea.my_vote };
 
     onChange({ score: idea.score - idea.my_vote + value, my_vote: value });
@@ -43,6 +50,16 @@ export function VoteControls({
       setBusy(false);
     }
   };
+
+  // An idea's own author cannot vote for it, so they get the tally alone.
+  if (isAuthor) {
+    return (
+      <div className="flex items-center gap-1.5 rounded-full border border-accent bg-app-plum/5 px-3 py-2">
+        <ArrowBigUp size={iconSize - 4} className="text-app-plum/35" aria-hidden />
+        <span className="text-sm font-semibold tabular-nums text-app-plum">{idea.score}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-1 rounded-full border border-accent bg-app-plum/5 px-1 py-1">
@@ -65,7 +82,8 @@ export function VoteControls({
         onClick={() => cast(-1)}
         aria-label="Downvote"
         aria-pressed={idea.my_vote === -1}
-        className={`rounded-full p-1 transition-colors ${
+        disabled={!allowed(idea.my_vote === -1 ? 0 : -1)}
+        className={`rounded-full p-1 transition-colors disabled:opacity-35 ${
           idea.my_vote === -1 ? 'text-accent' : 'text-app-plum/45'
         }`}
       >

@@ -54,15 +54,13 @@ export async function DELETE(
 ) {
   try {
     const user = authenticate(request);
-    requireApproved(user);
+    const isAdmin = user.role === 'admin';
+    if (!isAdmin) requireApproved(user);
     const { id } = await params;
 
-    // Scoped to the poster, so a member can only take down their own referral.
-    const { data, error } = await supabase
-      .from('referrals')
-      .delete()
-      .eq('referral_id', id)
-      .eq('member_id', user.member_id)
+    // A member may take down only their own; an admin moderates any of them.
+    const query = supabase.from('referrals').delete().eq('referral_id', id);
+    const { data, error } = await (isAdmin ? query : query.eq('member_id', user.member_id))
       .select('referral_id')
       .maybeSingle();
 

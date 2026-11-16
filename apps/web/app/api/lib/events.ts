@@ -24,8 +24,6 @@ export interface EventCounts {
   attending_count: number;
   /** True once the caller has registered; false for a signed-out website visit. */
   my_registration: boolean;
-  /** Null when the event has no cap. */
-  capacity: number | null;
 }
 
 interface RawCounts {
@@ -48,6 +46,5 @@ export function shapeEventCounts<T extends RawCounts>(
     ...rest,
     attending_count: rows.length,
     my_registration: !!viewerId && rows.some((r) => r.member_id === viewerId),
-    capacity: row.event_strength ?? null,
   };
 }
