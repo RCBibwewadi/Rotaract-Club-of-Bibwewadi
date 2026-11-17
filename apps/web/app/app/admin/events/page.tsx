@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CalendarDays, Film, ImageIcon, Loader2, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
+import MediaField from '@/components/app/MediaField';
 import { useResource, ApiError } from '@/lib/app/client';
 import { adminFetch } from '@/lib/app/admin';
 import { Loading, ErrorState, EmptyState } from '@/components/app/Screen';
@@ -419,101 +420,6 @@ function EventSheet({
           Event lead and awards are managed on the website admin panel.
         </p>
       </form>
-    </div>
-  );
-}
-
-/**
- * One uploaded file — the event's banner or its video. The upload happens as
- * soon as a file is picked, so the form only ever holds the stored URL.
- */
-function MediaField({
-  label,
-  icon: Icon,
-  accept,
-  folder,
-  value,
-  onChange,
-}: {
-  label: string;
-  icon: typeof ImageIcon;
-  accept: string;
-  folder: string;
-  value: string;
-  onChange: (url: string) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const upload = async (file: File) => {
-    setBusy(true);
-    setError('');
-    try {
-      const body = new FormData();
-      body.append('file', file);
-      const { url } = await adminFetch<{ url: string }>(`/api/upload?folder=${folder}`, {
-        method: 'POST',
-        body,
-      });
-      onChange(url);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Upload failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="mt-4">
-      <p className="mb-1.5 text-sm font-medium text-app-plum/70">{label}</p>
-
-      {value && (
-        <div className="mb-2 flex items-center gap-2 rounded-2xl bg-white px-4 py-3">
-          <Icon size={16} className="shrink-0 text-app-plum/40" aria-hidden />
-          <a
-            href={value}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="min-w-0 flex-1 truncate text-sm text-app-plum/60"
-          >
-            {value.split('/').pop()}
-          </a>
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            aria-label={`Remove ${label.toLowerCase()}`}
-            className="shrink-0 text-accent"
-          >
-            <X size={16} aria-hidden />
-          </button>
-        </div>
-      )}
-
-      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-app-plum/20 bg-white py-3.5 text-sm font-medium text-app-plum/60">
-        {busy ? (
-          <Loader2 size={16} className="animate-spin" aria-hidden />
-        ) : (
-          <Icon size={16} aria-hidden />
-        )}
-        {busy ? 'Uploading' : value ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
-        <input
-          type="file"
-          accept={accept}
-          className="hidden"
-          disabled={busy}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void upload(file);
-            e.target.value = '';
-          }}
-        />
-      </label>
-
-      {error && (
-        <p role="alert" className="mt-1.5 text-sm text-accent">
-          {error}
-        </p>
-      )}
     </div>
   );
 }

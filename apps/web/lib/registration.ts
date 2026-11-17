@@ -28,6 +28,8 @@ export interface PublicRegistrationForm {
   payment_qr_url: string | null;
   auth_required: boolean;
   questions: RegistrationQuestion[];
+  /** The event whose Calendar card shows Register Now while this form is live. */
+  event_id?: string | null;
 }
 
 export type AnswerValue = string | string[];

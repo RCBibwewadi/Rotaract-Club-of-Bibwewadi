@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { CalendarDays, Check, Loader2, MapPin, Users } from 'lucide-react';
 import { appFetch, useResource, ApiError } from '@/lib/app/client';
 import { EVENT_CATEGORIES } from '@/app/api/lib/events';
 import { Screen, Loading, ErrorState, EmptyState, Avatar } from '@/components/app/Screen';
+import type { PublicRegistrationForm } from '@/lib/registration';
 
 interface AppEvent {
   event_id: string;
@@ -30,6 +32,8 @@ export default function SchedulePage() {
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [category, setCategory] = useState<string>('All');
   const events = useResource<AppEvent[]>(`/api/events/${tab}`);
+  // The one live registration form; its event's card gets Register Now.
+  const liveForm = useResource<PublicRegistrationForm | null>('/api/registrations/active');
 
   const shown = useMemo(() => {
     const all = events.data ?? [];
@@ -104,6 +108,7 @@ export default function SchedulePage() {
             key={event.event_id}
             event={event}
             past={tab === 'past'}
+            hasForm={!!liveForm.data?.event_id && liveForm.data.event_id === event.event_id}
             onChange={(next) =>
               events.set(
                 (events.data ?? []).map((e) =>
@@ -121,10 +126,12 @@ export default function SchedulePage() {
 function EventCard({
   event,
   past,
+  hasForm,
   onChange,
 }: {
   event: AppEvent;
   past: boolean;
+  hasForm: boolean;
   onChange: (next: Pick<AppEvent, 'attending_count' | 'my_registration'>) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -214,8 +221,19 @@ function EventCard({
             <span />
           )}
 
+          {/* A live registration form linked to this event takes the place of
+              the one-tap Register: its questions are answered in the app. */}
+          {hasForm && !past && (
+            <Link
+              href="/app/register"
+              className="flex shrink-0 items-center rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-light"
+            >
+              Register Now
+            </Link>
+          )}
+
           {/* The button exists only while the admin has registration switched on. */}
-          {event.registration_enabled && !past && (
+          {event.registration_enabled && !hasForm && !past && (
             <button
               type="button"
               onClick={register}

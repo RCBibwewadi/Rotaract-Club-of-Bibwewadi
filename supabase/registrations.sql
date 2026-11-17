@@ -106,3 +106,8 @@ revoke all on function public.activate_registration_form(uuid) from public, anon
 insert into storage.buckets (id, name, public)
 values ('registration-proofs', 'registration-proofs', false)
 on conflict (id) do nothing;
+
+-- The event a form registers people for. While the form is live, the app shows
+-- Register Now on that event's card in the Calendar.
+alter table public.registration_forms
+  add column if not exists event_id uuid references public.events(event_id) on delete set null;

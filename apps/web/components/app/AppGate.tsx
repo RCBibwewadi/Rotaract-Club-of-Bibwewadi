@@ -9,6 +9,7 @@ import { useAdminAuth } from '@/lib/app/admin';
 import { ADMIN_HOME } from '@/lib/app/admin-tabs';
 import AppSplash from './AppSplash';
 import ConsentGate from './ConsentGate';
+import NotificationPrompt from './NotificationPrompt';
 
 const PREVIEW_KEY = 'rcb-app-preview';
 
@@ -81,7 +82,13 @@ export default function AppGate({ children }: { children: React.ReactNode }) {
   // Members answer the DPDP consent before any screen that stores their data.
   // The login screen has nobody to ask yet, and the admin area runs on the
   // admin token rather than a member session.
-  if (token && !onLogin && !onAdmin) return <ConsentGate>{children}</ConsentGate>;
+  if (token && !onLogin && !onAdmin)
+    return (
+      <ConsentGate>
+        <NotificationPrompt />
+        {children}
+      </ConsentGate>
+    );
 
   return <>{children}</>;
 }

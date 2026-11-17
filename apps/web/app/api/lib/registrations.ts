@@ -5,7 +5,7 @@ import { QUESTION_TYPES } from '@/lib/registration';
 export const PROOF_BUCKET = 'registration-proofs';
 
 export const PUBLIC_FORM_COLUMNS =
-  'form_id, title, description, offer_title, offer_description, image_url, video_url, payment_enabled, payment_amount, payment_original_amount, payment_qr_url, auth_required, questions';
+  'form_id, title, description, offer_title, offer_description, image_url, video_url, payment_enabled, payment_amount, payment_original_amount, payment_qr_url, auth_required, questions, event_id';
 
 const MEDIA_PREFIX = () =>
   `${process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL}/storage/v1/object/public/media/`;
@@ -42,6 +42,9 @@ export const FormSchema = z.object({
   payment_qr_url: mediaUrl,
   auth_required: z.boolean().default(false),
   questions: z.array(QuestionSchema).max(100).default([]),
+  // Optional, not defaulted: the website editor does not send it, and an
+  // absent key leaves the stored association alone on update.
+  event_id: z.string().uuid().nullable().optional(),
 }).superRefine((f, ctx) => {
   if (f.payment_enabled && !f.payment_amount) {
     ctx.addIssue({ code: 'custom', path: ['payment_amount'], message: 'Payment amount is required when payment is on' });
