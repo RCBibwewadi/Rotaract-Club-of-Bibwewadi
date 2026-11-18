@@ -222,8 +222,9 @@ function EventCard({
           )}
 
           {/* A live registration form linked to this event takes the place of
-              the one-tap Register: its questions are answered in the app. */}
-          {hasForm && !past && (
+              the one-tap Register: its questions are answered in the app.
+              Both buttons exist only while the admin has registration switched on. */}
+          {event.registration_enabled && hasForm && !past && (
             <Link
               href="/app/register"
               className="flex shrink-0 items-center rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-light"
