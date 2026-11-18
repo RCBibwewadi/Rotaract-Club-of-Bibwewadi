@@ -1,14 +1,31 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import { Mail, Phone, Search } from 'lucide-react';
-import { useResource } from '@/lib/app/client';
-import type { MemberProfile } from '@/lib/auth-store';
-import { Screen, Loading, ErrorState, EmptyState, Avatar } from '@/components/app/Screen';
+import { useMemo, useState } from "react";
+import {
+  Briefcase,
+  Building2,
+  GraduationCap,
+  Handshake,
+  Mail,
+  MessageCircle,
+  Phone,
+  Search,
+  X,
+} from "lucide-react";
+import { useResource } from "@/lib/app/client";
+import type { MemberProfile } from "@/lib/auth-store";
+import {
+  Screen,
+  Loading,
+  ErrorState,
+  EmptyState,
+  Avatar,
+} from "@/components/app/Screen";
 
 export default function MembersPage() {
-  const members = useResource<MemberProfile[]>('/api/members');
-  const [query, setQuery] = useState('');
+  const members = useResource<MemberProfile[]>("/api/members");
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<MemberProfile | null>(null);
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -16,7 +33,7 @@ export default function MembersPage() {
     return members.data.filter((member) =>
       [member.full_name, member.member_type, member.college_name]
         .filter(Boolean)
-        .some((field) => field!.toLowerCase().includes(needle)),
+        .some((field) => field!.toLowerCase().includes(needle))
     );
   }, [members.data, query]);
 
@@ -27,7 +44,9 @@ export default function MembersPage() {
   return (
     <Screen
       title="Members"
-      subtitle={total === null ? 'The club directory' : `The club directory of ${total}`}
+      subtitle={
+        total === null ? "The club directory" : `The club directory of ${total}`
+      }
     >
       <div className="relative mb-4">
         <Search
@@ -49,31 +68,49 @@ export default function MembersPage() {
       </div>
 
       {members.loading && <Loading label="Loading members" />}
-      {members.error && <ErrorState message={members.error} onRetry={members.reload} />}
+      {members.error && (
+        <ErrorState message={members.error} onRetry={members.reload} />
+      )}
 
       {members.data && results.length === 0 && (
         <EmptyState
-          title={query ? 'No matches' : 'No members yet'}
-          body={query ? 'Try another name.' : 'Approved members will be listed here.'}
+          title={query ? "No matches" : "No members yet"}
+          body={
+            query
+              ? "Try another name."
+              : "Approved members will be listed here."
+          }
         />
       )}
 
       <ul className="space-y-2.5">
         {results.map((member) => {
-          const visibility = member.member_visibility?.[0];
-          const showContact = visibility?.show_contact ?? false;
+          const showContact = canShowContact(member);
 
           return (
-            <li key={member.member_id} className="flex items-center gap-3 rounded-2xl bg-white p-4">
-              <Avatar name={member.full_name} src={member.avatar_url} size={44} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-semibold text-app-plum">
-                  {member.full_name}
-                </p>
-                <p className="truncate text-sm text-app-plum/50">
-                  {member.member_type?.split(',').join(' · ') || 'Member'}
-                </p>
-              </div>
+            <li
+              key={member.member_id}
+              className="flex items-center gap-3 rounded-2xl bg-white p-4"
+            >
+              <button
+                type="button"
+                onClick={() => setSelected(member)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
+                <Avatar
+                  name={member.full_name}
+                  src={member.avatar_url}
+                  size={44}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-semibold text-app-plum">
+                    {member.full_name}
+                  </p>
+                  <p className="truncate text-sm text-app-plum/50">
+                    {member.member_type?.split(",").join(" · ") || "Member"}
+                  </p>
+                </div>
+              </button>
 
               {showContact && (
                 <div className="flex shrink-0 gap-1.5">
@@ -101,6 +138,217 @@ export default function MembersPage() {
           );
         })}
       </ul>
+
+      {selected && (
+        <MemberSheet member={selected} onClose={() => setSelected(null)} />
+      )}
     </Screen>
+  );
+}
+
+// Same rule as the public directory: collab-open members share contact too.
+function canShowContact(member: MemberProfile) {
+  const visibility = member.member_visibility?.[0];
+  return Boolean(visibility?.show_contact || visibility?.open_to_collab);
+}
+
+function MemberSheet({
+  member,
+  onClose,
+}: {
+  member: MemberProfile;
+  onClose: () => void;
+}) {
+  const visibility = member.member_visibility?.[0];
+  const showContact = canShowContact(member);
+  const businesses =
+    visibility?.show_business_name === false
+      ? []
+      : (member.businesses ?? []).filter((b) => b.is_visible);
+  const professions =
+    visibility?.show_profession === false
+      ? []
+      : (member.professions ?? []).filter((p) => p.is_visible);
+  const sinceYear = member.years_in_rcb
+    ? new Date().getFullYear() - member.years_in_rcb
+    : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end bg-black/40"
+      role="dialog"
+      aria-modal="true"
+      aria-label={member.full_name}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-app-panel p-6"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)" }}
+      >
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-app-plum/40"
+          >
+            <X size={20} aria-hidden />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center text-center">
+          <Avatar name={member.full_name} src={member.avatar_url} size={72} />
+          <h2 className="mt-3 text-xl font-bold text-app-plum">
+            {member.full_name}
+          </h2>
+          <p className="text-sm text-app-plum/50 capitalize">
+            {member.member_type?.split(",").join(" · ") || "Member"}
+            {sinceYear ? ` · Since ${sinceYear}` : ""}
+          </p>
+          {visibility?.open_to_collab && (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-app-pink/10 px-2.5 py-1 text-xs font-medium text-app-pink">
+              <Handshake size={12} aria-hidden /> Open to Collab
+            </span>
+          )}
+        </div>
+
+        {member.college_name && (
+          <Section title="Education">
+            <Row
+              icon={GraduationCap}
+              primary={member.college_name}
+              secondary={member.course}
+            />
+          </Section>
+        )}
+
+        {professions.length > 0 && (
+          <Section title="Profession">
+            {professions.map((p) => (
+              <Row
+                key={p.profession_id}
+                icon={Briefcase}
+                primary={`${p.profession_type}${p.employer ? ` @ ${p.employer}` : ""}`}
+                secondary={[
+                  p.specialisation,
+                  p.years_experience && `${p.years_experience} yrs`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            ))}
+          </Section>
+        )}
+
+        {businesses.length > 0 && (
+          <Section title="Business">
+            {businesses.map((b) => (
+              <Row
+                key={b.business_id}
+                icon={Building2}
+                primary={b.business_name}
+                secondary={[b.designation, b.industry, b.business_city]
+                  .filter(Boolean)
+                  .join(" · ")}
+                href={b.website_url}
+              />
+            ))}
+          </Section>
+        )}
+
+        <Section title="Contact">
+          {showContact && (member.email || member.phone) ? (
+            <>
+              {member.email && (
+                <Row
+                  icon={Mail}
+                  primary={member.email}
+                  href={`mailto:${member.email}`}
+                />
+              )}
+              {member.phone && (
+                <>
+                  <Row
+                    icon={Phone}
+                    primary={member.phone}
+                    href={`tel:${member.phone}`}
+                  />
+                  <Row
+                    icon={MessageCircle}
+                    primary="WhatsApp"
+                    href={`https://wa.me/${member.phone.replace(/\D/g, "")}`}
+                  />
+                </>
+              )}
+            </>
+          ) : (
+            <p className="py-2 text-sm text-app-plum/40">
+              This member hasn&apos;t shared contact details yet.
+            </p>
+          )}
+        </Section>
+      </div>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-5">
+      <p className="mb-2 text-xs font-semibold tracking-wider text-app-plum/40 uppercase">
+        {title}
+      </p>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function Row({
+  icon: Icon,
+  primary,
+  secondary,
+  href,
+}: {
+  icon: typeof Mail;
+  primary: string;
+  secondary?: string;
+  href?: string;
+}) {
+  const body = (
+    <>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-app-plum/5 text-app-plum/60">
+        <Icon size={16} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] text-app-plum">
+          {primary}
+        </span>
+        {secondary && (
+          <span className="block truncate text-sm text-app-plum/50">
+            {secondary}
+          </span>
+        )}
+      </span>
+    </>
+  );
+  const className = "flex items-center gap-3 rounded-2xl bg-white p-3";
+  return href ? (
+    <a
+      href={href}
+      target={href.startsWith("http") ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      className={className}
+    >
+      {body}
+    </a>
+  ) : (
+    <div className={className}>{body}</div>
   );
 }
