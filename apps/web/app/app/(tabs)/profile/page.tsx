@@ -644,11 +644,6 @@ export default function ProfilePage() {
             on={visibility.data.show_profession}
             onToggle={() => toggleVisibility('show_profession')}
           />
-          <VisibilityRow
-            label="Open to collaborate"
-            on={visibility.data.open_to_collab}
-            onToggle={() => toggleVisibility('open_to_collab')}
-          />
         </ul>
       ) : (
         <p className="rounded-2xl bg-white p-4 text-sm text-app-plum/40">

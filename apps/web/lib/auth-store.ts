@@ -20,7 +20,7 @@ export interface MemberProfile {
   aspiration?: string;
   businesses?: Business[];
   professions?: Profession[];
-  member_visibility?: MemberVisibility[];
+  member_visibility?: MemberVisibility | MemberVisibility[];
 }
 
 export interface Business {

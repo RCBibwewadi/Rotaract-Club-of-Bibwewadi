@@ -5,7 +5,6 @@ import {
   Briefcase,
   Building2,
   GraduationCap,
-  Handshake,
   Mail,
   MessageCircle,
   Phone,
@@ -146,10 +145,14 @@ export default function MembersPage() {
   );
 }
 
-// Same rule as the public directory: collab-open members share contact too.
+// member_visibility is one row per member, so PostgREST embeds it as an object, not an array.
+function getVisibility(member: MemberProfile) {
+  const v = member.member_visibility;
+  return Array.isArray(v) ? v[0] : v;
+}
+
 function canShowContact(member: MemberProfile) {
-  const visibility = member.member_visibility?.[0];
-  return Boolean(visibility?.show_contact || visibility?.open_to_collab);
+  return Boolean(getVisibility(member)?.show_contact);
 }
 
 function MemberSheet({
@@ -159,7 +162,7 @@ function MemberSheet({
   member: MemberProfile;
   onClose: () => void;
 }) {
-  const visibility = member.member_visibility?.[0];
+  const visibility = getVisibility(member);
   const showContact = canShowContact(member);
   const businesses =
     visibility?.show_business_name === false
@@ -206,11 +209,6 @@ function MemberSheet({
             {member.member_type?.split(",").join(" · ") || "Member"}
             {sinceYear ? ` · Since ${sinceYear}` : ""}
           </p>
-          {visibility?.open_to_collab && (
-            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-app-pink/10 px-2.5 py-1 text-xs font-medium text-app-pink">
-              <Handshake size={12} aria-hidden /> Open to Collab
-            </span>
-          )}
         </div>
 
         {member.college_name && (
