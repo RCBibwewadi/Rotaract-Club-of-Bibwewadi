@@ -20,7 +20,13 @@ export default function NotificationPrompt() {
   useEffect(() => {
     let live = true;
     pushState()
-      .then((state) => live && setOpen(state === 'off'))
+      .then((state) => {
+        if (state !== 'off') return;
+        // Browsers drop subscriptions (expiry, SW update) while permission stays
+        // granted: renew it quietly instead of asking the member again.
+        if (Notification.permission === 'granted') return void enablePush().catch(() => {});
+        if (live) setOpen(true);
+      })
       .catch(() => {});
     return () => {
       live = false;
