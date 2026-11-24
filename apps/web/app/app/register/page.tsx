@@ -78,7 +78,7 @@ function RegisterForm({ form }: { form: PublicRegistrationForm }) {
   const [photos, setPhotos] = useState<Record<string, File | null>>({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState(!!form.my_registration);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

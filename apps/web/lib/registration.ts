@@ -30,6 +30,8 @@ export interface PublicRegistrationForm {
   questions: RegistrationQuestion[];
   /** The event whose Calendar card shows Register Now while this form is live. */
   event_id?: string | null;
+  /** True once the signed-in caller has submitted this form. */
+  my_registration?: boolean;
 }
 
 export type AnswerValue = string | string[];

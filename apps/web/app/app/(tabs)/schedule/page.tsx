@@ -109,6 +109,7 @@ export default function SchedulePage() {
             event={event}
             past={tab === 'past'}
             hasForm={!!liveForm.data?.event_id && liveForm.data.event_id === event.event_id}
+            formRegistered={!!liveForm.data?.my_registration}
             onChange={(next) =>
               events.set(
                 (events.data ?? []).map((e) =>
@@ -127,11 +128,13 @@ function EventCard({
   event,
   past,
   hasForm,
+  formRegistered,
   onChange,
 }: {
   event: AppEvent;
   past: boolean;
   hasForm: boolean;
+  formRegistered: boolean;
   onChange: (next: Pick<AppEvent, 'attending_count' | 'my_registration'>) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -224,7 +227,14 @@ function EventCard({
           {/* A live registration form linked to this event takes the place of
               the one-tap Register: its questions are answered in the app.
               Both buttons exist only while the admin has registration switched on. */}
-          {event.registration_enabled && hasForm && !past && (
+          {event.registration_enabled && hasForm && !past && formRegistered && (
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-app-plum/5 px-4 py-2 text-sm font-semibold text-app-plum/55">
+              <Check size={15} aria-hidden />
+              Registered
+            </span>
+          )}
+
+          {event.registration_enabled && hasForm && !past && !formRegistered && (
             <Link
               href="/app/register"
               className="flex shrink-0 items-center rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-light"
