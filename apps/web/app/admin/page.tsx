@@ -2533,7 +2533,7 @@ interface AdminRegistration {
   full_name: string | null;
   email: string;
   phone: string | null;
-  answers: { question_id: string; label: string; type: string; value: string | string[] }[];
+  answers: { question_id: string; label: string; type: string; value: string | string[]; url?: string | null }[];
   payment_status: 'not_required' | 'submitted' | 'verified';
   payment_proof_url: string | null;
   payment_proof_path: string | null;
@@ -2988,7 +2988,13 @@ function RegistrationsPanel({ onLock }: { onLock: () => void }) {
                             {r.answers.map(a => (
                               <div key={a.question_id}>
                                 <dt className="text-xs text-white/40">{a.label}</dt>
-                                <dd className="text-sm whitespace-pre-line break-words">{(Array.isArray(a.value) ? a.value.join(', ') : a.value) || '—'}</dd>
+                                <dd className="text-sm whitespace-pre-line break-words">
+                                  {a.url ? (
+                                    <a href={a.url} target="_blank" rel="noreferrer">
+                                      <img src={a.url} alt={a.label} className="mt-1 max-h-64 rounded-lg border border-white/10" />
+                                    </a>
+                                  ) : (Array.isArray(a.value) ? a.value.join(', ') : a.value) || '—'}
+                                </dd>
                               </div>
                             ))}
                           </dl>

@@ -24,7 +24,8 @@ create table if not exists public.registration_forms (
   payment_qr_url           text,                 -- public URL in the media bucket
   auth_required            boolean not null default false,
   -- [{ id, label, type, required, options? }]; type is one of
-  -- text | email | phone | number | dropdown | checkbox | textarea
+  -- text | email | phone | number | dropdown | checkbox | textarea | photo
+  -- (photo answers store a path in the private registration-proofs bucket)
   questions                jsonb not null default '[]'::jsonb,
   is_active                boolean not null default false,
   created_at               timestamptz not null default now(),

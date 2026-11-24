@@ -8,9 +8,12 @@ import { useAuthStore } from '@/lib/auth-store';
 import { Loading, ErrorState, EmptyState } from '@/components/app/Screen';
 import {
   validateAnswer,
+  photoError,
+  photoField,
   EMAIL_RE,
   PROOF_EXTS,
   PROOF_MAX_SIZE,
+  PHOTO_EXTS,
   type AnswerValue,
   type PublicRegistrationForm,
   type RegistrationQuestion,
@@ -72,6 +75,7 @@ function RegisterForm({ form }: { form: PublicRegistrationForm }) {
   const email = emailEdit ?? member?.email ?? '';
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [proof, setProof] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<Record<string, File | null>>({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -83,6 +87,9 @@ function RegisterForm({ form }: { form: PublicRegistrationForm }) {
     const problem =
       (EMAIL_RE.test(email.trim()) ? null : 'Enter a valid email') ??
       form.questions.map((q) => validateAnswer(q, answers[q.id])).find(Boolean) ??
+      form.questions
+        .map((q) => (q.type === 'photo' && photos[q.id] ? photoError(q, photos[q.id]!) : null))
+        .find(Boolean) ??
       (form.payment_enabled && !proof ? 'Upload your payment screenshot' : null);
     if (problem) {
       setError(problem);
@@ -94,6 +101,10 @@ function RegisterForm({ form }: { form: PublicRegistrationForm }) {
     body.append('email', email.trim());
     body.append('answers', JSON.stringify(answers));
     if (form.payment_enabled && proof) body.append('payment_proof', proof);
+    for (const q of form.questions) {
+      const photo = q.type === 'photo' && photos[q.id];
+      if (photo) body.append(photoField(q.id), photo);
+    }
 
     setSubmitting(true);
     setError('');
@@ -180,6 +191,7 @@ function RegisterForm({ form }: { form: PublicRegistrationForm }) {
             q={q}
             value={answers[q.id]}
             onChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+            onPhoto={(f) => setPhotos((prev) => ({ ...prev, [q.id]: f }))}
           />
         </div>
       ))}
@@ -238,10 +250,12 @@ function QuestionInput({
   q,
   value,
   onChange,
+  onPhoto,
 }: {
   q: RegistrationQuestion;
   value: AnswerValue | undefined;
   onChange: (v: AnswerValue) => void;
+  onPhoto: (file: File | null) => void;
 }) {
   const str = typeof value === 'string' ? value : '';
   const id = `q-${q.id}`;
@@ -288,6 +302,24 @@ function QuestionInput({
         </div>
       );
     }
+    case 'photo':
+      return (
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-app-plum/20 bg-white py-3.5 text-sm font-medium text-app-plum/60">
+          <Upload size={16} aria-hidden />
+          <span className="truncate">{str || 'Upload photo'}</span>
+          <input
+            id={id}
+            type="file"
+            accept={PHOTO_EXTS.join(',')}
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              onPhoto(f);
+              onChange(f?.name ?? '');
+            }}
+          />
+        </label>
+      );
     default:
       return (
         <input
