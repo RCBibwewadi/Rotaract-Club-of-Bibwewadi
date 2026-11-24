@@ -36,11 +36,12 @@ export async function POST(
       return json(errorResponse('CLOSED', 'Registration is closed for this event'), 403);
     }
 
+    // Attending is the form submissions for this event, as in shapeEventCounts.
     const countFor = async () => {
       const { count } = await supabase
-        .from('event_registrations')
-        .select('member_id', { count: 'exact', head: true })
-        .eq('event_id', id);
+        .from('registrations')
+        .select('registration_id, registration_forms!inner(event_id)', { count: 'exact', head: true })
+        .eq('registration_forms.event_id', id);
       return count ?? 0;
     };
 
