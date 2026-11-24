@@ -17,7 +17,8 @@ export const DEFAULT_EVENT_CATEGORY: (typeof EVENT_CATEGORIES)[number] = 'Club S
 export const APP_EVENT_COLUMNS = `
   event_strength,
   registration_enabled,
-  event_registrations ( member_id )
+  event_registrations ( member_id ),
+  registration_forms ( registrations ( member_id ) )
 `;
 
 export interface EventCounts {
@@ -29,6 +30,8 @@ export interface EventCounts {
 interface RawCounts {
   event_strength?: number | null;
   event_registrations?: { member_id: string }[] | null;
+  /** Forms linked to the event; their submissions are the attending count. */
+  registration_forms?: { registrations: { member_id: string | null }[] | null }[] | null;
 }
 
 /**
@@ -38,13 +41,16 @@ interface RawCounts {
 export function shapeEventCounts<T extends RawCounts>(
   row: T,
   viewerId: string | null,
-): Omit<T, 'event_registrations'> & EventCounts {
-  const rows = row.event_registrations ?? [];
+): Omit<T, 'event_registrations' | 'registration_forms'> & EventCounts {
+  // Same tally as the admin's registration forms: every form submission.
+  const formRows = (row.registration_forms ?? []).flatMap((f) => f.registrations ?? []);
+  const mine = (r: { member_id: string | null }) => !!viewerId && r.member_id === viewerId;
   const rest = { ...row };
   delete rest.event_registrations;
+  delete rest.registration_forms;
   return {
     ...rest,
-    attending_count: rows.length,
-    my_registration: !!viewerId && rows.some((r) => r.member_id === viewerId),
+    attending_count: formRows.length,
+    my_registration: [...(row.event_registrations ?? []), ...formRows].some(mine),
   };
 }
