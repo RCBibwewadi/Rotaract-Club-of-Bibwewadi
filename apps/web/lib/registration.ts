@@ -1,7 +1,7 @@
 // Shared by the /register page, the admin Registrations tab and the API routes,
 // so the browser and the server validate answers with the same rules.
 
-export const QUESTION_TYPES = ['text', 'email', 'phone', 'number', 'dropdown', 'checkbox', 'textarea'] as const;
+export const QUESTION_TYPES = ['text', 'email', 'phone', 'number', 'dropdown', 'checkbox', 'textarea', 'photo'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
 export interface RegistrationQuestion {
@@ -38,6 +38,17 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PHONE_RE = /^\+?[0-9][0-9\s-]{8,14}$/;
 export const PROOF_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
 export const PROOF_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+export const PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
+
+/** Form field a photo question's file is posted under. */
+export const photoField = (questionId: string) => `photo_${questionId}`;
+
+/** Returns an error message for a photo answer's file, or null when it is fine. */
+export function photoError(q: RegistrationQuestion, file: { name: string; size: number }): string | null {
+  const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  if (!PHOTO_EXTS.includes(ext)) return `${q.label}: photo must be JPG, PNG or WEBP`;
+  return file.size > PROOF_MAX_SIZE ? `${q.label}: photo must be under 5MB` : null;
+}
 
 const MAX_TEXT = 500;
 const MAX_TEXTAREA = 5000;

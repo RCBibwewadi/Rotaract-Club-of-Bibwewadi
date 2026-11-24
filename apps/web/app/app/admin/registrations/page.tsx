@@ -42,7 +42,7 @@ interface AdminRegistration {
   full_name: string | null;
   email: string;
   phone: string | null;
-  answers: { question_id: string; label: string; value: string | string[] }[];
+  answers: { question_id: string; label: string; type?: string; value: string | string[]; url?: string | null }[];
   payment_status: "not_required" | "submitted" | "verified";
   payment_proof_url: string | null;
   payment_proof_path: string | null;
@@ -402,9 +402,20 @@ function RegisteredPanel() {
                                   {a.label}
                                 </dt>
                                 <dd className="text-sm break-words whitespace-pre-line text-app-plum/80">
-                                  {(Array.isArray(a.value)
-                                    ? a.value.join(", ")
-                                    : a.value) || "—"}
+                                  {a.url ? (
+                                    <a href={a.url} target="_blank" rel="noreferrer">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={a.url}
+                                        alt={a.label}
+                                        className="mt-1 max-h-64 rounded-xl"
+                                      />
+                                    </a>
+                                  ) : (
+                                    (Array.isArray(a.value)
+                                      ? a.value.join(", ")
+                                      : a.value) || "—"
+                                  )}
                                 </dd>
                               </div>
                             ))}

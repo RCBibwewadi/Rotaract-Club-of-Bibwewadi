@@ -7,7 +7,8 @@ import { successResponse, errorResponse } from '@rcb-2.0/shared';
 const SIGNED_URL_TTL = 60 * 60; // 1 hour
 
 // GET /api/admin/registrations — all registrations, newest first, with a
-// short-lived signed URL for each payment proof. The UI groups them by form.
+// short-lived signed URL for each payment proof and photo answer. The UI
+// groups them by form.
 export async function GET(request: NextRequest) {
   try {
     requireAdminPassword(request);
@@ -19,7 +20,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
     if (error) return json(errorResponse('DB_ERROR', error.message), 500);
 
-    const paths = data.map(r => r.payment_proof_path).filter(Boolean) as string[];
+    type Answer = { type: string; value: unknown };
+    const isPhoto = (a: Answer) => a.type === 'photo' && typeof a.value === 'string' && a.value !== '';
+    const paths = [
+      ...data.map(r => r.payment_proof_path),
+      ...data.flatMap(r => (r.answers as Answer[]).filter(isPhoto).map(a => a.value)),
+    ].filter(Boolean) as string[];
     const urls = new Map<string, string>();
     if (paths.length) {
       const { data: signed } = await supabaseAdmin.storage
@@ -30,6 +36,7 @@ export async function GET(request: NextRequest) {
 
     return json(successResponse(data.map(r => ({
       ...r,
+      answers: (r.answers as Answer[]).map(a => isPhoto(a) ? { ...a, url: urls.get(a.value as string) ?? null } : a),
       payment_proof_url: r.payment_proof_path ? urls.get(r.payment_proof_path) ?? null : null,
     }))));
   } catch (err) {

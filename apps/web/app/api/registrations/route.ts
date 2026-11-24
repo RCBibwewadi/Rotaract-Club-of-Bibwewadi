@@ -6,7 +6,7 @@ import { json, authenticate, handleError } from '../lib/middleware';
 import { PROOF_BUCKET } from '../lib/registrations';
 import { successResponse, errorResponse } from '@rcb-2.0/shared';
 import {
-  validateAnswer, EMAIL_RE, PROOF_EXTS, PROOF_MAX_SIZE,
+  validateAnswer, photoError, photoField, EMAIL_RE, PROOF_EXTS, PROOF_MAX_SIZE,
   type RegistrationQuestion, type AnswerValue,
 } from '@/lib/registration';
 
@@ -31,7 +31,8 @@ async function contactFor(questions: RegistrationQuestion[], raw: Record<string,
 /**
  * POST /api/registrations — multipart form:
  *   form_id, email (required), answers (JSON object question_id -> value),
- *   payment_proof (file, when the form takes payment)
+ *   payment_proof (file, when the form takes payment),
+ *   photo_<question_id> (file, per photo question)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -69,8 +70,18 @@ export async function POST(request: NextRequest) {
 
     const questions = (form.questions || []) as RegistrationQuestion[];
     const answers = [];
+    const photos = new Map<number, File>(); // answers index -> file, uploaded once everything validates
     for (const q of questions) {
-      const value = raw[q.id];
+      let value = raw[q.id];
+      if (q.type === 'photo') {
+        const file = fd.get(photoField(q.id));
+        value = file instanceof File && file.size > 0 ? file.name : undefined;
+        if (file instanceof File && value) {
+          const photoErr = photoError(q, file);
+          if (photoErr) return json(errorResponse('VALIDATION_ERROR', photoErr), 400);
+          photos.set(answers.length, file);
+        }
+      }
       const err = validateAnswer(q, value);
       if (err) return json(errorResponse('VALIDATION_ERROR', err), 400);
       answers.push({
@@ -80,6 +91,23 @@ export async function POST(request: NextRequest) {
         value: typeof value === 'string' ? value.trim() : (value as AnswerValue | undefined) ?? '',
       });
     }
+
+    // Everything uploaded so far, removed again if a later step fails.
+    const uploaded: string[] = [];
+    const removeUploaded = async () => {
+      if (uploaded.length) await supabaseAdmin.storage.from(PROOF_BUCKET).remove(uploaded);
+    };
+    const upload = async (filePath: string, file: File) => {
+      const { error: upErr } = await supabaseAdmin.storage
+        .from(PROOF_BUCKET)
+        .upload(filePath, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+      if (upErr) {
+        await removeUploaded();
+        return upErr.message;
+      }
+      uploaded.push(filePath);
+      return null;
+    };
 
     let proofPath: string | null = null;
     if (form.payment_enabled) {
@@ -95,10 +123,16 @@ export async function POST(request: NextRequest) {
         return json(errorResponse('VALIDATION_ERROR', 'Payment proof must be under 5MB'), 400);
       }
       proofPath = `${form.form_id}/${crypto.randomUUID()}${ext}`;
-      const { error: upErr } = await supabaseAdmin.storage
-        .from(PROOF_BUCKET)
-        .upload(proofPath, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
-      if (upErr) return json(errorResponse('UPLOAD_ERROR', upErr.message), 500);
+      const upErr = await upload(proofPath, file);
+      if (upErr) return json(errorResponse('UPLOAD_ERROR', upErr), 500);
+    }
+
+    // Photo answers store their path in the private bucket; admins get signed URLs.
+    for (const [i, file] of photos) {
+      const photoPath = `${form.form_id}/photos/${crypto.randomUUID()}${path.extname(file.name).toLowerCase()}`;
+      const upErr = await upload(photoPath, file);
+      if (upErr) return json(errorResponse('UPLOAD_ERROR', upErr), 500);
+      answers[i].value = photoPath;
     }
 
     const { data, error } = await supabaseAdmin
@@ -116,7 +150,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      if (proofPath) await supabaseAdmin.storage.from(PROOF_BUCKET).remove([proofPath]);
+      await removeUploaded();
       if (error.code === '23505') {
         return json(errorResponse('ALREADY_REGISTERED', 'You have already registered for this form'), 409);
       }

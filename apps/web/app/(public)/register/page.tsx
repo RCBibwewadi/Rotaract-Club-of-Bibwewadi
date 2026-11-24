@@ -7,17 +7,18 @@ import { AlertCircle, ArrowRight, CheckCircle, Download, IndianRupee, Upload } f
 import { useActiveRegistration } from '@/hooks/useActiveRegistration';
 import { useAuthStore } from '@/lib/auth-store';
 import {
-  validateAnswer, EMAIL_RE, PROOF_EXTS, PROOF_MAX_SIZE,
+  validateAnswer, photoError, photoField, EMAIL_RE, PROOF_EXTS, PROOF_MAX_SIZE, PHOTO_EXTS,
   type AnswerValue, type RegistrationQuestion,
 } from '@/lib/registration';
 
 const inputClass = 'w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-dark dark:text-white placeholder-dark/30 dark:placeholder-white/30 focus:border-accent focus:outline-none transition-colors';
 const labelClass = 'block text-dark/60 dark:text-white/60 text-sm mb-1.5';
 
-function QuestionInput({ q, value, onChange }: {
+function QuestionInput({ q, value, onChange, onPhoto }: {
   q: RegistrationQuestion;
   value: AnswerValue | undefined;
   onChange: (v: AnswerValue) => void;
+  onPhoto: (file: File | null) => void;
 }) {
   const str = typeof value === 'string' ? value : '';
   const id = `q-${q.id}`;
@@ -49,6 +50,20 @@ function QuestionInput({ q, value, onChange }: {
         </div>
       );
     }
+    case 'photo':
+      return (
+        <label className={`${inputClass} cursor-pointer flex items-center gap-2`}>
+          <Upload size={16} className="text-dark/40 dark:text-white/40" />
+          <span className="text-sm text-dark/60 dark:text-white/60 truncate">{str || 'Choose JPG, PNG or WEBP (max 5MB)'}</span>
+          <input
+            id={id}
+            type="file"
+            accept={PHOTO_EXTS.join(',')}
+            onChange={e => { const f = e.target.files?.[0] ?? null; onPhoto(f); onChange(f?.name ?? ''); }}
+            className="sr-only"
+          />
+        </label>
+      );
     default: {
       const type = q.type === 'phone' ? 'tel' : q.type;
       return <input id={id} type={type} inputMode={q.type === 'number' ? 'decimal' : undefined} value={str} onChange={e => onChange(e.target.value)} className={inputClass} />;
@@ -67,6 +82,7 @@ export default function RegisterPage() {
   const email = emailEdit ?? member?.email ?? '';
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [proof, setProof] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<Record<string, File | null>>({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -89,6 +105,7 @@ export default function RegisterPage() {
 
     const problem = (EMAIL_RE.test(email.trim()) ? null : 'Enter a valid email')
       ?? form.questions.map(q => validateAnswer(q, answers[q.id])).find(Boolean)
+      ?? form.questions.map(q => (q.type === 'photo' && photos[q.id] ? photoError(q, photos[q.id]!) : null)).find(Boolean)
       ?? (form.payment_enabled && !proof ? 'Upload your payment screenshot' : null);
     if (problem) { setError(problem); return; }
 
@@ -97,6 +114,10 @@ export default function RegisterPage() {
     fd.append('email', email.trim());
     fd.append('answers', JSON.stringify(answers));
     if (form.payment_enabled && proof) fd.append('payment_proof', proof);
+    for (const q of form.questions) {
+      const photo = q.type === 'photo' && photos[q.id];
+      if (photo) fd.append(photoField(q.id), photo);
+    }
 
     setSubmitting(true);
     try {
@@ -205,7 +226,7 @@ export default function RegisterPage() {
                     <label id={`q-${q.id}-label`} htmlFor={`q-${q.id}`} className={labelClass}>
                       {q.label}{q.required && ' *'}
                     </label>
-                    <QuestionInput q={q} value={answers[q.id]} onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
+                    <QuestionInput q={q} value={answers[q.id]} onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} onPhoto={f => setPhotos(p => ({ ...p, [q.id]: f }))} />
                   </div>
                 ))}
 
